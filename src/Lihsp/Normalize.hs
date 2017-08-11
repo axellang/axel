@@ -11,10 +11,10 @@ import Lihsp.AST
        (DataDeclaration(DataDeclaration),
         Expression(EFunctionApplication, EIdentifier, ELetBlock, ELiteral),
         FunctionApplication(FunctionApplication), ImportList(ImportList),
-        LetBlock(LetBlock), Literal(LChar, LInt, LList),
-        QualifiedImport(QualifiedImport),
+        LanguagePragma(LanguagePragma), LetBlock(LetBlock),
+        Literal(LChar, LInt, LList), QualifiedImport(QualifiedImport),
         RestrictedImport(RestrictedImport),
-        Statement(SDataDeclaration, SFunctionDefinition,
+        Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
                   SModuleDeclaration, SQualifiedImport, SRestrictedImport,
                   STypeSynonym, STypeclassInstance, SUnrestrictedImport),
         TypeSynonym(TypeSynonym), TypeclassInstance(TypeclassInstance))
@@ -82,6 +82,8 @@ normalizeStatement (Parse.SExpression items) =
       in STypeclassInstance <$>
          (TypeclassInstance <$> normalizeExpression instanceName' <*>
           definitions)
+    [Parse.Symbol "language", Parse.Symbol languageName] ->
+      return $ SLanguagePragma (LanguagePragma languageName)
     [Parse.Symbol "module", Parse.Symbol moduleName] ->
       return $ SModuleDeclaration moduleName
     [Parse.Symbol "type", alias', definition'] ->

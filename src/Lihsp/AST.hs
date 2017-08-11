@@ -60,6 +60,10 @@ instance Show ImportList where
   show (ImportList importList) =
     surround Parentheses $ delimit Commas $ map show importList
 
+newtype LanguagePragma = LanguagePragma
+  { _language :: Identifier
+  }
+
 data LetBlock = LetBlock
   { _bindings :: [(Identifier, Expression)]
   , _body :: Expression
@@ -113,6 +117,7 @@ instance Show Literal where
 data Statement
   = SDataDeclaration DataDeclaration
   | SFunctionDefinition FunctionDefinition
+  | SLanguagePragma LanguagePragma
   | SModuleDeclaration Identifier
   | SQualifiedImport QualifiedImport
   | SRestrictedImport RestrictedImport
@@ -124,6 +129,7 @@ instance Show Statement where
   show :: Statement -> String
   show (SDataDeclaration x) = show x
   show (SFunctionDefinition x) = show x
+  show (SLanguagePragma x) = show x
   show (SModuleDeclaration x) = show x
   show (SQualifiedImport x) = show x
   show (SRestrictedImport x) = show x
@@ -138,6 +144,8 @@ makeFieldsNoPrefix ''DataDeclaration
 makeFieldsNoPrefix ''FunctionApplication
 
 makeFieldsNoPrefix ''FunctionDefinition
+
+makeFieldsNoPrefix ''LanguagePragma
 
 makeFieldsNoPrefix ''LetBlock
 
@@ -161,6 +169,10 @@ instance Show DataDeclaration where
   show dataDeclaration =
     "data " <> show (dataDeclaration ^. typeDefinition) <> "=" <>
     delimit Pipes (map show $ dataDeclaration ^. constructors)
+
+instance Show LanguagePragma where
+  show :: LanguagePragma -> String
+  show languagePragma = "{#-LANGUAGE" <> (languagePragma ^. language) <> "#-}"
 
 instance Show LetBlock where
   show :: LetBlock -> String
