@@ -1,0 +1,43 @@
+name: lihsp
+version: '0.1.0.0'
+category: Web
+author: Author name here
+maintainer: example@example.com
+copyright: 2017 Author name here
+license: BSD3
+github: githubuser/lihsp
+extra-source-files:
+- README.md
+ghc-options:
+- -Wall
+- -Werror
+- -Wmissing-import-lists
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+dependencies:
+- base >=4.7 && <5
+- lens
+- mtl
+library:
+  source-dirs: src
+  exposed-modules:
+  dependencies:
+  - parsec
+executables:
+  lihsp-exe:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - lihsp
+tests:
+  lihsp-test:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
