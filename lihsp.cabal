@@ -4,12 +4,12 @@
 
 name:           lihsp
 version:        0.1.0.0
-category:       Web
-homepage:       https://github.com/githubuser/lihsp#readme
-bug-reports:    https://github.com/githubuser/lihsp/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2017 Author name here
+category:       Lisp, Transpiler
+homepage:       https://github.com/jgrosso/lihsp#readme
+bug-reports:    https://github.com/jgrosso/lihsp/issues
+author:         Joshua Grosso
+maintainer:     jgrosso256@gmail.com
+copyright:      2017 Joshua Grosso
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -18,9 +18,13 @@ cabal-version:  >= 1.10
 extra-source-files:
     README.md
 
+data-files:
+    resources/macros/Footer.hs
+    resources/macros/Header.hs
+
 source-repository head
   type: git
-  location: https://github.com/githubuser/lihsp
+  location: https://github.com/jgrosso/lihsp
 
 library
   hs-source-dirs:
@@ -28,13 +32,17 @@ library
   ghc-options: -Wall -Werror -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns
   build-depends:
       base >=4.7 && <5
+    , directory
     , lens
     , mtl
     , parsec
+    , process
+    , split
   exposed-modules:
       Lihsp.AST
       Lihsp.Error
       Lihsp.IO
+      Lihsp.Macros
       Lihsp.Normalize
       Lihsp.Parse
       Lihsp.Transpile
@@ -48,8 +56,6 @@ executable lihsp-exe
   ghc-options: -Wall -Werror -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
-    , lens
-    , mtl
     , lihsp
   default-language: Haskell2010
 
@@ -61,6 +67,6 @@ test-suite lihsp-test
   ghc-options: -Wall -Werror -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
-    , lens
-    , mtl
+  other-modules:
+      Lihsp.Spec
   default-language: Haskell2010

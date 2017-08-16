@@ -1,11 +1,11 @@
 name: lihsp
 version: '0.1.0.0'
-category: Web
-author: Author name here
-maintainer: example@example.com
-copyright: 2017 Author name here
+category: Lisp, Transpiler
+author: Joshua Grosso
+maintainer: jgrosso256@gmail.com
+copyright: 2017 Joshua Grosso
 license: BSD3
-github: githubuser/lihsp
+github: jgrosso/lihsp
 extra-source-files:
 - README.md
 ghc-options:
@@ -16,13 +16,18 @@ ghc-options:
 - -Wincomplete-uni-patterns
 dependencies:
 - base >=4.7 && <5
-- lens
-- mtl
+data-files:
+- resources/**/*
 library:
   source-dirs: src
   exposed-modules:
   dependencies:
+  - directory
+  - lens
+  - mtl
   - parsec
+  - process
+  - split
 executables:
   lihsp-exe:
     main: Main.hs

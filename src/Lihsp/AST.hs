@@ -6,13 +6,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-{-
-* Macros
- Macros edit the parse tree, which the compiler converts to an AST which is transpiled into Eta.
- 1) Top-level macros are run, with the code forms represented as a lists of parse expressions (lists, symbols, and literals).
-    The output of the macro programs is rendered as a list and inserted into the file.
- 2) Repeat step 1 until no more macros are available.
--}
 module Lihsp.AST where
 
 import Control.Lens.Operators ((^.))
@@ -22,7 +15,8 @@ import Data.Semigroup ((<>))
 
 import Lihsp.Utils
        (Bracket(Parentheses, SingleQuotes, SquareBrackets),
-        Delimiter(Commas, Pipes), delimit, renderBlock, surround)
+        Delimiter(Commas, Newlines, Pipes, Spaces), delimit, isOperator,
+        renderBlock, renderPragma, surround)
 
 type Identifier = String
 
@@ -31,8 +25,17 @@ data FunctionApplication = FunctionApplication
   , _arguments :: [Expression]
   }
 
+data TypeDefinition
+  = ProperType Identifier
+  | TypeConstructor FunctionApplication
+
+instance Show TypeDefinition where
+  show :: TypeDefinition -> String
+  show (ProperType x) = x
+  show (TypeConstructor x) = show x
+
 data DataDeclaration = DataDeclaration
-  { _typeDefinition :: FunctionApplication
+  { _typeDefinition :: TypeDefinition
   , _constructors :: [FunctionApplication]
   }
 
@@ -43,17 +46,28 @@ instance Show ArgumentList where
   show :: ArgumentList -> String
   show (ArgumentList arguments) = concatMap show arguments
 
-newtype FunctionDefinition =
-  FunctionDefinition (Identifier, [(ArgumentList, Expression)])
+data FunctionDefinition = FunctionDefinition
+  { _name :: Identifier
+  , _typeSignature :: FunctionApplication
+  , _definitions :: [(ArgumentList, Expression)]
+  }
 
-instance Show FunctionDefinition where
-  show :: FunctionDefinition -> String
-  show (FunctionDefinition (name, cases)) = renderBlock $ map showCase cases
-    where
-      showCase (pattern', body) = show name <> show pattern' <> show body
+data Import
+  = ImportItem Identifier
+  | ImportType Identifier
+               [Identifier]
+
+instance Show Import where
+  show :: Import -> String
+  show (ImportItem x) =
+    if isOperator x
+      then surround Parentheses x
+      else x
+  show (ImportType typeName imports) =
+    typeName <> surround Parentheses (delimit Commas imports)
 
 newtype ImportList =
-  ImportList [Identifier]
+  ImportList [Import]
 
 instance Show ImportList where
   show :: ImportList -> String
@@ -81,7 +95,7 @@ data RestrictedImport = RestrictedImport
   }
 
 data TypeclassInstance = TypeclassInstance
-  { _moduleName :: Expression
+  { _instanceName :: Expression
   , _definitions :: [FunctionDefinition]
   }
 
@@ -99,9 +113,12 @@ data Expression
 instance Show Expression where
   show :: Expression -> String
   show (EFunctionApplication x) = show x
-  show (EIdentifier x) = surround Parentheses x
+  show (EIdentifier x) =
+    if isOperator x
+      then surround Parentheses x
+      else x
   show (ELetBlock x) = show x
-  show (ELiteral x) = surround Parentheses $ show x
+  show (ELiteral x) = show x
 
 data Literal
   = LChar Char
@@ -130,7 +147,7 @@ instance Show Statement where
   show (SDataDeclaration x) = show x
   show (SFunctionDefinition x) = show x
   show (SLanguagePragma x) = show x
-  show (SModuleDeclaration x) = show x
+  show (SModuleDeclaration x) = "module " <> x <> " where"
   show (SQualifiedImport x) = show x
   show (SRestrictedImport x) = show x
   show (STypeclassInstance x) = show x
@@ -161,26 +178,38 @@ instance Show FunctionApplication where
   show :: FunctionApplication -> String
   show functionApplication =
     surround Parentheses $
-    show (functionApplication ^. function) <>
-    concatMap show (functionApplication ^. arguments)
+    show (functionApplication ^. function) <> " " <>
+    delimit Spaces (map show $ functionApplication ^. arguments)
+
+instance Show FunctionDefinition where
+  show :: FunctionDefinition -> String
+  show functionDefinition =
+    delimit Newlines $
+    (functionDefinition ^. name <> " :: " <>
+     show (functionDefinition ^. typeSignature)) :
+    map showDefinition (functionDefinition ^. definitions)
+    where
+      showDefinition (pattern', definitionBody) =
+        functionDefinition ^. name <> " " <> show pattern' <> " = " <>
+        show definitionBody
 
 instance Show DataDeclaration where
   show :: DataDeclaration -> String
   show dataDeclaration =
-    "data " <> show (dataDeclaration ^. typeDefinition) <> "=" <>
+    "data " <> show (dataDeclaration ^. typeDefinition) <> " = " <>
     delimit Pipes (map show $ dataDeclaration ^. constructors)
 
 instance Show LanguagePragma where
   show :: LanguagePragma -> String
-  show languagePragma = "{#-LANGUAGE" <> (languagePragma ^. language) <> "#-}"
+  show languagePragma = renderPragma $ "LANGUAGE " <> languagePragma ^. language
 
 instance Show LetBlock where
   show :: LetBlock -> String
   show letBlock =
-    "let " <> renderBlock (map showBinding (letBlock ^. bindings)) <> "in" <>
+    "let " <> renderBlock (map showBinding (letBlock ^. bindings)) <> " in " <>
     show (letBlock ^. body)
     where
-      showBinding (identifier, value) = identifier <> "=" <> show value
+      showBinding (identifier, value) = identifier <> " = " <> show value
 
 instance Show QualifiedImport where
   show :: QualifiedImport -> String
@@ -198,11 +227,11 @@ instance Show RestrictedImport where
 instance Show TypeclassInstance where
   show :: TypeclassInstance -> String
   show typeclassInstance =
-    "instance" <> show (typeclassInstance ^. moduleName) <> "where" <>
+    "instance " <> show (typeclassInstance ^. instanceName) <> " where " <>
     renderBlock (map show $ typeclassInstance ^. definitions)
 
 instance Show TypeSynonym where
   show :: TypeSynonym -> String
   show typeSynonym =
-    "type" <> show (typeSynonym ^. alias) <> "=" <>
+    "type " <> show (typeSynonym ^. alias) <> " = " <>
     show (typeSynonym ^. definition)
