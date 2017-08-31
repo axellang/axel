@@ -8,6 +8,7 @@ license: BSD3
 github: jgrosso/lihsp
 extra-source-files:
 - README.md
+- scripts/**/*
 ghc-options:
 - -Wall
 - -Werror

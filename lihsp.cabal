@@ -17,10 +17,12 @@ cabal-version:  >= 1.10
 
 extra-source-files:
     README.md
+    scripts/build.sh
 
 data-files:
     resources/macros/Footer.hs
     resources/macros/Header.hs
+    resources/macros/Imports.hs
 
 source-repository head
   type: git
@@ -41,10 +43,10 @@ library
   exposed-modules:
       Lihsp.AST
       Lihsp.Error
-      Lihsp.IO
       Lihsp.Macros
       Lihsp.Normalize
       Lihsp.Parse
+      Lihsp.Parse.AST
       Lihsp.Transpile
       Lihsp.Utils
   default-language: Haskell2010

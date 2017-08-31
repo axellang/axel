@@ -23,11 +23,12 @@ type Identifier = String
 data FunctionApplication = FunctionApplication
   { _function :: Expression
   , _arguments :: [Expression]
-  }
+  } deriving (Eq)
 
 data TypeDefinition
   = ProperType Identifier
   | TypeConstructor FunctionApplication
+  deriving (Eq)
 
 instance Show TypeDefinition where
   show :: TypeDefinition -> String
@@ -37,10 +38,11 @@ instance Show TypeDefinition where
 data DataDeclaration = DataDeclaration
   { _typeDefinition :: TypeDefinition
   , _constructors :: [FunctionApplication]
-  }
+  } deriving (Eq)
 
 newtype ArgumentList =
   ArgumentList [Expression]
+  deriving (Eq)
 
 instance Show ArgumentList where
   show :: ArgumentList -> String
@@ -50,12 +52,13 @@ data FunctionDefinition = FunctionDefinition
   { _name :: Identifier
   , _typeSignature :: FunctionApplication
   , _definitions :: [(ArgumentList, Expression)]
-  }
+  } deriving (Eq)
 
 data Import
   = ImportItem Identifier
   | ImportType Identifier
                [Identifier]
+  deriving (Eq)
 
 instance Show Import where
   show :: Import -> String
@@ -68,6 +71,7 @@ instance Show Import where
 
 newtype ImportList =
   ImportList [Import]
+  deriving (Eq)
 
 instance Show ImportList where
   show :: ImportList -> String
@@ -76,39 +80,45 @@ instance Show ImportList where
 
 newtype LanguagePragma = LanguagePragma
   { _language :: Identifier
-  }
+  } deriving (Eq)
 
 data LetBlock = LetBlock
   { _bindings :: [(Identifier, Expression)]
   , _body :: Expression
-  }
+  } deriving (Eq)
+
+data MacroDefinition = MacroDefinition
+  { _name :: Identifier
+  , _definitions :: [(ArgumentList, Expression)]
+  } deriving (Eq)
 
 data QualifiedImport = QualifiedImport
   { _moduleName :: Identifier
   , _alias :: Identifier
   , _imports :: ImportList
-  }
+  } deriving (Eq)
 
 data RestrictedImport = RestrictedImport
   { _moduleName :: Identifier
   , _imports :: ImportList
-  }
+  } deriving (Eq)
 
 data TypeclassInstance = TypeclassInstance
   { _instanceName :: Expression
   , _definitions :: [FunctionDefinition]
-  }
+  } deriving (Eq)
 
 data TypeSynonym = TypeSynonym
   { _alias :: Expression
   , _definition :: Expression
-  }
+  } deriving (Eq)
 
 data Expression
   = EFunctionApplication FunctionApplication
   | EIdentifier Identifier
   | ELetBlock LetBlock
   | ELiteral Literal
+  deriving (Eq)
 
 instance Show Expression where
   show :: Expression -> String
@@ -124,6 +134,7 @@ data Literal
   = LChar Char
   | LInt Int
   | LList [Expression]
+  deriving (Eq)
 
 instance Show Literal where
   show :: Literal -> String
@@ -135,18 +146,21 @@ data Statement
   = SDataDeclaration DataDeclaration
   | SFunctionDefinition FunctionDefinition
   | SLanguagePragma LanguagePragma
+  | SMacroDefinition MacroDefinition
   | SModuleDeclaration Identifier
   | SQualifiedImport QualifiedImport
   | SRestrictedImport RestrictedImport
   | STypeclassInstance TypeclassInstance
   | STypeSynonym TypeSynonym
   | SUnrestrictedImport Identifier
+  deriving (Eq)
 
 instance Show Statement where
   show :: Statement -> String
   show (SDataDeclaration x) = show x
   show (SFunctionDefinition x) = show x
   show (SLanguagePragma x) = show x
+  show (SMacroDefinition x) = show x
   show (SModuleDeclaration x) = "module " <> x <> " where"
   show (SQualifiedImport x) = show x
   show (SRestrictedImport x) = show x
@@ -166,6 +180,8 @@ makeFieldsNoPrefix ''LanguagePragma
 
 makeFieldsNoPrefix ''LetBlock
 
+makeFieldsNoPrefix ''MacroDefinition
+
 makeFieldsNoPrefix ''QualifiedImport
 
 makeFieldsNoPrefix ''RestrictedImport
@@ -181,17 +197,19 @@ instance Show FunctionApplication where
     show (functionApplication ^. function) <> " " <>
     delimit Spaces (map show $ functionApplication ^. arguments)
 
+showFunctionDefinition :: Identifier -> (ArgumentList, Expression) -> String
+showFunctionDefinition functionName (pattern', definitionBody) =
+  functionName <> " " <> show pattern' <> " = " <> show definitionBody
+
 instance Show FunctionDefinition where
   show :: FunctionDefinition -> String
   show functionDefinition =
     delimit Newlines $
     (functionDefinition ^. name <> " :: " <>
      show (functionDefinition ^. typeSignature)) :
-    map showDefinition (functionDefinition ^. definitions)
-    where
-      showDefinition (pattern', definitionBody) =
-        functionDefinition ^. name <> " " <> show pattern' <> " = " <>
-        show definitionBody
+    map
+      (showFunctionDefinition $ functionDefinition ^. name)
+      (functionDefinition ^. definitions)
 
 instance Show DataDeclaration where
   show :: DataDeclaration -> String
@@ -210,6 +228,15 @@ instance Show LetBlock where
     show (letBlock ^. body)
     where
       showBinding (identifier, value) = identifier <> " = " <> show value
+
+instance Show MacroDefinition where
+  show :: MacroDefinition -> String
+  show macroDefinition =
+    delimit Newlines $
+    macroDefinition ^. name :
+    map
+      (showFunctionDefinition $ macroDefinition ^. name)
+      (macroDefinition ^. definitions)
 
 instance Show QualifiedImport where
   show :: QualifiedImport -> String

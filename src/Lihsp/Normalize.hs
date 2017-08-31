@@ -14,11 +14,13 @@ import Lihsp.AST
         FunctionDefinition(FunctionDefinition),
         Import(ImportItem, ImportType), ImportList(ImportList),
         LanguagePragma(LanguagePragma), LetBlock(LetBlock),
-        Literal(LChar, LInt, LList), QualifiedImport(QualifiedImport),
+        Literal(LChar, LInt, LList), MacroDefinition(MacroDefinition),
+        QualifiedImport(QualifiedImport),
         RestrictedImport(RestrictedImport),
         Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
-                  SModuleDeclaration, SQualifiedImport, SRestrictedImport,
-                  STypeSynonym, STypeclassInstance, SUnrestrictedImport),
+                  SMacroDefinition, SModuleDeclaration, SQualifiedImport,
+                  SRestrictedImport, STypeSynonym, STypeclassInstance,
+                  SUnrestrictedImport),
         TypeDefinition(ProperType, TypeConstructor),
         TypeSynonym(TypeSynonym), TypeclassInstance(TypeclassInstance))
 
@@ -50,23 +52,28 @@ normalizeExpression (Parse.SExpression items) =
     _ -> throwError $ NormalizeError "0002"
 normalizeExpression (Parse.Symbol symbol) = return $ EIdentifier symbol
 
+normalizeDefinitions ::
+     (MonadError Error m)
+  => [Parse.Expression]
+  -> m [(ArgumentList, Expression)]
+normalizeDefinitions =
+  traverse
+    (\case
+       Parse.SExpression [Parse.SExpression args', definition] ->
+         (,) <$> (ArgumentList <$> traverse normalizeExpression args') <*>
+         normalizeExpression definition
+       _ -> throwError $ NormalizeError "0010")
+
 normalizeStatement :: (MonadError Error m) => Parse.Expression -> m Statement
 normalizeStatement (Parse.SExpression items) =
   case items of
-    Parse.Symbol "=":Parse.Symbol functionName:typeSignature':definitions' ->
-      let definitions =
-            traverse
-              (\case
-                 Parse.SExpression [Parse.SExpression args', definition'] ->
-                   (,) <$> (ArgumentList <$> traverse normalizeExpression args') <*>
-                   normalizeExpression definition'
-                 _ -> throwError $ NormalizeError "0010")
-              definitions'
-      in normalizeExpression typeSignature' >>= \case
-           EFunctionApplication typeSignature ->
-             SFunctionDefinition <$>
-             (FunctionDefinition functionName typeSignature <$> definitions)
-           _ -> throwError $ NormalizeError "0011"
+    Parse.Symbol "=":Parse.Symbol functionName:typeSignature':definitions ->
+      normalizeExpression typeSignature' >>= \case
+        EFunctionApplication typeSignature ->
+          SFunctionDefinition <$>
+          (FunctionDefinition functionName typeSignature <$>
+           normalizeDefinitions definitions)
+        _ -> throwError $ NormalizeError "0011"
     [Parse.Symbol "data", typeDefinition', Parse.SExpression constructors'] ->
       let constructors =
             traverse
@@ -83,6 +90,9 @@ normalizeStatement (Parse.SExpression items) =
              SDataDeclaration <$>
              (DataDeclaration (ProperType properType) <$> constructors)
            _ -> throwError $ NormalizeError "0004"
+    Parse.Symbol "defmacro":Parse.Symbol macroName:definitions ->
+      SMacroDefinition <$>
+      (MacroDefinition macroName <$> normalizeDefinitions definitions)
     [Parse.Symbol "import", Parse.Symbol moduleName, Parse.SExpression imports] ->
       SRestrictedImport <$>
       (RestrictedImport moduleName <$> normalizeImportList imports)
