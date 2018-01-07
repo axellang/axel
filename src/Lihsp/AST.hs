@@ -13,10 +13,15 @@ import Control.Lens.TH (makeFieldsNoPrefix)
 
 import Data.Semigroup ((<>))
 
-import Lihsp.Utils
-       (Bracket(Parentheses, SingleQuotes, SquareBrackets),
-        Delimiter(Commas, Newlines, Pipes, Spaces), delimit, isOperator,
-        renderBlock, renderPragma, surround)
+import Lihsp.Utils.Display
+  ( Bracket(Parentheses, SingleQuotes, SquareBrackets)
+  , Delimiter(Commas, Newlines, Pipes, Spaces)
+  , delimit
+  , isOperator
+  , renderBlock
+  , renderPragma
+  , surround
+  )
 
 type Identifier = String
 
@@ -262,3 +267,23 @@ instance Show TypeSynonym where
   show typeSynonym =
     "type " <> show (typeSynonym ^. alias) <> " = " <>
     show (typeSynonym ^. definition)
+
+-- TODO Either replace with `MonoTraversable` or make `Expression` polymorphic
+--      (in which case, use `Traversable`, recursion schemes, etc.). The latter
+--      would be preferable.
+-- TODO Remove the dependency on `Monad` (since the standard `traverse` only
+--      requires an `Applicative` instance).
+traverseExpression ::
+     (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
+traverseExpression f x =
+  case x of
+    EFunctionApplication functionApplication ->
+      let newArguments =
+            traverse (traverseExpression f) (functionApplication ^. arguments)
+          newFunction = traverseExpression f (functionApplication ^. function)
+      in f =<<
+         (EFunctionApplication <$>
+          (FunctionApplication <$> newFunction <*> newArguments))
+    EIdentifier _ -> f x
+    ELetBlock _ -> f x
+    ELiteral _ -> f x

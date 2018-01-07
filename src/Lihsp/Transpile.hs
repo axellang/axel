@@ -10,7 +10,7 @@ import Data.Semigroup ((<>))
 import Lihsp.Error (Error)
 import Lihsp.Normalize (normalizeProgram)
 import Lihsp.Parse (parseProgram)
-import Lihsp.Utils (Delimiter(Newlines), delimit)
+import Lihsp.Utils.Display (Delimiter(Newlines), delimit)
 
 transpileProgram :: (MonadError Error m) => String -> m String
 transpileProgram =

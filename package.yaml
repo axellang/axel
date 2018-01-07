@@ -29,6 +29,7 @@ library:
   - parsec
   - process
   - split
+  - text
 executables:
   lihsp-exe:
     main: Main.hs
@@ -41,9 +42,11 @@ executables:
     - lihsp
 tests:
   lihsp-test:
-    main: Spec.hs
+    main: Lihsp/Spec.hs
     source-dirs: test
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    dependencies:
+    - hspec

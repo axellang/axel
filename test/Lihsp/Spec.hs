@@ -1,4 +1,6 @@
-module Lihsp.Spec where
+module Lihsp.Spec
+  ( main
+  ) where
 
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = undefined

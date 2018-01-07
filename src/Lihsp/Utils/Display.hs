@@ -1,12 +1,9 @@
-module Lihsp.Utils where
+module Lihsp.Utils.Display where
 
 import Data.Char (isSymbol, toLower, toUpper)
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import Data.Semigroup ((<>))
-
-class Recursively a where
-  recursively :: (a -> a) -> a -> a
 
 data Delimiter
   = Commas
@@ -21,16 +18,6 @@ delimit delimiter = intercalate (lookupDelimiter delimiter)
     lookupDelimiter Newlines = "\n"
     lookupDelimiter Pipes = "|"
     lookupDelimiter Spaces = " "
-
-exhaust :: Eq a => (a -> a) -> a -> a
-exhaust f = until (\x -> f x == x) f
-
-exhaustM :: (Eq a, Monad m) => (a -> m a) -> a -> m a
-exhaustM f x =
-  f x >>= \result ->
-    if result == x
-      then return x
-      else exhaustM f result
 
 -- https://stackoverflow.com/questions/10548170/what-characters-are-permitted-for-haskell-operators
 isOperator :: String -> Bool

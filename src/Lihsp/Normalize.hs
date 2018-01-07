@@ -1,33 +1,46 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
 
 module Lihsp.Normalize where
 
+import Control.Lens.Operators ((%~), (^.))
 import Control.Monad ((>=>))
 import Control.Monad.Except (MonadError, throwError)
 
+import Data.Function ((&))
+
 import Lihsp.AST
-       (ArgumentList(ArgumentList), DataDeclaration(DataDeclaration),
-        Expression(EFunctionApplication, EIdentifier, ELetBlock, ELiteral),
-        FunctionApplication(FunctionApplication),
-        FunctionDefinition(FunctionDefinition),
-        Import(ImportItem, ImportType), ImportList(ImportList),
-        LanguagePragma(LanguagePragma), LetBlock(LetBlock),
-        Literal(LChar, LInt, LList), MacroDefinition(MacroDefinition),
-        QualifiedImport(QualifiedImport),
-        RestrictedImport(RestrictedImport),
-        Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
-                  SMacroDefinition, SModuleDeclaration, SQualifiedImport,
-                  SRestrictedImport, STypeSynonym, STypeclassInstance,
-                  SUnrestrictedImport),
-        TypeDefinition(ProperType, TypeConstructor),
-        TypeSynonym(TypeSynonym), TypeclassInstance(TypeclassInstance))
+  ( ArgumentList(ArgumentList)
+  , DataDeclaration(DataDeclaration)
+  , Expression(EFunctionApplication, EIdentifier, ELetBlock, ELiteral)
+  , FunctionApplication(FunctionApplication)
+  , FunctionDefinition(FunctionDefinition)
+  , Import(ImportItem, ImportType)
+  , ImportList(ImportList)
+  , LanguagePragma(LanguagePragma)
+  , LetBlock(LetBlock)
+  , Literal(LChar, LInt, LList)
+  , MacroDefinition(MacroDefinition)
+  , QualifiedImport(QualifiedImport)
+  , RestrictedImport(RestrictedImport)
+  , Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
+          SMacroDefinition, SModuleDeclaration, SQualifiedImport,
+          SRestrictedImport, STypeSynonym, STypeclassInstance,
+          SUnrestrictedImport)
+  , TypeDefinition(ProperType, TypeConstructor)
+  , TypeSynonym(TypeSynonym)
+  , TypeclassInstance(TypeclassInstance)
+  , arguments
+  , function
+  )
 
 import Lihsp.Error (Error(NormalizeError))
 import qualified Lihsp.Parse as Parse
-       (Expression(LiteralChar, LiteralInt, LiteralList, SExpression,
-                   Symbol))
+  ( Expression(LiteralChar, LiteralInt, LiteralList, SExpression,
+           Symbol)
+  )
 
 normalizeExpression :: (MonadError Error m) => Parse.Expression -> m Expression
 normalizeExpression (Parse.LiteralChar char) = return $ ELiteral (LChar char)
@@ -141,3 +154,14 @@ normalizeStatement _ = throwError $ NormalizeError "0008"
 
 normalizeProgram :: (MonadError Error m) => [Parse.Expression] -> m [Statement]
 normalizeProgram = traverse normalizeStatement
+
+bottomUpTraverse :: (Applicative m) => (Expression -> m Expression) -> Expression -> m Expression
+bottomUpTraverse f x =
+  case x of
+    EFunctionApplication functionApplication ->
+      f . EFunctionApplication <$>
+            (FunctionApplication <$> f (functionApplication ^. function) <*>
+            traverse f (functionApplication ^. arguments))
+    EIdentifier _ -> f x
+    ELetBlock _ -> f x
+    ELiteral _ -> f x

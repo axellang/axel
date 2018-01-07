@@ -1,7 +1,7 @@
 -- NOTE Because `Lihsp.Parse.AST` will be used as the header of auto-generated macro programs,
 --      it can't have any project-specific dependencies. As such, the instance definition for
---      `Recursively Expression` can't be defined in the same file as `Expression` itself
---      (due to the dependency on `Recursively`). Fortunately, `Lihsp.Parse.AST` will (should)
+--      `BottomUp Expression` can't be defined in the same file as `Expression` itself
+--      (due to the dependency on `BottomUp`). Fortunately, `Lihsp.Parse.AST` will (should)
 --      never be imported by itself but only implicitly as part of this module.
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -19,8 +19,9 @@ import Lihsp.Error (Error(ParseError))
 import Lihsp.Parse.AST
        (Expression(LiteralChar, LiteralInt, LiteralList, SExpression,
                    Symbol))
-import Lihsp.Utils
-       (Recursively(recursively), isOperator, kebabToCamelCase)
+import Lihsp.Utils.Display (isOperator, kebabToCamelCase)
+import Lihsp.Utils.Recursion
+       (Recursive(bottomUp))
 
 import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
 import Text.Parsec.Char
@@ -79,17 +80,17 @@ normalizeCase (Symbol x) =
     else Symbol x
 normalizeCase x = x
 
-instance Recursively Expression where
-  recursively :: (Expression -> Expression) -> Expression -> Expression
-  recursively f x =
+instance Recursive Expression where
+  bottomUp :: (Expression -> Expression) -> Expression -> Expression
+  bottomUp f x =
     case x of
       LiteralChar _ -> f x
       LiteralInt _ -> f x
-      LiteralList xs -> f $ LiteralList (map (recursively f) xs)
-      SExpression xs -> f $ SExpression (map (recursively f) xs)
+      LiteralList xs -> f $ LiteralList (map (bottomUp f) xs)
+      SExpression xs -> f $ SExpression (map (bottomUp f) xs)
       Symbol _ -> f x
 
 parseProgram :: (MonadError Error m) => String -> m [Expression]
 parseProgram =
-  either (throwError . ParseError) (return . map (recursively normalizeCase)) .
+  either (throwError . ParseError) (return . map (bottomUp normalizeCase)) .
   parse program ""
