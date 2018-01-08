@@ -4,6 +4,7 @@
 --      (due to the dependency on `BottomUp`). Fortunately, `Lihsp.Parse.AST` will (should)
 --      never be imported by itself but only implicitly as part of this module.
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -16,16 +17,17 @@ module Lihsp.Parse
 import Control.Monad.Except (MonadError, throwError)
 
 import Lihsp.Error (Error(ParseError))
+
+-- Re-exporting these so that consumers of parsed ASTs do not need
+-- to know about the internal file.
 import Lihsp.Parse.AST
-       (Expression(LiteralChar, LiteralInt, LiteralList, SExpression,
-                   Symbol))
+  ( Expression(LiteralChar, LiteralInt, SExpression, Symbol)
+  )
 import Lihsp.Utils.Display (isOperator, kebabToCamelCase)
-import Lihsp.Utils.Recursion
-       (Recursive(bottomUp))
+import Lihsp.Utils.Recursion (Recursive(bottomUp, bottomUpTraverse))
 
 import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
-import Text.Parsec.Char
-       (alphaNum, char, digit, letter, noneOf, oneOf, space)
+import Text.Parsec.Char (alphaNum, char, digit, letter, noneOf, oneOf, space)
 import Text.Parsec.Combinator (many1, optional)
 import Text.Parsec.Prim (many)
 
@@ -41,15 +43,10 @@ literalChar = LiteralChar <$> (char '\\' *> any')
 literalInt :: Stream s m Char => ParsecT s u m Expression
 literalInt = LiteralInt . read <$> many1 digit
 
-literalList :: Stream s m Char => ParsecT s u m Expression
-literalList = LiteralList <$> (char '[' *> many item <* char ']')
-  where
-    item = try (whitespace *> expression) <|> expression
-
 literalString :: Stream s m Char => ParsecT s u m Expression
-literalString =
-  LiteralList <$>
-  (map LiteralChar <$> (char '"' *> many (noneOf "\"") <* char '"'))
+literalString = do
+  chars <- char '"' *> many (noneOf "\"") <* char '"'
+  pure $ SExpression [Symbol "quote", SExpression (map LiteralChar chars)]
 
 sExpression :: Stream s m Char => ParsecT s u m Expression
 sExpression = SExpression <$> (char '(' *> many item <* char ')')
@@ -65,8 +62,7 @@ symbol =
 
 expression :: Stream s m Char => ParsecT s u m Expression
 expression =
-  literalChar <|> literalInt <|> literalList <|> literalString <|> sExpression <|>
-  symbol
+  literalChar <|> literalInt <|> literalString <|> sExpression <|> symbol
 
 program :: Stream s m Char => ParsecT s u m [Expression]
 program =
@@ -80,14 +76,24 @@ normalizeCase (Symbol x) =
     else Symbol x
 normalizeCase x = x
 
+-- TODO `Expression` should probably be `Traversable`, use recursion schemes, etc.
+--      I should provide `toFix` and `fromFix` functions for macros to take advantage of.
+--      (Maybe all macros have the argument automatically `fromFix`-ed to make consumption simpler?)
 instance Recursive Expression where
   bottomUp :: (Expression -> Expression) -> Expression -> Expression
   bottomUp f x =
     case x of
       LiteralChar _ -> f x
       LiteralInt _ -> f x
-      LiteralList xs -> f $ LiteralList (map (bottomUp f) xs)
       SExpression xs -> f $ SExpression (map (bottomUp f) xs)
+      Symbol _ -> f x
+  bottomUpTraverse ::
+       (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
+  bottomUpTraverse f x =
+    case x of
+      LiteralChar _ -> f x
+      LiteralInt _ -> f x
+      SExpression xs -> f =<< (SExpression <$> traverse (bottomUpTraverse f) xs)
       Symbol _ -> f x
 
 parseProgram :: (MonadError Error m) => String -> m [Expression]

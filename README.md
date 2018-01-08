@@ -18,6 +18,13 @@ But, there's nothing (that I'm aware of) for all three.
 
 Hence, meet Lihsp! It's a Lisp-like language (with macros and all) that transpiles to Eta, fulfilling all the requirements listed above. :tada:
 
+## TODO
+
+  - [ ] Cleanup
+    - [ ] Use qualified imports
+    - [ ] Standardize use of `($)`
+    - [ ] Rename `AST` to `Target` (?) and `Parse` to `Lisp` (?)
+
 ## Future Plans
   - Finish the JVM backend
   - Add a PureScript backend as well (or maybe first, instead of targeting the JVM initially) to alternatively take advantage of the JavaScript ecosystem.

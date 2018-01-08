@@ -139,6 +139,7 @@ data Literal
   = LChar Char
   | LInt Int
   | LList [Expression]
+  | LSymbol Identifier
   deriving (Eq)
 
 instance Show Literal where
@@ -146,6 +147,7 @@ instance Show Literal where
   show (LInt int) = show int
   show (LChar char) = surround SingleQuotes [char]
   show (LList list) = surround SquareBrackets $ delimit Commas (map show list)
+  show (LSymbol symbol) = "Literal (LSymbol \"" <> symbol <> "\")"
 
 data Statement
   = SDataDeclaration DataDeclaration
@@ -238,7 +240,7 @@ instance Show MacroDefinition where
   show :: MacroDefinition -> String
   show macroDefinition =
     delimit Newlines $
-    macroDefinition ^. name :
+    (macroDefinition ^. name <> " :: [Expression] -> [Expression]") :
     map
       (showFunctionDefinition $ macroDefinition ^. name)
       (macroDefinition ^. definitions)
@@ -267,23 +269,3 @@ instance Show TypeSynonym where
   show typeSynonym =
     "type " <> show (typeSynonym ^. alias) <> " = " <>
     show (typeSynonym ^. definition)
-
--- TODO Either replace with `MonoTraversable` or make `Expression` polymorphic
---      (in which case, use `Traversable`, recursion schemes, etc.). The latter
---      would be preferable.
--- TODO Remove the dependency on `Monad` (since the standard `traverse` only
---      requires an `Applicative` instance).
-traverseExpression ::
-     (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
-traverseExpression f x =
-  case x of
-    EFunctionApplication functionApplication ->
-      let newArguments =
-            traverse (traverseExpression f) (functionApplication ^. arguments)
-          newFunction = traverseExpression f (functionApplication ^. function)
-      in f =<<
-         (EFunctionApplication <$>
-          (FunctionApplication <$> newFunction <*> newArguments))
-    EIdentifier _ -> f x
-    ELetBlock _ -> f x
-    ELiteral _ -> f x

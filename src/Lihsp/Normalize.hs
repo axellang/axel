@@ -5,11 +5,8 @@
 
 module Lihsp.Normalize where
 
-import Control.Lens.Operators ((%~), (^.))
 import Control.Monad ((>=>))
 import Control.Monad.Except (MonadError, throwError)
-
-import Data.Function ((&))
 
 import Lihsp.AST
   ( ArgumentList(ArgumentList)
@@ -21,7 +18,7 @@ import Lihsp.AST
   , ImportList(ImportList)
   , LanguagePragma(LanguagePragma)
   , LetBlock(LetBlock)
-  , Literal(LChar, LInt, LList)
+  , Literal(LChar, LInt, LList, LSymbol)
   , MacroDefinition(MacroDefinition)
   , QualifiedImport(QualifiedImport)
   , RestrictedImport(RestrictedImport)
@@ -32,23 +29,19 @@ import Lihsp.AST
   , TypeDefinition(ProperType, TypeConstructor)
   , TypeSynonym(TypeSynonym)
   , TypeclassInstance(TypeclassInstance)
-  , arguments
-  , function
   )
 
 import Lihsp.Error (Error(NormalizeError))
 import qualified Lihsp.Parse as Parse
-  ( Expression(LiteralChar, LiteralInt, LiteralList, SExpression,
-           Symbol)
+  ( Expression(LiteralChar, LiteralInt, SExpression, Symbol)
   )
 
 normalizeExpression :: (MonadError Error m) => Parse.Expression -> m Expression
 normalizeExpression (Parse.LiteralChar char) = return $ ELiteral (LChar char)
 normalizeExpression (Parse.LiteralInt int) = return $ ELiteral (LInt int)
-normalizeExpression (Parse.LiteralList list) =
-  ELiteral . LList <$> traverse normalizeExpression list
 normalizeExpression (Parse.SExpression items) =
   case items of
+    [Parse.Symbol "quote", expression] -> return $ toLihspLiteral expression
     [Parse.Symbol "let", Parse.SExpression bindings', body] ->
       let bindings =
             traverse
@@ -154,14 +147,3 @@ normalizeStatement _ = throwError $ NormalizeError "0008"
 
 normalizeProgram :: (MonadError Error m) => [Parse.Expression] -> m [Statement]
 normalizeProgram = traverse normalizeStatement
-
-bottomUpTraverse :: (Applicative m) => (Expression -> m Expression) -> Expression -> m Expression
-bottomUpTraverse f x =
-  case x of
-    EFunctionApplication functionApplication ->
-      f . EFunctionApplication <$>
-            (FunctionApplication <$> f (functionApplication ^. function) <*>
-            traverse f (functionApplication ^. arguments))
-    EIdentifier _ -> f x
-    ELetBlock _ -> f x
-    ELiteral _ -> f x

@@ -31,6 +31,6 @@ execInterpreter fileName = do
 
 evalSource :: (MonadError Error m, MonadIO m) => String -> m String
 evalSource source =
-  withTempFile "TempMaro.hs" $ \fileName handle -> do
+  withTempFile "TempEval.hs" $ \fileName handle -> do
     liftIO $ hPutStr handle source
     execInterpreter fileName
