@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a29ef77f7e9aefca0e574bb8c6b5da0949c57ca81f4668850a02116c3b1a64d0
+-- hash: b9f133f3c7fe9cf11dac611a9f41d0275c39a67fd2130e8333bd2129d4804ee7
 
 name:           lihsp
 version:        0.1.0.0
@@ -68,6 +68,7 @@ executable lihsp-exe
   build-depends:
       base >=4.7 && <5
     , lihsp
+    , mtl
   other-modules:
       Paths_lihsp
   default-language: Haskell2010

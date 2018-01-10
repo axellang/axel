@@ -9,7 +9,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 
 import Data.Semigroup ((<>))
 
-import Lihsp.AST (name)
+import Lihsp.AST (ToHaskell(toHaskell), name)
 import qualified Lihsp.AST as AST (MacroDefinition)
 import Lihsp.Error (Error(MacroError))
 import Lihsp.Eval (evalSource)
@@ -35,7 +35,7 @@ generateMacroProgram macroDefinition applicationArguments =
                  (show applicationArguments)
           insertDefinitionBody =
             let definitionBodyPlaceholder = "%%%MACRO_DEFINITION%%%"
-            in replace definitionBodyPlaceholder (show macroDefinition)
+            in replace definitionBodyPlaceholder (toHaskell macroDefinition)
           insertDefinitionName =
             let definitionNamePlaceholder = "%%%MACRO_NAME%%%"
             in replace definitionNamePlaceholder (macroDefinition ^. name)

@@ -23,6 +23,9 @@ import Lihsp.Utils.Display
   , surround
   )
 
+class ToHaskell a where
+  toHaskell :: a -> String
+
 type Identifier = String
 
 data FunctionApplication = FunctionApplication
@@ -35,10 +38,10 @@ data TypeDefinition
   | TypeConstructor FunctionApplication
   deriving (Eq)
 
-instance Show TypeDefinition where
-  show :: TypeDefinition -> String
-  show (ProperType x) = x
-  show (TypeConstructor x) = show x
+instance ToHaskell TypeDefinition where
+  toHaskell :: TypeDefinition -> String
+  toHaskell (ProperType x) = x
+  toHaskell (TypeConstructor x) = toHaskell x
 
 data DataDeclaration = DataDeclaration
   { _typeDefinition :: TypeDefinition
@@ -49,9 +52,9 @@ newtype ArgumentList =
   ArgumentList [Expression]
   deriving (Eq)
 
-instance Show ArgumentList where
-  show :: ArgumentList -> String
-  show (ArgumentList arguments) = concatMap show arguments
+instance ToHaskell ArgumentList where
+  toHaskell :: ArgumentList -> String
+  toHaskell (ArgumentList arguments) = concatMap toHaskell arguments
 
 data FunctionDefinition = FunctionDefinition
   { _name :: Identifier
@@ -65,23 +68,23 @@ data Import
                [Identifier]
   deriving (Eq)
 
-instance Show Import where
-  show :: Import -> String
-  show (ImportItem x) =
+instance ToHaskell Import where
+  toHaskell :: Import -> String
+  toHaskell (ImportItem x) =
     if isOperator x
       then surround Parentheses x
       else x
-  show (ImportType typeName imports) =
+  toHaskell (ImportType typeName imports) =
     typeName <> surround Parentheses (delimit Commas imports)
 
 newtype ImportList =
   ImportList [Import]
   deriving (Eq)
 
-instance Show ImportList where
-  show :: ImportList -> String
-  show (ImportList importList) =
-    surround Parentheses $ delimit Commas $ map show importList
+instance ToHaskell ImportList where
+  toHaskell :: ImportList -> String
+  toHaskell (ImportList importList) =
+    surround Parentheses $ delimit Commas $ map toHaskell importList
 
 newtype LanguagePragma = LanguagePragma
   { _language :: Identifier
@@ -125,15 +128,15 @@ data Expression
   | ELiteral Literal
   deriving (Eq)
 
-instance Show Expression where
-  show :: Expression -> String
-  show (EFunctionApplication x) = show x
-  show (EIdentifier x) =
+instance ToHaskell Expression where
+  toHaskell :: Expression -> String
+  toHaskell (EFunctionApplication x) = toHaskell x
+  toHaskell (EIdentifier x) =
     if isOperator x
       then surround Parentheses x
       else x
-  show (ELetBlock x) = show x
-  show (ELiteral x) = show x
+  toHaskell (ELetBlock x) = toHaskell x
+  toHaskell (ELiteral x) = toHaskell x
 
 data Literal
   = LChar Char
@@ -142,12 +145,13 @@ data Literal
   | LSymbol Identifier
   deriving (Eq)
 
-instance Show Literal where
-  show :: Literal -> String
-  show (LInt int) = show int
-  show (LChar char) = surround SingleQuotes [char]
-  show (LList list) = surround SquareBrackets $ delimit Commas (map show list)
-  show (LSymbol symbol) = "Literal (LSymbol \"" <> symbol <> "\")"
+instance ToHaskell Literal where
+  toHaskell :: Literal -> String
+  toHaskell (LInt int) = show int
+  toHaskell (LChar char) = surround SingleQuotes [char]
+  toHaskell (LList list) =
+    surround SquareBrackets $ delimit Commas (map toHaskell list)
+  toHaskell (LSymbol symbol) = "Literal (LSymbol \"" <> symbol <> "\")"
 
 data Statement
   = SDataDeclaration DataDeclaration
@@ -162,18 +166,18 @@ data Statement
   | SUnrestrictedImport Identifier
   deriving (Eq)
 
-instance Show Statement where
-  show :: Statement -> String
-  show (SDataDeclaration x) = show x
-  show (SFunctionDefinition x) = show x
-  show (SLanguagePragma x) = show x
-  show (SMacroDefinition x) = show x
-  show (SModuleDeclaration x) = "module " <> x <> " where"
-  show (SQualifiedImport x) = show x
-  show (SRestrictedImport x) = show x
-  show (STypeclassInstance x) = show x
-  show (STypeSynonym x) = show x
-  show (SUnrestrictedImport x) = show x
+instance ToHaskell Statement where
+  toHaskell :: Statement -> String
+  toHaskell (SDataDeclaration x) = toHaskell x
+  toHaskell (SFunctionDefinition x) = toHaskell x
+  toHaskell (SLanguagePragma x) = toHaskell x
+  toHaskell (SMacroDefinition x) = toHaskell x
+  toHaskell (SModuleDeclaration x) = "module " <> x <> " where"
+  toHaskell (SQualifiedImport x) = toHaskell x
+  toHaskell (SRestrictedImport x) = toHaskell x
+  toHaskell (STypeclassInstance x) = toHaskell x
+  toHaskell (STypeSynonym x) = toHaskell x
+  toHaskell (SUnrestrictedImport x) = show x
 
 type Program = [Statement]
 
@@ -197,75 +201,79 @@ makeFieldsNoPrefix ''TypeclassInstance
 
 makeFieldsNoPrefix ''TypeSynonym
 
-instance Show FunctionApplication where
-  show :: FunctionApplication -> String
-  show functionApplication =
+instance ToHaskell FunctionApplication where
+  toHaskell :: FunctionApplication -> String
+  toHaskell functionApplication =
     surround Parentheses $
-    show (functionApplication ^. function) <> " " <>
-    delimit Spaces (map show $ functionApplication ^. arguments)
+    toHaskell (functionApplication ^. function) <> " " <>
+    delimit Spaces (map toHaskell $ functionApplication ^. arguments)
 
-showFunctionDefinition :: Identifier -> (ArgumentList, Expression) -> String
-showFunctionDefinition functionName (pattern', definitionBody) =
-  functionName <> " " <> show pattern' <> " = " <> show definitionBody
+functionDefinitionToHaskell ::
+     Identifier -> (ArgumentList, Expression) -> String
+functionDefinitionToHaskell functionName (pattern', definitionBody) =
+  functionName <> " " <> toHaskell pattern' <> " = " <> toHaskell definitionBody
 
-instance Show FunctionDefinition where
-  show :: FunctionDefinition -> String
-  show functionDefinition =
+instance ToHaskell FunctionDefinition where
+  toHaskell :: FunctionDefinition -> String
+  toHaskell functionDefinition =
     delimit Newlines $
     (functionDefinition ^. name <> " :: " <>
-     show (functionDefinition ^. typeSignature)) :
+     toHaskell (functionDefinition ^. typeSignature)) :
     map
-      (showFunctionDefinition $ functionDefinition ^. name)
+      (functionDefinitionToHaskell $ functionDefinition ^. name)
       (functionDefinition ^. definitions)
 
-instance Show DataDeclaration where
-  show :: DataDeclaration -> String
-  show dataDeclaration =
-    "data " <> show (dataDeclaration ^. typeDefinition) <> " = " <>
-    delimit Pipes (map show $ dataDeclaration ^. constructors)
+instance ToHaskell DataDeclaration where
+  toHaskell :: DataDeclaration -> String
+  toHaskell dataDeclaration =
+    "data " <> toHaskell (dataDeclaration ^. typeDefinition) <> " = " <>
+    delimit Pipes (map toHaskell $ dataDeclaration ^. constructors)
 
-instance Show LanguagePragma where
-  show :: LanguagePragma -> String
-  show languagePragma = renderPragma $ "LANGUAGE " <> languagePragma ^. language
+instance ToHaskell LanguagePragma where
+  toHaskell :: LanguagePragma -> String
+  toHaskell languagePragma =
+    renderPragma $ "LANGUAGE " <> languagePragma ^. language
 
-instance Show LetBlock where
-  show :: LetBlock -> String
-  show letBlock =
-    "let " <> renderBlock (map showBinding (letBlock ^. bindings)) <> " in " <>
-    show (letBlock ^. body)
+instance ToHaskell LetBlock where
+  toHaskell :: LetBlock -> String
+  toHaskell letBlock =
+    "let " <> renderBlock (map bindingToHaskell (letBlock ^. bindings)) <>
+    " in " <>
+    toHaskell (letBlock ^. body)
     where
-      showBinding (identifier, value) = identifier <> " = " <> show value
+      bindingToHaskell (identifier, value) =
+        identifier <> " = " <> toHaskell value
 
-instance Show MacroDefinition where
-  show :: MacroDefinition -> String
-  show macroDefinition =
+instance ToHaskell MacroDefinition where
+  toHaskell :: MacroDefinition -> String
+  toHaskell macroDefinition =
     delimit Newlines $
-    (macroDefinition ^. name <> " :: [Expression] -> [Expression]") :
+    (macroDefinition ^. name <> " :: [Expression] -> IO [Expression]") :
     map
-      (showFunctionDefinition $ macroDefinition ^. name)
+      (functionDefinitionToHaskell $ macroDefinition ^. name)
       (macroDefinition ^. definitions)
 
-instance Show QualifiedImport where
-  show :: QualifiedImport -> String
-  show qualifiedImport =
+instance ToHaskell QualifiedImport where
+  toHaskell :: QualifiedImport -> String
+  toHaskell qualifiedImport =
     "import " <> qualifiedImport ^. moduleName <> " as " <> qualifiedImport ^.
     alias <>
-    show (qualifiedImport ^. imports)
+    toHaskell (qualifiedImport ^. imports)
 
-instance Show RestrictedImport where
-  show :: RestrictedImport -> String
-  show restrictedImport =
+instance ToHaskell RestrictedImport where
+  toHaskell :: RestrictedImport -> String
+  toHaskell restrictedImport =
     "import " <> restrictedImport ^. moduleName <>
-    show (restrictedImport ^. imports)
+    toHaskell (restrictedImport ^. imports)
 
-instance Show TypeclassInstance where
-  show :: TypeclassInstance -> String
-  show typeclassInstance =
-    "instance " <> show (typeclassInstance ^. instanceName) <> " where " <>
-    renderBlock (map show $ typeclassInstance ^. definitions)
+instance ToHaskell TypeclassInstance where
+  toHaskell :: TypeclassInstance -> String
+  toHaskell typeclassInstance =
+    "instance " <> toHaskell (typeclassInstance ^. instanceName) <> " where " <>
+    renderBlock (map toHaskell $ typeclassInstance ^. definitions)
 
-instance Show TypeSynonym where
-  show :: TypeSynonym -> String
-  show typeSynonym =
-    "type " <> show (typeSynonym ^. alias) <> " = " <>
-    show (typeSynonym ^. definition)
+instance ToHaskell TypeSynonym where
+  toHaskell :: TypeSynonym -> String
+  toHaskell typeSynonym =
+    "type " <> toHaskell (typeSynonym ^. alias) <> " = " <>
+    toHaskell (typeSynonym ^. definition)

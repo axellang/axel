@@ -71,13 +71,13 @@ program =
 
 normalizeCase :: Expression -> Expression
 normalizeCase (Symbol x) =
-  if not (isOperator x) && '-' `elem` x
-    then Symbol (kebabToCamelCase x)
-    else Symbol x
+  if isOperator x
+    then Symbol x
+    else Symbol (kebabToCamelCase x)
 normalizeCase x = x
 
--- TODO `Expression` should probably be `Traversable`, use recursion schemes, etc.
---      I should provide `toFix` and `fromFix` functions for macros to take advantage of.
+-- TODO `Expression` should probably instead be an instance of `Traversable`, use recursion schemes, etc.
+--      If so, should I provide `toFix` and `fromFix` functions for macros to take advantage of?
 --      (Maybe all macros have the argument automatically `fromFix`-ed to make consumption simpler?)
 instance Recursive Expression where
   bottomUp :: (Expression -> Expression) -> Expression -> Expression

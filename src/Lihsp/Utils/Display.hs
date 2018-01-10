@@ -24,7 +24,10 @@ isOperator :: String -> Bool
 isOperator = all $ \x -> isSymbol x || x `elem` "!#$%&*+./<=>?@\\^|-~:"
 
 kebabToCamelCase :: String -> String
-kebabToCamelCase = lowerFirst . concatMap upperFirst . splitOn "-"
+kebabToCamelCase input = preserveHead $ concatMap upperFirst $ splitOn "-" input
+  where
+    preserveHead [] = []
+    preserveHead (_:newIdentifierTail) = head input : newIdentifierTail
 
 lowerFirst :: String -> String
 lowerFirst (x:xs) = toLower x : xs

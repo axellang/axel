@@ -18,7 +18,7 @@ import Lihsp.AST
   , ImportList(ImportList)
   , LanguagePragma(LanguagePragma)
   , LetBlock(LetBlock)
-  , Literal(LChar, LInt, LList, LSymbol)
+  , Literal(LChar, LInt)
   , MacroDefinition(MacroDefinition)
   , QualifiedImport(QualifiedImport)
   , RestrictedImport(RestrictedImport)
@@ -41,7 +41,6 @@ normalizeExpression (Parse.LiteralChar char) = return $ ELiteral (LChar char)
 normalizeExpression (Parse.LiteralInt int) = return $ ELiteral (LInt int)
 normalizeExpression (Parse.SExpression items) =
   case items of
-    [Parse.Symbol "quote", expression] -> return $ toLihspLiteral expression
     [Parse.Symbol "let", Parse.SExpression bindings', body] ->
       let bindings =
             traverse

@@ -2,22 +2,22 @@
 
 module Lihsp.Transpile where
 
-import Control.Monad ((>=>))
 import Control.Monad.Except (MonadError)
 
 import Data.Semigroup ((<>))
 
+import Lihsp.AST (ToHaskell(toHaskell))
 import Lihsp.Error (Error)
 import Lihsp.Normalize (normalizeProgram)
 import Lihsp.Parse (parseProgram)
 import Lihsp.Utils.Display (Delimiter(Newlines), delimit)
 
 transpileProgram :: (MonadError Error m) => String -> m String
-transpileProgram =
-  parseProgram >=> normalizeProgram >=> return . delimit Newlines . map show
+transpileProgram source =
+  delimit Newlines . map toHaskell <$>
+  (parseProgram source >>= normalizeProgram)
 
 transpileFile :: FilePath -> IO ()
 transpileFile path = do
-  contents <- readFile $ path <> ".lihsp"
-  let newContents = transpileProgram contents
-  either print (writeFile $ path <> ".hs") newContents
+  contents <- readFile path
+  either print (writeFile $ path <> ".hs") (transpileProgram contents)
