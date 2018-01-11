@@ -248,7 +248,7 @@ instance ToHaskell MacroDefinition where
   toHaskell :: MacroDefinition -> String
   toHaskell macroDefinition =
     delimit Newlines $
-    (macroDefinition ^. name <> " :: [Expression] -> IO [Expression]") :
+    (macroDefinition ^. name <> " :: [Expression] -> IO Expression") :
     map
       (functionDefinitionToHaskell $ macroDefinition ^. name)
       (macroDefinition ^. definitions)

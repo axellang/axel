@@ -56,7 +56,7 @@ expandMacros environment =
       Parse.SExpression functionApplication ->
         lookupMacroDefinition environment (head functionApplication) >>= \case
           Just macroDefinition ->
-            Parse.SExpression <$>
+            head <$>
             expandMacroApplication macroDefinition (tail functionApplication)
           Nothing -> return expression
       Parse.Symbol _ -> return expression
