@@ -1,12 +1,16 @@
+-- TODO Replace all this with an actual application (instead of test programs).
 module Main where
 
 import Control.Monad.Except (runExceptT)
+import Control.Monad.IO.Class (MonadIO)
 
-import Lihsp.AST (Statement(SMacroDefinition))
+import qualified Lihsp.AST as AST (Expression)
+import Lihsp.AST (Statement(SMacroDefinition), ToHaskell(toHaskell))
+import Lihsp.Error (Error)
 import Lihsp.Macros (expandMacros)
-import Lihsp.Normalize (normalizeStatement)
+import Lihsp.Normalize (normalizeExpression, normalizeStatement)
+import qualified Lihsp.Parse as Parse (Expression)
 import Lihsp.Parse (parseProgram)
-import Lihsp.Parse.AST (toLihsp)
 
 -- TODO This example fails because the macro definitions aren't expanded themselves.
 --      Extracting all `defmacro`s is probably now the next step in the process.
@@ -20,10 +24,19 @@ import Lihsp.Parse.AST (toLihsp)
 --
 --      What I really need at this point is to setup a comprehensive test suite.
 main :: IO ()
-main = program >>= putStrLn . toLihsp . fromRight
+main = quoteProgram >>= putStrLn . toHaskell . fromRight
+
+fromRight :: Either Error b -> b
+fromRight = either (error . show) id
+
+parse :: String -> Parse.Expression
+parse = head . fromRight . parseProgram
+
+macroProgram :: (MonadIO m) => m (Either Error Parse.Expression)
+macroProgram =
+  runExceptT $
+  expandMacros [macroDefinition1, macroDefinition2] $ parse "(+ 1 (x))"
   where
-    fromRight = either (error . show) id
-    parse = head . fromRight . parseProgram
     macroDefinition1 =
       case fromRight . normalizeStatement $
            parse
@@ -36,6 +49,7 @@ main = program >>= putStrLn . toLihsp . fromRight
              "(defmacro y ((_) (return (SExpression (: (Literal-int 3) (mempty))))))" of
         SMacroDefinition x -> x
         _ -> error "Invalid macro definition: 2!"
-    program =
-      runExceptT $
-      expandMacros [macroDefinition1, macroDefinition2] $ parse "(+ 1 (x))"
+
+quoteProgram :: (MonadIO m) => m (Either Error AST.Expression)
+quoteProgram =
+  runExceptT $ normalizeExpression $ parse "(quote (quote (1 2 3)))"

@@ -14,7 +14,7 @@ import Control.Lens.TH (makeFieldsNoPrefix)
 import Data.Semigroup ((<>))
 
 import Lihsp.Utils.Display
-  ( Bracket(Parentheses, SingleQuotes, SquareBrackets)
+  ( Bracket(Parentheses, SingleQuotes)
   , Delimiter(Commas, Newlines, Pipes, Spaces)
   , delimit
   , isOperator
@@ -141,17 +141,12 @@ instance ToHaskell Expression where
 data Literal
   = LChar Char
   | LInt Int
-  | LList [Expression]
-  | LSymbol Identifier
   deriving (Eq)
 
 instance ToHaskell Literal where
   toHaskell :: Literal -> String
   toHaskell (LInt int) = show int
   toHaskell (LChar char) = surround SingleQuotes [char]
-  toHaskell (LList list) =
-    surround SquareBrackets $ delimit Commas (map toHaskell list)
-  toHaskell (LSymbol symbol) = "Literal (LSymbol \"" <> symbol <> "\")"
 
 data Statement
   = SDataDeclaration DataDeclaration

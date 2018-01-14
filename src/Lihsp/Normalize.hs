@@ -50,12 +50,26 @@ normalizeExpression (Parse.SExpression items) =
                  _ -> throwError $ NormalizeError "0001")
               bindings'
       in ELetBlock <$> (LetBlock <$> bindings <*> normalizeExpression body)
+    [Parse.Symbol "quote", expression] ->
+      return $ quoteParseExpression expression
     function:arguments ->
       EFunctionApplication <$>
       (FunctionApplication <$> normalizeExpression function <*>
        traverse normalizeExpression arguments)
     _ -> throwError $ NormalizeError "0002"
 normalizeExpression (Parse.Symbol symbol) = return $ EIdentifier symbol
+
+quoteParseExpression :: Parse.Expression -> Expression
+quoteParseExpression (Parse.LiteralChar x) = ELiteral (LChar x)
+quoteParseExpression (Parse.LiteralInt x) = ELiteral (LInt x)
+quoteParseExpression (Parse.SExpression xs) =
+  foldl
+    (\acc x ->
+       EFunctionApplication
+         (FunctionApplication (EIdentifier ":") [quoteParseExpression x, acc]))
+    (EIdentifier "[]")
+    xs
+quoteParseExpression (Parse.Symbol x) = EIdentifier x
 
 normalizeDefinitions ::
      (MonadError Error m)
