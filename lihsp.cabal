@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b9f133f3c7fe9cf11dac611a9f41d0275c39a67fd2130e8333bd2129d4804ee7
+-- hash: 4afb9f4c914a08dc61d27f4bb5bbc855076ef92af313529f602d415579c66e2d
 
 name:           lihsp
 version:        0.1.0.0
@@ -51,6 +51,7 @@ library
       Lihsp.Normalize
       Lihsp.Parse
       Lihsp.Parse.AST
+      Lihsp.Quote
       Lihsp.Transpile
       Lihsp.Utils.Display
       Lihsp.Utils.Recursion

@@ -52,4 +52,4 @@ macroProgram =
 
 quoteProgram :: (MonadIO m) => m (Either Error AST.Expression)
 quoteProgram =
-  runExceptT $ normalizeExpression $ parse "(quote (quote (1 2 3)))"
+  runExceptT $ normalizeExpression $ parse "(quote (quote ((quote 1 2 3) 2 3)))"

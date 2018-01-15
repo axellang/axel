@@ -4,7 +4,6 @@
 --      (due to the dependency on `BottomUp`). Fortunately, `Lihsp.Parse.AST` will (should)
 --      never be imported by itself but only implicitly as part of this module.
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -21,7 +20,8 @@ import Lihsp.Error (Error(ParseError))
 -- Re-exporting these so that consumers of parsed ASTs do not need
 -- to know about the internal file.
 import Lihsp.Parse.AST
-  ( Expression(LiteralChar, LiteralInt, SExpression, Symbol)
+  ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
+           Symbol)
   )
 import Lihsp.Utils.Display (isOperator, kebabToCamelCase)
 import Lihsp.Utils.Recursion (Recursive(bottomUp, bottomUpTraverse))
@@ -44,9 +44,7 @@ literalInt :: Stream s m Char => ParsecT s u m Expression
 literalInt = LiteralInt . read <$> many1 digit
 
 literalString :: Stream s m Char => ParsecT s u m Expression
-literalString = do
-  chars <- char '"' *> many (noneOf "\"") <* char '"'
-  pure $ SExpression [Symbol "quote", SExpression (map LiteralChar chars)]
+literalString = LiteralString <$> (char '"' *> many (noneOf "\"") <* char '"')
 
 sExpression :: Stream s m Char => ParsecT s u m Expression
 sExpression = SExpression <$> (char '(' *> many item <* char ')')
@@ -85,6 +83,7 @@ instance Recursive Expression where
     case x of
       LiteralChar _ -> f x
       LiteralInt _ -> f x
+      LiteralString _ -> f x
       SExpression xs -> f $ SExpression (map (bottomUp f) xs)
       Symbol _ -> f x
   bottomUpTraverse ::
@@ -93,6 +92,7 @@ instance Recursive Expression where
     case x of
       LiteralChar _ -> f x
       LiteralInt _ -> f x
+      LiteralString _ -> f x
       SExpression xs -> f =<< (SExpression <$> traverse (bottomUpTraverse f) xs)
       Symbol _ -> f x
 

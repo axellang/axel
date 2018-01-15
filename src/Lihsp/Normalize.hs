@@ -18,7 +18,7 @@ import Lihsp.AST
   , ImportList(ImportList)
   , LanguagePragma(LanguagePragma)
   , LetBlock(LetBlock)
-  , Literal(LChar, LInt)
+  , Literal(LChar, LInt, LString)
   , MacroDefinition(MacroDefinition)
   , QualifiedImport(QualifiedImport)
   , RestrictedImport(RestrictedImport)
@@ -33,12 +33,16 @@ import Lihsp.AST
 
 import Lihsp.Error (Error(NormalizeError))
 import qualified Lihsp.Parse as Parse
-  ( Expression(LiteralChar, LiteralInt, SExpression, Symbol)
+  ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
+           Symbol)
   )
+import Lihsp.Quote (quoteParseExpression)
 
 normalizeExpression :: (MonadError Error m) => Parse.Expression -> m Expression
 normalizeExpression (Parse.LiteralChar char) = return $ ELiteral (LChar char)
 normalizeExpression (Parse.LiteralInt int) = return $ ELiteral (LInt int)
+normalizeExpression (Parse.LiteralString string) =
+  return $ ELiteral (LString string)
 normalizeExpression (Parse.SExpression items) =
   case items of
     [Parse.Symbol "let", Parse.SExpression bindings', body] ->
@@ -58,18 +62,6 @@ normalizeExpression (Parse.SExpression items) =
        traverse normalizeExpression arguments)
     _ -> throwError $ NormalizeError "0002"
 normalizeExpression (Parse.Symbol symbol) = return $ EIdentifier symbol
-
-quoteParseExpression :: Parse.Expression -> Expression
-quoteParseExpression (Parse.LiteralChar x) = ELiteral (LChar x)
-quoteParseExpression (Parse.LiteralInt x) = ELiteral (LInt x)
-quoteParseExpression (Parse.SExpression xs) =
-  foldl
-    (\acc x ->
-       EFunctionApplication
-         (FunctionApplication (EIdentifier ":") [quoteParseExpression x, acc]))
-    (EIdentifier "[]")
-    xs
-quoteParseExpression (Parse.Symbol x) = EIdentifier x
 
 normalizeDefinitions ::
      (MonadError Error m)

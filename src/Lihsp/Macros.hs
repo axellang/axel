@@ -14,7 +14,8 @@ import qualified Lihsp.AST as AST (MacroDefinition)
 import Lihsp.Error (Error(MacroError))
 import Lihsp.Eval (evalSource)
 import qualified Lihsp.Parse as Parse
-  ( Expression(LiteralChar, LiteralInt, SExpression, Symbol)
+  ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
+           Symbol)
   , parseProgram
   )
 import Lihsp.Utils.Recursion (Recursive(bottomUpTraverse))
@@ -53,6 +54,7 @@ expandMacros environment =
     case expression of
       Parse.LiteralChar _ -> return expression
       Parse.LiteralInt _ -> return expression
+      Parse.LiteralString _ -> return expression
       Parse.SExpression functionApplication ->
         lookupMacroDefinition environment (head functionApplication) >>= \case
           Just macroDefinition ->
@@ -74,6 +76,7 @@ lookupMacroDefinition environment identifierExpression =
   case identifierExpression of
     Parse.LiteralChar _ -> return Nothing
     Parse.LiteralInt _ -> return Nothing
+    Parse.LiteralString _ -> return Nothing
     Parse.SExpression _ -> return Nothing
     Parse.Symbol identifier ->
       case filter
