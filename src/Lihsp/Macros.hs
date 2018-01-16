@@ -7,10 +7,15 @@ import Control.Lens.Operators ((^.))
 import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 
+import Data.List (foldl')
 import Data.Semigroup ((<>))
 
-import Lihsp.AST (ToHaskell(toHaskell), name)
-import qualified Lihsp.AST as AST (MacroDefinition)
+import Lihsp.AST
+  ( MacroDefinition
+  , Statement(SMacroDefinition)
+  , ToHaskell(toHaskell)
+  , name
+  )
 import Lihsp.Error (Error(MacroError))
 import Lihsp.Eval (evalSource)
 import qualified Lihsp.Parse as Parse
@@ -18,12 +23,12 @@ import qualified Lihsp.Parse as Parse
            Symbol)
   , parseProgram
   )
-import Lihsp.Utils.Recursion (Recursive(bottomUpTraverse))
+import Lihsp.Utils.Recursion (Recursive(bottomUpAny, bottomUpTraverse))
 import Lihsp.Utils.Resources (readDataFile)
 import Lihsp.Utils.String (replace)
 
 generateMacroProgram ::
-     (MonadIO m) => AST.MacroDefinition -> [Parse.Expression] -> m String
+     (MonadIO m) => MacroDefinition -> [Parse.Expression] -> m String
 generateMacroProgram macroDefinition applicationArguments =
   (<>) <$> liftIO getFileHeader <*> liftIO getFileFooter
   where
@@ -46,7 +51,7 @@ generateMacroProgram macroDefinition applicationArguments =
 
 expandMacros ::
      (MonadError Error m, MonadIO m)
-  => [AST.MacroDefinition]
+  => [MacroDefinition]
   -> Parse.Expression
   -> m Parse.Expression
 expandMacros environment =
@@ -69,9 +74,9 @@ expandMacros environment =
 
 lookupMacroDefinition ::
      (MonadError Error m)
-  => [AST.MacroDefinition]
+  => [MacroDefinition]
   -> Parse.Expression
-  -> m (Maybe AST.MacroDefinition)
+  -> m (Maybe MacroDefinition)
 lookupMacroDefinition environment identifierExpression =
   case identifierExpression of
     Parse.LiteralChar _ -> return Nothing
@@ -85,3 +90,19 @@ lookupMacroDefinition environment identifierExpression =
         [] -> return Nothing
         [macroDefinition] -> return $ Just macroDefinition
         _ -> throwError (MacroError "0012")
+
+-- TODO This probably needs heavy optimization. If so, decrease the running time.
+extractMacroDefinitions :: [Statement] -> [MacroDefinition]
+extractMacroDefinitions = foldl' handleStatement []
+  where
+    handleStatement :: [MacroDefinition] -> Statement -> [MacroDefinition]
+    handleStatement env statement =
+      case statement of
+        SMacroDefinition macroDefinition ->
+          let newEnv = macroDefinition : env
+          in filter (not . dependsOnEnv newEnv) newEnv
+        _ -> env
+    dependsOnEnv :: [MacroDefinition] -> MacroDefinition -> Bool
+    dependsOnEnv env macroDefinition = any (`callsMacro` macroDefinition) env
+    callsMacro :: MacroDefinition -> MacroDefinition -> Bool
+    callsMacro needle haystack = undefined
