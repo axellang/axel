@@ -5,6 +5,7 @@
 
 module Lihsp.Normalize where
 
+import Control.Lens.Operators ((^.))
 import Control.Monad ((>=>))
 import Control.Monad.Except (MonadError, throwError)
 
@@ -29,6 +30,10 @@ import Lihsp.AST
   , TypeDefinition(ProperType, TypeConstructor)
   , TypeSynonym(TypeSynonym)
   , TypeclassInstance(TypeclassInstance)
+  , arguments
+  , bindings
+  , body
+  , function
   )
 
 import Lihsp.Error (Error(NormalizeError))
@@ -45,21 +50,22 @@ normalizeExpression (Parse.LiteralString string) =
   return $ ELiteral (LString string)
 normalizeExpression (Parse.SExpression items) =
   case items of
-    [Parse.Symbol "let", Parse.SExpression bindings', body] ->
-      let bindings =
+    [Parse.Symbol "let", Parse.SExpression bindings', body'] ->
+      let normalizedBindings =
             traverse
               (\case
                  Parse.SExpression [Parse.Symbol name, value'] ->
                    (name, ) <$> normalizeExpression value'
                  _ -> throwError $ NormalizeError "0001")
               bindings'
-      in ELetBlock <$> (LetBlock <$> bindings <*> normalizeExpression body)
+      in ELetBlock <$>
+         (LetBlock <$> normalizedBindings <*> normalizeExpression body')
     [Parse.Symbol "quote", expression] ->
       return $ quoteParseExpression expression
-    function:arguments ->
+    function':arguments' ->
       EFunctionApplication <$>
-      (FunctionApplication <$> normalizeExpression function <*>
-       traverse normalizeExpression arguments)
+      (FunctionApplication <$> normalizeExpression function' <*>
+       traverse normalizeExpression arguments')
     _ -> throwError $ NormalizeError "0002"
 normalizeExpression (Parse.Symbol symbol) = return $ EIdentifier symbol
 
@@ -152,3 +158,27 @@ normalizeStatement _ = throwError $ NormalizeError "0008"
 
 normalizeProgram :: (MonadError Error m) => [Parse.Expression] -> m [Statement]
 normalizeProgram = traverse normalizeStatement
+
+denormalizeExpression :: Expression -> Parse.Expression
+denormalizeExpression (EFunctionApplication functionApplication) =
+  Parse.SExpression $
+  denormalizeExpression (functionApplication ^. function) :
+  map denormalizeExpression (functionApplication ^. arguments)
+denormalizeExpression (EIdentifier x) = Parse.Symbol x
+denormalizeExpression (ELetBlock letBlock) =
+  let denormalizedBindings =
+        Parse.SExpression $
+        map
+          (\(var, val) ->
+             Parse.SExpression [Parse.Symbol var, denormalizeExpression val])
+          (letBlock ^. bindings)
+  in Parse.SExpression
+       [ Parse.Symbol "let"
+       , denormalizedBindings
+       , denormalizeExpression (letBlock ^. body)
+       ]
+denormalizeExpression (ELiteral x) =
+  case x of
+    LChar char -> Parse.LiteralChar char
+    LInt int -> Parse.LiteralInt int
+    LString string -> Parse.LiteralString string

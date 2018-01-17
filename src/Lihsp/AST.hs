@@ -9,11 +9,9 @@
 
 module Lihsp.AST where
 
-import Control.Lens.Operators ((%~), (^.))
+import Control.Lens.Operators ((^.))
 import Control.Lens.TH (makeFieldsNoPrefix)
-import Control.Lens.Tuple (_2)
 
-import Data.Function ((&))
 import Data.Semigroup ((<>))
 
 import Lihsp.Utils.Display
@@ -24,9 +22,6 @@ import Lihsp.Utils.Display
   , renderBlock
   , renderPragma
   , surround
-  )
-import Lihsp.Utils.Recursion
-  ( Recursive(bottomUpAny, bottomUpFmap, bottomUpTraverse)
   )
 
 class ToHaskell a where
@@ -280,71 +275,3 @@ instance ToHaskell TypeSynonym where
   toHaskell typeSynonym =
     "type " <> toHaskell (typeSynonym ^. alias) <> " = " <>
     toHaskell (typeSynonym ^. definition)
-
-instance Recursive Expression where
-  bottomUpAny :: (Expression -> Bool) -> Expression -> Bool
-  bottomUpAny f x =
-    case x of
-      EFunctionApplication functionApplication ->
-        f x ||
-        f (functionApplication ^. function) ||
-        any f (functionApplication ^. arguments)
-      EIdentifier _ -> f x
-      ELetBlock letBlock ->
-        let checkBindings = any (f . snd) (letBlock ^. bindings)
-            checkBody = f (letBlock ^. body)
-        in f x || checkBindings || checkBody
-      ELiteral _ -> f x
-  bottomUpFmap :: (Expression -> Expression) -> Expression -> Expression
-  bottomUpFmap f x =
-    case x of
-      EFunctionApplication functionApplication ->
-        f $
-        EFunctionApplication
-          (functionApplication & function %~ f & arguments %~ map f)
-      EIdentifier _ -> f x
-      ELetBlock letBlock ->
-        let updateBindings = bindings %~ map (_2 %~ f)
-            updateBody = body %~ f
-        in f $ ELetBlock (updateBindings $ updateBody letBlock)
-      ELiteral _ -> f x
-  bottomUpTraverse ::
-       (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
-  bottomUpTraverse f x =
-    case x of
-      EFunctionApplication functionApplication ->
-        f =<<
-        (EFunctionApplication <$>
-         (FunctionApplication <$> f (functionApplication ^. function) <*>
-          traverse (bottomUpTraverse f) (functionApplication ^. arguments)))
-      EIdentifier _ -> f x
-      ELetBlock letBlock ->
-        let updatedBindings =
-              traverse (\(var, val) -> (var, ) <$> f val) (letBlock ^. bindings)
-            updatedBody = f (letBlock ^. body)
-        in f =<< (ELetBlock <$> (LetBlock <$> updatedBindings <*> updatedBody))
-      ELiteral _ -> f x
-
-instance Recursive Statement where
-  bottomUpAny :: (Statement -> Bool) -> Statement -> Bool
-  bottomUpAny f x =
-    case x of
-      SDataDeclaration dataDeclaration ->
-        let checkTypeDefinition = undefined
-            checkConstructors =
-              any (bottomUpAny f) (dataDeclaration ^. constructors)
-        in f x || checkTypeDefinition || checkConstructors
-      SFunctionDefinition functionDefinition -> undefined
-      SLanguagePragma languagePragma -> undefined
-      SMacroDefinition macroDefinition -> undefined
-      SModuleDeclaration moduleDeclaration -> undefined
-      SQualifiedImport qualifiedImport -> undefined
-      SRestrictedImport restrictedImport -> undefined
-      STypeclassInstance typeclassInstance -> undefined
-      STypeSynonym typeSynonym -> undefined
-      SUnrestrictedImport unrestrictedImport -> undefined
-  bottomUpFmap :: (Statement -> Statement) -> Statement -> Statement
-  bottomUpFmap f x = undefined
-  bottomUpTraverse ::
-       (Monad m) => (Statement -> m Statement) -> Statement -> m Statement
-  bottomUpTraverse f x = undefined

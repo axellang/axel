@@ -24,7 +24,7 @@ import Lihsp.Parse.AST
            Symbol)
   )
 import Lihsp.Utils.Display (isOperator, kebabToCamelCase)
-import Lihsp.Utils.Recursion (Recursive(bottomUpAny, bottomUpFmap, bottomUpTraverse))
+import Lihsp.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
 
 import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
 import Text.Parsec.Char (alphaNum, char, digit, letter, noneOf, oneOf, space)
@@ -78,14 +78,6 @@ normalizeCase x = x
 --      If so, should I provide `toFix` and `fromFix` functions for macros to take advantage of?
 --      (Maybe all macros have the argument automatically `fromFix`-ed to make consumption simpler?)
 instance Recursive Expression where
-  bottomUpAny :: (Expression -> Bool) -> Expression -> Bool
-  bottomUpAny f x =
-    case x of
-      LiteralChar _ -> f x
-      LiteralInt _ -> f x
-      LiteralString _ -> f x
-      SExpression xs -> f x || any (bottomUpAny f) xs
-      Symbol _ -> f x
   bottomUpFmap :: (Expression -> Expression) -> Expression -> Expression
   bottomUpFmap f x =
     case x of

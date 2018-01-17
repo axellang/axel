@@ -19,7 +19,6 @@ import Lihsp.AST
   )
 import Lihsp.Error (Error(MacroError))
 import Lihsp.Eval (evalSource)
-import Lihsp.Normalize (denormalizeExpression)
 import qualified Lihsp.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
@@ -93,31 +92,23 @@ lookupMacroDefinition environment identifierExpression =
         [macroDefinition] -> return $ Just macroDefinition
         _ -> throwError (MacroError "0012")
 
--- TODO This probably needs heavy optimization. If so, I will need to decrease the running time.
+-- TODO This probably needs heavy optimization. If so, decrease the running time.
 extractMacroDefinitions :: [Statement] -> [MacroDefinition]
-extractMacroDefinitions =
-  foldl'
-    (\env statement ->
-       case statement of
-         SMacroDefinition macroDefinition ->
-           let newEnv = macroDefinition : env
-               isDependentOnNewEnv x =
-                 any (`isDefinitionDependentOnMacro` x) newEnv
-           in filter (not . isDependentOnNewEnv) newEnv
-         _ -> env)
-    []
-
-isDefinitionDependentOnMacro :: MacroDefinition -> MacroDefinition -> Bool
-isDefinitionDependentOnMacro needle haystack =
-  let definitionBodies = map snd (haystack ^. definitions)
-  in any
-       (isExpressionDependentOnMacro needle)
-       (map denormalizeExpression definitionBodies)
-
-isExpressionDependentOnMacro :: MacroDefinition -> Parse.Expression -> Bool
-isExpressionDependentOnMacro _ (Parse.LiteralChar _) = False
-isExpressionDependentOnMacro _ (Parse.LiteralInt _) = False
-isExpressionDependentOnMacro _ (Parse.LiteralString _) = False
-isExpressionDependentOnMacro needle (Parse.SExpression xs) =
-  any (isExpressionDependentOnMacro needle) xs
-isExpressionDependentOnMacro needle (Parse.Symbol x) = x == needle ^. name
+extractMacroDefinitions = foldl' handleStatement []
+  where
+    handleStatement :: [MacroDefinition] -> Statement -> [MacroDefinition]
+    handleStatement env statement =
+      case statement of
+        SMacroDefinition macroDefinition ->
+          let newEnv = macroDefinition : env
+          in filter (not . isDependentOnEnv newEnv) newEnv
+        _ -> env
+    isDependentOnEnv :: [MacroDefinition] -> MacroDefinition -> Bool
+    isDependentOnEnv env macroDefinition =
+      any (`isDefinitionDependentOnMacro` macroDefinition) env
+    isDefinitionDependentOnMacro :: MacroDefinition -> MacroDefinition -> Bool
+    isDefinitionDependentOnMacro needle haystack =
+      any
+        (\case
+            _ -> undefined)
+        (haystack ^. definitions)

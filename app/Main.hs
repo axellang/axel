@@ -2,54 +2,44 @@
 module Main where
 
 import Control.Monad.Except (runExceptT)
-import Control.Monad.IO.Class (MonadIO)
 
 import qualified Lihsp.AST as AST (Expression)
-import Lihsp.AST (Statement(SMacroDefinition), ToHaskell(toHaskell))
+import Lihsp.AST (ToHaskell(toHaskell))
+
 import Lihsp.Error (Error)
-import Lihsp.Macros (expandMacros)
+import Lihsp.Macros (expandMacros, extractMacroDefinitions)
 import Lihsp.Normalize (normalizeExpression, normalizeStatement)
 import qualified Lihsp.Parse as Parse (Expression)
 import Lihsp.Parse (parseProgram)
+import Lihsp.Parse.AST (toLihsp)
 
--- TODO This example fails because the macro definitions aren't expanded themselves.
---      Extracting all `defmacro`s is probably now the next step in the process.
---      Somehow, we have to be able to tell if a macro definition depends on other
---      macros or not.
---
---      Idea: When extracting macro definitions, maybe only those at the top-level
---            of the dependency graph should be counted as actual definitions, and
---            then the expansion algorithm can proceed as normal (and will still
---            produce the correct result without modification)?
---
---      What I really need at this point is to setup a comprehensive test suite.
 main :: IO ()
-main = quoteProgram >>= putStrLn . toHaskell . fromRight
+main = macroProgram
 
 fromRight :: Either Error b -> b
 fromRight = either (error . show) id
 
-parse :: String -> Parse.Expression
-parse = head . fromRight . parseProgram
+parse :: String -> [Parse.Expression]
+parse = fromRight . parseProgram
 
-macroProgram :: (MonadIO m) => m (Either Error Parse.Expression)
+normalize :: Parse.Expression -> AST.Expression
+normalize = fromRight . normalizeExpression
+
+macroProgram :: IO ()
 macroProgram =
-  runExceptT $
-  expandMacros [macroDefinition1, macroDefinition2] $ parse "(+ 1 (x))"
+  runExceptT (traverse (expandMacros macroDefinitions) parsed) >>=
+  putStrLn . unlines . map toLihsp . fromRight
   where
-    macroDefinition1 =
-      case fromRight . normalizeStatement $
-           parse
-             "(defmacro x ((_) (return (SExpression (: (Literal-int 1) (: (Literal-int 2) (y)))))))" of
-        SMacroDefinition x -> x
-        _ -> error "Invalid macro definition: 1!"
-    macroDefinition2 =
-      case fromRight . normalizeStatement $
-           parse
-             "(defmacro y ((_) (return (SExpression (: (Literal-int 3) (mempty))))))" of
-        SMacroDefinition x -> x
-        _ -> error "Invalid macro definition: 2!"
+    macroDefinitions =
+      extractMacroDefinitions $ map (fromRight . normalizeStatement) parsed
+    macroSource =
+      "(defmacro y ((_) (return (SExpression (: (Literal-int 3) (mempty))))))   (defmacro x ((_) (return (SExpression (: (Literal-int 1) (: (Literal-int 2) (y)))))))"
+    programSource = "(+ 1 (x))"
+    parsed = parse $ macroSource ++ programSource
 
-quoteProgram :: (MonadIO m) => m (Either Error AST.Expression)
+quoteProgram :: IO ()
 quoteProgram =
-  runExceptT $ normalizeExpression $ parse "(quote (quote ((quote 1 2 3) 2 3)))"
+  putStrLn $
+  toHaskell $
+  fromRight $
+  normalizeExpression $ head $ parse "(quote (quote ((quote 1 2 3) 2 3)))"

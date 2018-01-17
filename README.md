@@ -24,6 +24,7 @@ Hence, meet Lihsp! It's a Lisp-like language (with macros and all) that transpil
     - [ ] Use qualified imports
     - [ ] Standardize use of `($)`
     - [ ] Rename `AST` to `Target` (?) and `Parse` to `Lisp` (?)
+    - [ ] Rename `Normalize` to something more appropriate
 
 ## Future Plans
   - Finish the JVM backend
