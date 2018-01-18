@@ -18,4 +18,4 @@ toLihsp (LiteralChar x) = ['\\', x]
 toLihsp (LiteralInt x) = show x
 toLihsp (LiteralString xs) = "\"" ++ xs ++ "\""
 toLihsp (SExpression xs) = "(" ++ unwords (map toLihsp xs) ++ ")"
-toLihsp (Symbol x) = '\'' : x
+toLihsp (Symbol x) = x

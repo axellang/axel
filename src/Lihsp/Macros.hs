@@ -25,6 +25,7 @@ import qualified Lihsp.Parse as Parse
            Symbol)
   , parseProgram
   )
+import Lihsp.Parse.AST (toLihsp)
 import Lihsp.Utils.Recursion (Recursive(bottomUpTraverse))
 import Lihsp.Utils.Resources (readDataFile)
 import Lihsp.Utils.String (replace)
@@ -62,12 +63,12 @@ expandMacros environment =
       Parse.LiteralChar _ -> return expression
       Parse.LiteralInt _ -> return expression
       Parse.LiteralString _ -> return expression
-      Parse.SExpression functionApplication ->
-        lookupMacroDefinition environment (head functionApplication) >>= \case
+      Parse.SExpression [] -> return expression
+      Parse.SExpression (function:args) ->
+        lookupMacroDefinition environment function >>= \case
           Just macroDefinition ->
-            head <$>
-            expandMacroApplication macroDefinition (tail functionApplication)
-          Nothing -> return expression
+            head <$> expandMacroApplication macroDefinition args
+          Nothing -> return expression -- TODO WAT
       Parse.Symbol _ -> return expression
   where
     expandMacroApplication macroDefinition args =

@@ -89,24 +89,24 @@ normalizeStatement (Parse.SExpression items) =
         EFunctionApplication typeSignature ->
           SFunctionDefinition <$>
           (FunctionDefinition functionName typeSignature <$>
-           normalizeDefinitions definitions)
+          normalizeDefinitions definitions)
         _ -> throwError $ NormalizeError "0011"
     [Parse.Symbol "data", typeDefinition', Parse.SExpression constructors'] ->
       let constructors =
             traverse
               (normalizeExpression >=> \case
-                 EFunctionApplication functionApplication ->
-                   return functionApplication
-                 _ -> throwError $ NormalizeError "0003")
+                EFunctionApplication functionApplication ->
+                  return functionApplication
+                _ -> throwError $ NormalizeError "0003")
               constructors'
       in normalizeExpression typeDefinition' >>= \case
-           EFunctionApplication typeConstructor ->
-             SDataDeclaration <$>
-             (DataDeclaration (TypeConstructor typeConstructor) <$> constructors)
-           EIdentifier properType ->
-             SDataDeclaration <$>
-             (DataDeclaration (ProperType properType) <$> constructors)
-           _ -> throwError $ NormalizeError "0004"
+          EFunctionApplication typeConstructor ->
+            SDataDeclaration <$>
+            (DataDeclaration (TypeConstructor typeConstructor) <$> constructors)
+          EIdentifier properType ->
+            SDataDeclaration <$>
+            (DataDeclaration (ProperType properType) <$> constructors)
+          _ -> throwError $ NormalizeError "0004"
     Parse.Symbol "defmacro":Parse.Symbol macroName:definitions ->
       SMacroDefinition <$>
       (MacroDefinition macroName <$> normalizeDefinitions definitions)
@@ -122,12 +122,12 @@ normalizeStatement (Parse.SExpression items) =
       let definitions =
             traverse
               (normalizeStatement >=> \case
-                 SFunctionDefinition functionDefinition ->
-                   return functionDefinition
-                 _ -> throwError $ NormalizeError "0005")
+                SFunctionDefinition functionDefinition ->
+                  return functionDefinition
+                _ -> throwError $ NormalizeError "0005")
               definitions'
       in STypeclassInstance <$>
-         (TypeclassInstance <$> normalizeExpression instanceName' <*>
+        (TypeclassInstance <$> normalizeExpression instanceName' <*>
           definitions)
     [Parse.Symbol "language", Parse.Symbol languageName] ->
       return $ SLanguagePragma (LanguagePragma languageName)
@@ -143,16 +143,16 @@ normalizeStatement (Parse.SExpression items) =
       ImportList <$>
       traverse
         (\case
-           Parse.Symbol import' -> return $ ImportItem import'
-           Parse.SExpression (Parse.Symbol type':imports') ->
-             let imports =
-                   traverse
-                     (\case
+          Parse.Symbol import' -> return $ ImportItem import'
+          Parse.SExpression (Parse.Symbol type':imports') ->
+            let imports =
+                  traverse
+                    (\case
                         Parse.Symbol import' -> return import'
                         _ -> throwError $ NormalizeError "0009")
-                     imports'
-             in ImportType type' <$> imports
-           _ -> throwError $ NormalizeError "0007")
+                    imports'
+            in ImportType type' <$> imports
+          _ -> throwError $ NormalizeError "0007")
         input
 normalizeStatement _ = throwError $ NormalizeError "0008"
 
