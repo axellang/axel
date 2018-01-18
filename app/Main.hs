@@ -6,7 +6,7 @@ module Main where
 import Control.Monad.Except (runExceptT)
 
 import qualified Lihsp.AST as AST (Expression)
-import Lihsp.AST (ToHaskell(toHaskell))
+import Lihsp.AST (Statement, ToHaskell(toHaskell))
 
 import Lihsp.Error (Error(MacroError))
 import Lihsp.Macros (expandMacros, extractMacroDefinitions)
@@ -21,7 +21,7 @@ main = do
     parse
       "(defmacro y ((z) (return (: (Literal-int z) (mempty)))))   (defmacro x ((_) (return (SExpression (: (Literal-int 1) (: (Literal-int 2) (y 4)))))))   (= main (IO Unit) (() (+ 1 (x 1))))"
   result2 <- macroProgram result
-  putStrLn $ unlines $ map show result2
+  putStrLn $ unlines $ map (toHaskell . normalizeStmt) result2
 
 fromRight :: Either Error b -> b
 fromRight x =
@@ -33,8 +33,11 @@ fromRight x =
 parse :: String -> [Parse.Expression]
 parse = fromRight . parseProgram
 
-normalize :: Parse.Expression -> AST.Expression
-normalize = fromRight . normalizeExpression
+normalizeExpr :: Parse.Expression -> AST.Expression
+normalizeExpr = fromRight . normalizeExpression
+
+normalizeStmt :: Parse.Expression -> Statement
+normalizeStmt = fromRight . normalizeStatement
 
 macroProgram :: [Parse.Expression] -> IO [Parse.Expression]
 macroProgram exprs =

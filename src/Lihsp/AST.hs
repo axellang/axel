@@ -123,7 +123,8 @@ data TypeSynonym = TypeSynonym
   } deriving (Eq)
 
 data Expression
-  = EFunctionApplication FunctionApplication
+  = EEmptySExpression
+  | EFunctionApplication FunctionApplication
   | EIdentifier Identifier
   | ELetBlock LetBlock
   | ELiteral Literal
@@ -131,6 +132,7 @@ data Expression
 
 instance ToHaskell Expression where
   toHaskell :: Expression -> String
+  toHaskell EEmptySExpression = "()"
   toHaskell (EFunctionApplication x) = toHaskell x
   toHaskell (EIdentifier x) =
     if isOperator x
