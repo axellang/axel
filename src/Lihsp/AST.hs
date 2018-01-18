@@ -15,7 +15,7 @@ import Control.Lens.TH (makeFieldsNoPrefix)
 import Data.Semigroup ((<>))
 
 import Lihsp.Utils.Display
-  ( Bracket(DoubleQuotes, Parentheses, SingleQuotes)
+  ( Bracket(DoubleQuotes, Parentheses, SingleQuotes, SquareBrackets)
   , Delimiter(Commas, Newlines, Pipes, Spaces)
   , delimit
   , isOperator
@@ -144,6 +144,7 @@ instance ToHaskell Expression where
 data Literal
   = LChar Char
   | LInt Int
+  | LList [Expression]
   | LString String
   deriving (Eq)
 
@@ -151,6 +152,8 @@ instance ToHaskell Literal where
   toHaskell :: Literal -> String
   toHaskell (LChar x) = surround SingleQuotes [x]
   toHaskell (LInt x) = show x
+  toHaskell (LList xs) =
+    surround SquareBrackets $ delimit Commas $ map toHaskell xs
   toHaskell (LString x) = surround DoubleQuotes x
 
 data Statement
@@ -204,9 +207,16 @@ makeFieldsNoPrefix ''TypeSynonym
 instance ToHaskell FunctionApplication where
   toHaskell :: FunctionApplication -> String
   toHaskell functionApplication =
-    surround Parentheses $
-    toHaskell (functionApplication ^. function) <> " " <>
-    delimit Spaces (map toHaskell $ functionApplication ^. arguments)
+    let isListLiteral =
+          case functionApplication ^. function of
+            EIdentifier "list" -> True
+            _ -> False
+    in if isListLiteral
+         then surround SquareBrackets $
+              delimit Commas (map toHaskell $ functionApplication ^. arguments)
+         else surround Parentheses $
+              toHaskell (functionApplication ^. function) <> " " <>
+              delimit Spaces (map toHaskell $ functionApplication ^. arguments)
 
 functionDefinitionToHaskell ::
      Identifier -> (ArgumentList, Expression) -> String
@@ -248,7 +258,7 @@ instance ToHaskell MacroDefinition where
   toHaskell :: MacroDefinition -> String
   toHaskell macroDefinition =
     delimit Newlines $
-    (macroDefinition ^. name <> " :: [Expression] -> IO Expression") :
+    (macroDefinition ^. name <> " :: Expression -> IO Expression") :
     map
       (functionDefinitionToHaskell $ macroDefinition ^. name)
       (macroDefinition ^. definitions)
