@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4afb9f4c914a08dc61d27f4bb5bbc855076ef92af313529f602d415579c66e2d
+-- hash: 2bdfdb8406753d641481eec4c9d6507ceba17bb9033dbd566c52ef0ab4b0a8f6
 
 name:           lihsp
 version:        0.1.0.0
@@ -68,6 +68,7 @@ executable lihsp-exe
   ghc-options: -Wall -Werror -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , lens
     , lihsp
     , mtl
   other-modules:

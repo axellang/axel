@@ -20,14 +20,15 @@ import Lihsp.AST
   , ImportList(ImportList)
   , LanguagePragma(LanguagePragma)
   , LetBlock(LetBlock)
-  , Literal(LChar, LInt, LString)
+  , Literal(LChar, LInt, LList, LString)
   , MacroDefinition(MacroDefinition)
   , QualifiedImport(QualifiedImport)
   , RestrictedImport(RestrictedImport)
   , Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
           SMacroDefinition, SModuleDeclaration, SQualifiedImport,
-          SRestrictedImport, STypeSynonym, STypeclassInstance,
+          SRestrictedImport, STopLevel, STypeSynonym, STypeclassInstance,
           SUnrestrictedImport)
+  , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , TypeSynonym(TypeSynonym)
   , TypeclassInstance(TypeclassInstance)
@@ -92,6 +93,9 @@ normalizeStatement (Parse.SExpression items) =
           (FunctionDefinition functionName typeSignature <$>
            normalizeDefinitions definitions)
         _ -> throwError $ NormalizeError "0011"
+    Parse.Symbol "begin":statements' ->
+      let statements = traverse normalizeStatement statements'
+      in STopLevel . TopLevel <$> statements
     [Parse.Symbol "data", typeDefinition', Parse.SExpression constructors'] ->
       let constructors =
             traverse
@@ -157,10 +161,8 @@ normalizeStatement (Parse.SExpression items) =
         input
 normalizeStatement _ = throwError $ NormalizeError "0008"
 
-normalizeProgram :: (MonadError Error m) => [Parse.Expression] -> m [Statement]
-normalizeProgram = traverse normalizeStatement
-
 denormalizeExpression :: Expression -> Parse.Expression
+denormalizeExpression EEmptySExpression = Parse.SExpression []
 denormalizeExpression (EFunctionApplication functionApplication) =
   Parse.SExpression $
   denormalizeExpression (functionApplication ^. function) :
@@ -182,4 +184,6 @@ denormalizeExpression (ELiteral x) =
   case x of
     LChar char -> Parse.LiteralChar char
     LInt int -> Parse.LiteralInt int
+    LList list ->
+      Parse.SExpression $ Parse.Symbol "list" : map denormalizeExpression list
     LString string -> Parse.LiteralString string

@@ -62,11 +62,6 @@ expression :: Stream s m Char => ParsecT s u m Expression
 expression =
   literalChar <|> literalInt <|> literalString <|> sExpression <|> symbol
 
-program :: Stream s m Char => ParsecT s u m [Expression]
-program =
-  many (try (whitespace *> sExpression) <|> sExpression) <* optional whitespace <*
-  eof
-
 normalizeCase :: Expression -> Expression
 normalizeCase (Symbol x) =
   if isOperator x
@@ -96,7 +91,12 @@ instance Recursive Expression where
       SExpression xs -> f =<< (SExpression <$> traverse (bottomUpTraverse f) xs)
       Symbol _ -> f x
 
-parseProgram :: (MonadError Error m) => String -> m [Expression]
-parseProgram =
+runMultiple :: (MonadError Error m) => String -> m [Expression]
+runMultiple =
   either (throwError . ParseError) (return . map (bottomUpFmap normalizeCase)) .
-  parse program ""
+  parse (many1 (expression <* optional whitespace) <* eof) ""
+
+runSingle :: (MonadError Error m) => String -> m Expression
+runSingle =
+  either (throwError . ParseError) (return . bottomUpFmap normalizeCase) .
+  parse (expression <* optional whitespace <* eof) ""

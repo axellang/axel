@@ -4,6 +4,7 @@
 module Lihsp.Macros where
 
 import Control.Lens.Operators ((^.))
+import Control.Monad (foldM)
 import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 
@@ -14,8 +15,10 @@ import Lihsp.AST
   ( MacroDefinition
   , Statement(SMacroDefinition)
   , ToHaskell(toHaskell)
+  , TopLevel
   , definitions
   , name
+  , statements
   )
 import Lihsp.Error (Error(MacroError))
 import Lihsp.Eval (evalSource)
@@ -23,7 +26,7 @@ import Lihsp.Normalize (denormalizeExpression)
 import qualified Lihsp.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
-  , parseProgram
+  , runMultiple
   )
 import Lihsp.Utils.Recursion (Recursive(bottomUpTraverse))
 import Lihsp.Utils.Resources (readDataFile)
@@ -62,17 +65,28 @@ expandMacros environment =
       Parse.LiteralChar _ -> return expression
       Parse.LiteralInt _ -> return expression
       Parse.LiteralString _ -> return expression
-      Parse.SExpression [] -> return expression
-      Parse.SExpression (function:args) ->
-        lookupMacroDefinition environment function >>= \case
-          Just macroDefinition ->
-            head <$> expandMacroApplication macroDefinition args
-          Nothing -> return expression
+      Parse.SExpression xs ->
+        Parse.SExpression <$>
+        foldM
+          (\acc x ->
+             case x of
+               Parse.LiteralChar _ -> return $ acc ++ [x]
+               Parse.LiteralInt _ -> return $ acc ++ [x]
+               Parse.LiteralString _ -> return $ acc ++ [x]
+               Parse.SExpression [] -> return $ acc ++ [x]
+               Parse.SExpression (function:args) ->
+                 lookupMacroDefinition environment function >>= \case
+                   Just macroDefinition ->
+                     (acc ++) <$> expandMacroApplication macroDefinition args
+                   Nothing -> return $ acc ++ [x]
+               Parse.Symbol _ -> return $ acc ++ [x])
+          []
+          xs
       Parse.Symbol _ -> return expression
   where
     expandMacroApplication macroDefinition args =
       generateMacroProgram macroDefinition args >>= evalSource >>=
-      Parse.parseProgram
+      Parse.runMultiple
 
 lookupMacroDefinition ::
      (MonadError Error m)
@@ -94,8 +108,8 @@ lookupMacroDefinition environment identifierExpression =
         _ -> throwError (MacroError "0012")
 
 -- TODO This probably needs heavy optimization. If so, I will need to decrease the running time.
-extractMacroDefinitions :: [Statement] -> [MacroDefinition]
-extractMacroDefinitions =
+extractMacroDefinitions :: TopLevel -> [MacroDefinition]
+extractMacroDefinitions topLevel =
   foldl'
     (\env statement ->
        case statement of
@@ -106,6 +120,7 @@ extractMacroDefinitions =
            in filter (not . isDependentOnNewEnv) newEnv
          _ -> env)
     []
+    (topLevel ^. statements)
 
 isDefinitionDependentOnMacro :: MacroDefinition -> MacroDefinition -> Bool
 isDefinitionDependentOnMacro needle haystack =

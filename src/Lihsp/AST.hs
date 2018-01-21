@@ -34,6 +34,10 @@ data FunctionApplication = FunctionApplication
   , _arguments :: [Expression]
   } deriving (Eq)
 
+newtype TopLevel = TopLevel
+  { _statements :: [Statement]
+  } deriving (Eq)
+
 data TypeDefinition
   = ProperType Identifier
   | TypeConstructor FunctionApplication
@@ -164,6 +168,7 @@ data Statement
   | SModuleDeclaration Identifier
   | SQualifiedImport QualifiedImport
   | SRestrictedImport RestrictedImport
+  | STopLevel TopLevel
   | STypeclassInstance TypeclassInstance
   | STypeSynonym TypeSynonym
   | SUnrestrictedImport Identifier
@@ -178,6 +183,7 @@ instance ToHaskell Statement where
   toHaskell (SModuleDeclaration x) = "module " <> x <> " where"
   toHaskell (SQualifiedImport x) = toHaskell x
   toHaskell (SRestrictedImport x) = toHaskell x
+  toHaskell (STopLevel xs) = toHaskell xs
   toHaskell (STypeclassInstance x) = toHaskell x
   toHaskell (STypeSynonym x) = toHaskell x
   toHaskell (SUnrestrictedImport x) = show x
@@ -200,6 +206,8 @@ makeFieldsNoPrefix ''QualifiedImport
 
 makeFieldsNoPrefix ''RestrictedImport
 
+makeFieldsNoPrefix ''TopLevel
+
 makeFieldsNoPrefix ''TypeclassInstance
 
 makeFieldsNoPrefix ''TypeSynonym
@@ -207,16 +215,14 @@ makeFieldsNoPrefix ''TypeSynonym
 instance ToHaskell FunctionApplication where
   toHaskell :: FunctionApplication -> String
   toHaskell functionApplication =
-    let isListLiteral =
-          case functionApplication ^. function of
-            EIdentifier "list" -> True
-            _ -> False
-    in if isListLiteral
-         then surround SquareBrackets $
-              delimit Commas (map toHaskell $ functionApplication ^. arguments)
-         else surround Parentheses $
-              toHaskell (functionApplication ^. function) <> " " <>
-              delimit Spaces (map toHaskell $ functionApplication ^. arguments)
+    case functionApplication ^. function of
+      EIdentifier "list" ->
+        surround SquareBrackets $
+        delimit Commas (map toHaskell $ functionApplication ^. arguments)
+      _ ->
+        surround Parentheses $
+        toHaskell (functionApplication ^. function) <> " " <>
+        delimit Spaces (map toHaskell $ functionApplication ^. arguments)
 
 functionDefinitionToHaskell ::
      Identifier -> (ArgumentList, Expression) -> String
@@ -258,7 +264,7 @@ instance ToHaskell MacroDefinition where
   toHaskell :: MacroDefinition -> String
   toHaskell macroDefinition =
     delimit Newlines $
-    (macroDefinition ^. name <> " :: Expression -> IO Expression") :
+    (macroDefinition ^. name <> " :: [Expression] -> IO [Expression]") :
     map
       (functionDefinitionToHaskell $ macroDefinition ^. name)
       (macroDefinition ^. definitions)
@@ -275,6 +281,10 @@ instance ToHaskell RestrictedImport where
   toHaskell restrictedImport =
     "import " <> restrictedImport ^. moduleName <>
     toHaskell (restrictedImport ^. imports)
+
+instance ToHaskell TopLevel where
+  toHaskell :: TopLevel -> String
+  toHaskell topLevel = delimit Newlines $ map toHaskell (topLevel ^. statements)
 
 instance ToHaskell TypeclassInstance where
   toHaskell :: TypeclassInstance -> String
