@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -- TODO Replace all this with an actual application (instead of test programs).
 module Main where
 
@@ -19,6 +21,7 @@ import qualified Lihsp.Normalize as Normalize
   )
 import qualified Lihsp.Parse as Parse (Expression(SExpression, Symbol))
 import Lihsp.Parse (runSingle)
+import Lihsp.Parse.AST (toLihsp)
 import Lihsp.Utils.Recursion (Recursive(bottomUpFmap))
 
 main :: IO ()
@@ -69,34 +72,40 @@ stripMacroDefinitions = statements %~ filter (not . isMacroDefinition)
     isMacroDefinition (SMacroDefinition _) = True
     isMacroDefinition _ = False
 
--- http://www.lispworks.com/documentation/HyperSpec/Body/02_df.htm
-quote :: Parse.Expression -> Parse.Expression
-quote x = Parse.SExpression [Parse.Symbol "quote", x]
-
-quasiquoteSexp :: Parse.Expression -> [Parse.Expression]
-quasiquoteSexp (Parse.SExpression exprs) =
-  case exprs of
-    [Parse.Symbol "unquote", x] -> [Parse.SExpression [Parse.Symbol "list", x]]
-    Parse.Symbol "unquoteSplicing":xs -> xs
-    _ ->
-      [ Parse.SExpression $
-        Parse.Symbol "append" : concatMap quasiquoteSexp exprs
-      ]
-quasiquoteSexp x = [quote x]
-
-quasiquote :: Parse.Expression -> Parse.Expression
-quasiquote = head . quasiquoteSexp
-
 expandQuasiquote :: Parse.Expression -> Parse.Expression
 expandQuasiquote =
-  bottomUpFmap $ \expr ->
-    case expr of
-      Parse.SExpression [Parse.Symbol "quasiquoteAtom", x] ->
-        case x of
-          Parse.SExpression _ -> x
-          _ -> quasiquote x
-      Parse.SExpression [Parse.Symbol "quasiquoteSexp", x] ->
-        case x of
-          Parse.SExpression _ -> quasiquote x
-          _ -> x
-      _ -> expr
+  bottomUpFmap $ \case
+    Parse.SExpression [Parse.Symbol "quasiquote", x] -> quasiquote' x
+    x -> x
+
+qq :: IO ()
+qq = do
+  putStrLn $ toLihsp result
+  putStrLn $ toHaskell $ normalizeExpr result
+  where
+    result =
+      expandQuasiquote $
+      parse
+        "(quasiquote (exploded (list 1 2 3) becomes (unquote-splicing (list (quote 1) (quote 2) (quote 3)))))"
+
+-- See http://www.lispworks.com/documentation/HyperSpec/Body/02_df.htm.
+-- Note that `append` becomes `concat . list` due to the lack of variadic
+-- functions in Lihsp.
+quasiquote' :: Parse.Expression -> Parse.Expression
+quasiquote' (Parse.SExpression xs) =
+  Parse.SExpression
+    [ Parse.Symbol "concat"
+    , Parse.SExpression $ Parse.Symbol "list" : map quasiquoteElem xs
+    ]
+  where
+    quasiquoteElem =
+      \case
+        Parse.SExpression [Parse.Symbol "unquote", x] ->
+          Parse.SExpression [Parse.Symbol "list", x]
+        Parse.SExpression [Parse.Symbol "unquoteSplicing", x] -> x
+        atom ->
+          Parse.SExpression
+            [ Parse.Symbol "list"
+            , Parse.SExpression [Parse.Symbol "quasiquote", atom]
+            ]
+quasiquote' atom = Parse.SExpression [Parse.Symbol "quote", atom]
