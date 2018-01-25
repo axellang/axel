@@ -7,7 +7,7 @@ copyright: 2017 Joshua Grosso
 license: BSD3
 github: jgrosso/lihsp
 extra-source-files:
-- README.md
+- README.org
 - scripts/**/*
 ghc-options:
 - -Wall
