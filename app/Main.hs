@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 -- TODO Replace all this with an actual application (instead of test programs).
 module Main where
 
@@ -19,10 +17,8 @@ import qualified Lihsp.Normalize as Normalize
   ( normalizeExpression
   , normalizeStatement
   )
-import qualified Lihsp.Parse as Parse (Expression(SExpression, Symbol))
+import qualified Lihsp.Parse as Parse (Expression)
 import Lihsp.Parse (runSingle)
-import Lihsp.Parse.AST (toLihsp)
-import Lihsp.Utils.Recursion (Recursive(bottomUpFmap))
 
 main :: IO ()
 main = do
@@ -71,41 +67,3 @@ stripMacroDefinitions = statements %~ filter (not . isMacroDefinition)
   where
     isMacroDefinition (SMacroDefinition _) = True
     isMacroDefinition _ = False
-
-expandQuasiquote :: Parse.Expression -> Parse.Expression
-expandQuasiquote =
-  bottomUpFmap $ \case
-    Parse.SExpression [Parse.Symbol "quasiquote", x] -> quasiquote' x
-    x -> x
-
-qq :: IO ()
-qq = do
-  putStrLn $ toLihsp result
-  putStrLn $ toHaskell $ normalizeExpr result
-  where
-    result =
-      expandQuasiquote $
-      parse
-        "(quasiquote (exploded (list 1 2 3) becomes (unquote-splicing (list (quote 1) (quote 2) (quote 3)))))"
-
--- See http://www.lispworks.com/documentation/HyperSpec/Body/02_df.htm.
--- Note that `append` becomes `concat . list` due to the lack of variadic
--- functions in Lihsp.
-quasiquote' :: Parse.Expression -> Parse.Expression
-quasiquote' (Parse.SExpression xs) =
-  Parse.SExpression
-    [ Parse.Symbol "concat"
-    , Parse.SExpression $ Parse.Symbol "list" : map quasiquoteElem xs
-    ]
-  where
-    quasiquoteElem =
-      \case
-        Parse.SExpression [Parse.Symbol "unquote", x] ->
-          Parse.SExpression [Parse.Symbol "list", x]
-        Parse.SExpression [Parse.Symbol "unquoteSplicing", x] -> x
-        atom ->
-          Parse.SExpression
-            [ Parse.Symbol "list"
-            , Parse.SExpression [Parse.Symbol "quasiquote", atom]
-            ]
-quasiquote' atom = Parse.SExpression [Parse.Symbol "quote", atom]
