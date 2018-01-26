@@ -16,12 +16,13 @@
    - [ ] Self-quoting of integer literals, etc.
    - [ ] Full support of Haskell syntax (e.g. floating point number literals, lambdas, etc.)
    - [ ] Auto-wrap files with ~begin~
-   - [ ] Should case normalization come immediately before normalization rather than immediately after parsing?
-   - [ ] Macro-ify common GHC extensions
+   - [ ] Documentation
    - [ ] Compile-time module system
+   - [ ] Should case normalization come immediately before normalization rather than immediately after parsing?
+   - [ ] Macro-ify common GHC extensions (e.g. ~LambdaCase~)
+   - [ ] More robust error handling
    - [ ] Test suite
    - [ ] Explore Template Haskell integration
-   - [ ] More robust error handling
    - [ ] CLI
      - [ ] Target->Source error message reporting
    - [ ] Backends
