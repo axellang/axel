@@ -29,6 +29,11 @@ class ToHaskell a where
 
 type Identifier = String
 
+data CaseBlock = CaseBlock
+  { _expr :: Expression
+  , _matches :: [(Expression, Expression)]
+  } deriving (Eq)
+
 data FunctionApplication = FunctionApplication
   { _function :: Expression
   , _arguments :: [Expression]
@@ -91,6 +96,11 @@ instance ToHaskell ImportList where
   toHaskell (ImportList importList) =
     surround Parentheses $ delimit Commas $ map toHaskell importList
 
+data Lambda = Lambda
+  { _arguments :: [Expression]
+  , _body :: Expression
+  } deriving (Eq)
+
 newtype LanguagePragma = LanguagePragma
   { _language :: Identifier
   } deriving (Eq)
@@ -127,21 +137,25 @@ data TypeSynonym = TypeSynonym
   } deriving (Eq)
 
 data Expression
-  = EEmptySExpression
+  = ECaseBlock CaseBlock
+  | EEmptySExpression
   | EFunctionApplication FunctionApplication
   | EIdentifier Identifier
+  | ELambda Lambda
   | ELetBlock LetBlock
   | ELiteral Literal
   deriving (Eq)
 
 instance ToHaskell Expression where
   toHaskell :: Expression -> String
+  toHaskell (ECaseBlock x) = toHaskell x
   toHaskell EEmptySExpression = "()"
   toHaskell (EFunctionApplication x) = toHaskell x
   toHaskell (EIdentifier x) =
     if isOperator x
       then surround Parentheses x
       else x
+  toHaskell (ELambda x) = toHaskell x
   toHaskell (ELetBlock x) = toHaskell x
   toHaskell (ELiteral x) = toHaskell x
 
@@ -190,11 +204,15 @@ instance ToHaskell Statement where
 
 type Program = [Statement]
 
+makeFieldsNoPrefix ''CaseBlock
+
 makeFieldsNoPrefix ''DataDeclaration
 
 makeFieldsNoPrefix ''FunctionApplication
 
 makeFieldsNoPrefix ''FunctionDefinition
+
+makeFieldsNoPrefix ''Lambda
 
 makeFieldsNoPrefix ''LanguagePragma
 
@@ -211,6 +229,14 @@ makeFieldsNoPrefix ''TopLevel
 makeFieldsNoPrefix ''TypeclassInstance
 
 makeFieldsNoPrefix ''TypeSynonym
+
+instance ToHaskell CaseBlock where
+  toHaskell :: CaseBlock -> String
+  toHaskell caseBlock =
+    "case " <> toHaskell (caseBlock ^. expr) <> " of " <>
+    renderBlock (map matchToHaskell (caseBlock ^. matches))
+    where
+      matchToHaskell (pat, result) = toHaskell pat <> " -> " <> toHaskell result
 
 instance ToHaskell FunctionApplication where
   toHaskell :: FunctionApplication -> String
@@ -245,6 +271,12 @@ instance ToHaskell DataDeclaration where
     "data " <> toHaskell (dataDeclaration ^. typeDefinition) <> " = " <>
     delimit Pipes (map toHaskell $ dataDeclaration ^. constructors)
 
+instance ToHaskell Lambda where
+  toHaskell :: Lambda -> String
+  toHaskell lambda =
+    "\\" <> delimit Spaces (map toHaskell (lambda ^. arguments)) <> " -> " <>
+    toHaskell (lambda ^. body)
+
 instance ToHaskell LanguagePragma where
   toHaskell :: LanguagePragma -> String
   toHaskell languagePragma =
@@ -264,7 +296,7 @@ instance ToHaskell MacroDefinition where
   toHaskell :: MacroDefinition -> String
   toHaskell macroDefinition =
     delimit Newlines $
-    (macroDefinition ^. name <> " :: [Expression] -> IO [Expression]") :
+    (macroDefinition ^. name <> " :: [Expression] -> [Expression]") :
     map
       (functionDefinitionToHaskell $ macroDefinition ^. name)
       (macroDefinition ^. definitions)

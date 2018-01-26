@@ -11,13 +11,15 @@ import Control.Monad.Except (MonadError, throwError)
 
 import Lihsp.AST
   ( ArgumentList(ArgumentList)
+  , CaseBlock(CaseBlock)
   , DataDeclaration(DataDeclaration)
-  , Expression(EEmptySExpression, EFunctionApplication, EIdentifier,
-           ELetBlock, ELiteral)
+  , Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
+           EIdentifier, ELambda, ELetBlock, ELiteral)
   , FunctionApplication(FunctionApplication)
   , FunctionDefinition(FunctionDefinition)
   , Import(ImportItem, ImportType)
   , ImportList(ImportList)
+  , Lambda(Lambda)
   , LanguagePragma(LanguagePragma)
   , LetBlock(LetBlock)
   , Literal(LChar, LInt, LList, LString)
@@ -35,7 +37,9 @@ import Lihsp.AST
   , arguments
   , bindings
   , body
+  , expr
   , function
+  , matches
   )
 
 import Lihsp.Error (Error(NormalizeError))
@@ -52,6 +56,21 @@ normalizeExpression (Parse.LiteralString string) =
   return $ ELiteral (LString string)
 normalizeExpression (Parse.SExpression items) =
   case items of
+    Parse.Symbol "case":var:cases ->
+      let normalizedCases =
+            traverse
+              (\case
+                 Parse.SExpression [pattern', result'] ->
+                   (,) <$> normalizeExpression pattern' <*>
+                   normalizeExpression result'
+                 _ -> throwError $ NormalizeError "0013")
+              cases
+      in ECaseBlock <$>
+         (CaseBlock <$> normalizeExpression var <*> normalizedCases)
+    [Parse.Symbol "fn", Parse.SExpression arguments', body'] ->
+      let normalizedArguments = traverse normalizeExpression arguments'
+      in ELambda <$>
+         (Lambda <$> normalizedArguments <*> normalizeExpression body')
     [Parse.Symbol "let", Parse.SExpression bindings', body'] ->
       let normalizedBindings =
             traverse
@@ -162,12 +181,33 @@ normalizeStatement (Parse.SExpression items) =
 normalizeStatement _ = throwError $ NormalizeError "0008"
 
 denormalizeExpression :: Expression -> Parse.Expression
+denormalizeExpression (ECaseBlock caseBlock) =
+  let denormalizedCases =
+        Parse.SExpression $
+        map
+          (\(pat, res) ->
+             Parse.SExpression
+               [denormalizeExpression pat, denormalizeExpression res])
+          (caseBlock ^. matches)
+  in Parse.SExpression
+       [ Parse.Symbol "case"
+       , denormalizeExpression (caseBlock ^. expr)
+       , denormalizedCases
+       ]
 denormalizeExpression EEmptySExpression = Parse.SExpression []
 denormalizeExpression (EFunctionApplication functionApplication) =
   Parse.SExpression $
   denormalizeExpression (functionApplication ^. function) :
   map denormalizeExpression (functionApplication ^. arguments)
 denormalizeExpression (EIdentifier x) = Parse.Symbol x
+denormalizeExpression (ELambda lambda) =
+  let denormalizedArguments =
+        Parse.SExpression $ map denormalizeExpression (lambda ^. arguments)
+  in Parse.SExpression
+       [ Parse.Symbol "fn"
+       , denormalizedArguments
+       , denormalizeExpression (lambda ^. body)
+       ]
 denormalizeExpression (ELetBlock letBlock) =
   let denormalizedBindings =
         Parse.SExpression $

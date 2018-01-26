@@ -1,4 +1,4 @@
 %%%MACRO_DEFINITION%%%
 
 main :: IO ()
-main = %%%MACRO_NAME%%% %%%ARGUMENTS%%% >>= putStrLn . unlines . map toLihsp
+main = putStrLn $ unlines $ map toLihsp $ %%%MACRO_NAME%%% %%%ARGUMENTS%%%

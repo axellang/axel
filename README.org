@@ -12,7 +12,6 @@
   But, there's nothing (that I'm aware of) for all three.
   Hence, meet Lihsp! It's a Lisp-like language (with macros and all) that transpiles to Eta, fulfilling all the requirements listed above. :tada:
 ** TODO
-   - [ ] Quasiquoting
    - [ ] Self-quoting of integer literals, etc.
    - [ ] Full support of Haskell syntax (e.g. floating point number literals, lambdas, etc.)
    - [ ] Auto-wrap files with ~begin~
@@ -33,8 +32,9 @@
      - [ ] Use qualified imports exclusively (?)
      - [ ] Standardize use of ~($)~
      - [ ] Rename ~AST~ to ~Target~ (?) and ~Parse~ to ~Reader~ (?)
-     - [ ] Merge ~AST.Literal~ into ~AST.Expression~
+     - [ ] Merge ~AST.Literal~ into ~AST.Expression~ (and rename ~Lambda~ to ~LambdaLiteral~ for consistency).
      - [ ] Rename ~Normalize~ to something more appropriate
+     - [ ] Find a better suffix than ~Block~ for ~LetBlock~ and ~CaseBlock~.
 ** Code Style
    Use ~hindent~ to format code and ~hlint~ to catch errors.
 ** Structure

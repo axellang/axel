@@ -22,20 +22,21 @@ import Lihsp.Parse (runSingle)
 
 main :: IO ()
 main = do
-  result <-
-    expansionPass $
-    parse
-      "(begin \
-      \ (defmacro y\
-      \  (((list z)) (return (list z))))\
-
-      \ (defmacro x\
-      \  ((_) (return (list (Literal-int 1) (Literal-int 2) (Literal-int (y 4))))))\
-
-      \ (= main (IO Unit)\
-      \  (() (return (+ 1 (x 1))))))"
-  result2 <- expansionPass result
-  putStrLn $ toHaskell $ stripMacroDefinitions $ normalizeProgram result2
+  let result = parse testSource
+  result1 <- pass result
+  result2 <- pass result1
+  result3 <- pass result2
+  result4 <- pass result3
+  result5 <- pass result4
+  result6 <- pass result5
+  _ <- pass result6
+  return ()
+  where
+    pass lastResult = do
+      nextResult <- expansionPass lastResult
+      putStrLn $ toHaskell $ normalizeProgram nextResult
+      putStrLn ""
+      return nextResult
 
 fromRight :: Either Error b -> b
 fromRight x =
@@ -67,3 +68,30 @@ stripMacroDefinitions = statements %~ filter (not . isMacroDefinition)
   where
     isMacroDefinition (SMacroDefinition _) = True
     isMacroDefinition _ = False
+
+-- TODO Why aren't the numbers lifted on parse into `LiteralInt`s?
+testSource :: String
+testSource =
+  "(begin\
+      \ (defmacro quasiquote\
+      \  (((list (SExpression xs)))\
+      \   (let ((quasiquoteElem (fn (x) (case x\
+      \                                  ((SExpression (list 'unquote x))\
+      \                                   (SExpression (list 'list x)))\
+      \                                  ((SExpression (list 'unquote-splicing x))\
+      \                                   x)\
+      \                                  (atom\
+      \                                   (SExpression\
+      \                                    (list 'list\
+      \                                     (SExpression (list 'quasiquote atom)))))))))\
+      \    (list (SExpression (list 'SExpression (SExpression (list 'concat (SExpression (: 'list (map quasiquoteElem xs))))))))))\
+      \  (((list atom)) (list (SExpression (list 'quote atom)))))\
+
+      \ (defmacro when\
+      \  (((list condition body)) (list `(if' ,condition ,body (error \"WHEN\")))))\
+
+      \ (= main (IO Unit)\
+      \  (() (return (``(a ,,(LiteralInt (+ 1 2))))))))"
+      -- \  (() (return (when (== 1 1) (putStrLn \"Hi!\"))))))"
+      -- \  (() (return `(begin `(list ,@((LiteralInt 1) ,@(list (LiteralInt (+ 1 1))) (LiteralInt 4))) end)))))"
+      -- \  (() (return `(1 ,@(2))))))"
