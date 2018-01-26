@@ -27,40 +27,72 @@ import Lihsp.Utils.Display (isOperator, kebabToCamelCase)
 import Lihsp.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
 
 import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
-import Text.Parsec.Char (alphaNum, char, digit, letter, noneOf, oneOf, space)
+import Text.Parsec.Char
+  ( alphaNum
+  , char
+  , digit
+  , letter
+  , noneOf
+  , oneOf
+  , space
+  , string
+  )
 import Text.Parsec.Combinator (many1, optional)
 import Text.Parsec.Prim (many)
 
-any' :: Stream s m Char => ParsecT s u m Char
+parseReadMacro ::
+     (Stream s m Char) => String -> String -> ParsecT s u m Expression
+parseReadMacro prefix wrapper = applyWrapper <$> (string prefix *> expression)
+  where
+    applyWrapper x = SExpression [Symbol wrapper, x]
+
+any' :: (Stream s m Char) => ParsecT s u m Char
 any' = noneOf ""
 
-whitespace :: Stream s m Char => ParsecT s u m String
+whitespace :: (Stream s m Char) => ParsecT s u m String
 whitespace = many space
 
-literalChar :: Stream s m Char => ParsecT s u m Expression
+literalChar :: (Stream s m Char) => ParsecT s u m Expression
 literalChar = LiteralChar <$> (char '\\' *> any')
 
-literalInt :: Stream s m Char => ParsecT s u m Expression
+literalInt :: (Stream s m Char) => ParsecT s u m Expression
 literalInt = LiteralInt . read <$> many1 digit
 
-literalString :: Stream s m Char => ParsecT s u m Expression
+literalString :: (Stream s m Char) => ParsecT s u m Expression
 literalString = LiteralString <$> (char '"' *> many (noneOf "\"") <* char '"')
 
-sExpression :: Stream s m Char => ParsecT s u m Expression
+quasiquotedExpression :: (Stream s m Char) => ParsecT s u m Expression
+quasiquotedExpression = parseReadMacro "`" "quasiquote"
+
+quotedExpression :: (Stream s m Char) => ParsecT s u m Expression
+quotedExpression = parseReadMacro "'" "quote"
+
+sExpression :: (Stream s m Char) => ParsecT s u m Expression
 sExpression = SExpression <$> (char '(' *> many item <* char ')')
   where
     item = try (whitespace *> expression) <|> expression
 
-symbol :: Stream s m Char => ParsecT s u m Expression
+spliceUnquotedExpression :: (Stream s m Char) => ParsecT s u m Expression
+spliceUnquotedExpression = parseReadMacro ",@" "unquote-splicing"
+
+symbol :: (Stream s m Char) => ParsecT s u m Expression
 symbol =
   Symbol <$>
   ((:) <$> (letter <|> validSymbol) <*> many (alphaNum <|> validSymbol))
   where
     validSymbol = oneOf "!@#$%^&*-=~_+,./<>?\\|':"
 
-expression :: Stream s m Char => ParsecT s u m Expression
+unquotedExpression :: (Stream s m Char) => ParsecT s u m Expression
+unquotedExpression = parseReadMacro "," "unquote"
+
+expression :: (Stream s m Char) => ParsecT s u m Expression
 expression =
-  literalChar <|> literalInt <|> literalString <|> sExpression <|> symbol
+  literalChar <|> literalInt <|> literalString <|> quotedExpression <|>
+  quasiquotedExpression <|>
+  try spliceUnquotedExpression <|>
+  unquotedExpression <|>
+  sExpression <|>
+  symbol
 
 normalizeCase :: Expression -> Expression
 normalizeCase (Symbol x) =
