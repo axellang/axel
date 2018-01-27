@@ -11,7 +11,7 @@ data Expression
   | LiteralString String
   | SExpression [Expression]
   | Symbol String
-  deriving (Show)
+  deriving (Eq, Show)
 
 toLihsp :: Expression -> String
 toLihsp (LiteralChar x) = ['\\', x]

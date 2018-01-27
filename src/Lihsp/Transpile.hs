@@ -9,13 +9,13 @@ import Data.Semigroup ((<>))
 import Lihsp.AST (ToHaskell(toHaskell))
 import Lihsp.Error (Error)
 import Lihsp.Normalize (normalizeStatement)
-import Lihsp.Parse (runSingle)
+import Lihsp.Parse (parseSource)
 
-transpileProgram :: (MonadError Error m) => String -> m String
-transpileProgram source =
-  toHaskell <$> (runSingle source >>= normalizeStatement)
+transpileSource :: (MonadError Error m) => String -> m String
+transpileSource source =
+  toHaskell <$> (parseSource source >>= normalizeStatement)
 
 transpileFile :: FilePath -> IO ()
 transpileFile path = do
   contents <- readFile path
-  either print (writeFile $ path <> ".hs") (transpileProgram contents)
+  either print (writeFile $ path <> ".hs") (transpileSource contents)

@@ -123,12 +123,17 @@ instance Recursive Expression where
       SExpression xs -> f =<< (SExpression <$> traverse (bottomUpTraverse f) xs)
       Symbol _ -> f x
 
-runMultiple :: (MonadError Error m) => String -> m [Expression]
-runMultiple =
+parseMultiple :: (MonadError Error m) => String -> m [Expression]
+parseMultiple =
   either (throwError . ParseError) (return . map (bottomUpFmap normalizeCase)) .
   parse (many1 (expression <* optional whitespace) <* eof) ""
 
-runSingle :: (MonadError Error m) => String -> m Expression
-runSingle =
+parseSingle :: (MonadError Error m) => String -> m Expression
+parseSingle =
   either (throwError . ParseError) (return . bottomUpFmap normalizeCase) .
   parse (expression <* optional whitespace <* eof) ""
+
+parseSource :: (MonadError Error m) => String -> m Expression
+parseSource input = do
+  statements <- parseMultiple input
+  return $ SExpression (Symbol "begin" : statements)

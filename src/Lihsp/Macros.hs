@@ -26,7 +26,7 @@ import Lihsp.Normalize (denormalizeExpression)
 import qualified Lihsp.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
-  , runMultiple
+  , parseMultiple
   )
 import Lihsp.Utils.Recursion (Recursive(bottomUpTraverse))
 import Lihsp.Utils.Resources (readDataFile)
@@ -86,7 +86,7 @@ expandMacros environment =
   where
     expandMacroApplication macroDefinition args =
       generateMacroProgram macroDefinition args >>= evalSource >>=
-      Parse.runMultiple
+      Parse.parseMultiple
 
 lookupMacroDefinition ::
      (MonadError Error m)
