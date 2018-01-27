@@ -1,4 +1,4 @@
-module Lihsp.Utils.String where
+module Axel.Utils.String where
 
 import qualified Data.Text as T (pack, replace, unpack)
 

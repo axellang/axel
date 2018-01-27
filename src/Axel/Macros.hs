@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Lihsp.Macros where
+module Axel.Macros where
 
 import Control.Lens.Operators ((%~), (^.))
 import Control.Monad (foldM)
@@ -11,7 +11,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.List (foldl')
 import Data.Semigroup ((<>))
 
-import Lihsp.AST
+import Axel.AST
   ( MacroDefinition
   , Statement(SMacroDefinition, STopLevel)
   , ToHaskell(toHaskell)
@@ -19,17 +19,17 @@ import Lihsp.AST
   , name
   , statements
   )
-import Lihsp.Error (Error(MacroError))
-import Lihsp.Eval (evalSource)
-import Lihsp.Normalize (denormalizeExpression, normalizeProgram)
-import qualified Lihsp.Parse as Parse
+import Axel.Error (Error(MacroError))
+import Axel.Eval (evalSource)
+import Axel.Normalize (denormalizeExpression, normalizeProgram)
+import qualified Axel.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   , parseMultiple
   )
-import Lihsp.Utils.Recursion (Recursive(bottomUpTraverse), exhaustM)
-import Lihsp.Utils.Resources (readDataFile)
-import Lihsp.Utils.String (replace)
+import Axel.Utils.Recursion (Recursive(bottomUpTraverse), exhaustM)
+import Axel.Utils.Resources (readDataFile)
+import Axel.Utils.String (replace)
 
 generateMacroProgram ::
      (MonadIO m) => MacroDefinition -> [Parse.Expression] -> m String

@@ -1,4 +1,4 @@
-module Lihsp.Utils.Display where
+module Axel.Utils.Display where
 
 import Data.Char (isSymbol, toLower, toUpper)
 import Data.List (intercalate)

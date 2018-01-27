@@ -1,4 +1,4 @@
-module Lihsp.Error where
+module Axel.Error where
 
 import Text.Parsec (ParseError)
 

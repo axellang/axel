@@ -1,5 +1,5 @@
 #+OPTIONS: num:nil toc:nil
-* Lihsp [WIP]
+* Axel [WIP]
   Haskell + Lisp + JVM/Node/... = Profit!
   Three great things for a language to have are:
   1. Haskell semantics, like Haskell
@@ -10,7 +10,7 @@
   - 1 and 3: Eta
   - 2 and 3: Clojure (JVM)/ClojureScript (Node)/...
   But, there's nothing (that I'm aware of) for all three.
-  Hence, meet Lihsp! It's a Lisp-like language (with macros and all) that transpiles to Eta, fulfilling all the requirements listed above. :tada:
+  Hence, meet Axel! It's a Lisp-like language (with macros and all) that transpiles to Eta, fulfilling all the requirements listed above. :tada:
 ** TODO
    - ~gensym~?
    - Full support of Haskell syntax
@@ -48,16 +48,17 @@
      - Java (Eta)
      - JavaScript (PureScript)
    - Cleanup
+     - Reorder imports alphabetically (now that ~Lihsp~ has been renamed to ~Axel~ in module names)
      - Use recursion schemes ([[http://blog.sumtypeofway.com/recursion-schemes-part-41-2-better-living-through-base-functors/][automatic Template Haskell derivation]])
      - Use qualified imports exclusively (?)
      - Use ~do~ or ~ApplicativeDo~ blocks where necessary to improve readability
      - Standardize use of ~($)~
      - Rename ~AST~ to ~Target~ (?) and ~Parse~ to ~Reader~ (?)
-     - Merge ~AST.Literal~ into ~AST.Expression~ (and rename ~Lambda~ to ~LambdaLiteral~ for consistency).
+     - Merge ~AST.Literal~ into ~AST.Expression~ (and rename ~Lambda~ to ~LambdaLiteral~ for consistency)
      - Rename ~Normalize~ to something more appropriate
      - Find a better suffix than ~Block~ for ~LetBlock~ and ~CaseBlock~ (maybe ~Expression~?)
      - Use ~pure~ instead of ~return~ (?)
 ** Code Style
    Use ~hindent~ to format code and ~hlint~ to catch errors.
 ** Running
-   Run ~scripts/build.sh~ to build the project, and ~stack exec lihsp-exe~ to run ~app/Main.hs~.
+   Run ~scripts/build.sh~ to build the project, and ~stack exec axel-exe~ to run ~app/Main.hs~.

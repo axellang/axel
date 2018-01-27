@@ -2,13 +2,13 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f9eba8deb743fa48c598384a413cb693a9b49ae76a37612e5980705e960f8989
+-- hash: 3eaf2ccb04c7febcf2f7d4f9bb916e3ff047da469b7d326a4e3f65fd086e588e
 
-name:           lihsp
+name:           axel
 version:        0.1.0.0
 category:       Lisp, Transpiler
-homepage:       https://github.com/jgrosso/lihsp#readme
-bug-reports:    https://github.com/jgrosso/lihsp/issues
+homepage:       https://github.com/jgrosso/axel#readme
+bug-reports:    https://github.com/jgrosso/axel/issues
 author:         Joshua Grosso
 maintainer:     jgrosso256@gmail.com
 copyright:      2017 Joshua Grosso
@@ -28,7 +28,7 @@ data-files:
 
 source-repository head
   type: git
-  location: https://github.com/jgrosso/lihsp
+  location: https://github.com/jgrosso/axel
 
 library
   hs-source-dirs:
@@ -44,38 +44,38 @@ library
     , split
     , text
   exposed-modules:
-      Lihsp.AST
-      Lihsp.Entry
-      Lihsp.Error
-      Lihsp.Eval
-      Lihsp.Macros
-      Lihsp.Normalize
-      Lihsp.Parse
-      Lihsp.Parse.AST
-      Lihsp.Quote
-      Lihsp.Utils.Display
-      Lihsp.Utils.Recursion
-      Lihsp.Utils.Resources
-      Lihsp.Utils.String
+      Axel.AST
+      Axel.Entry
+      Axel.Error
+      Axel.Eval
+      Axel.Macros
+      Axel.Normalize
+      Axel.Parse
+      Axel.Parse.AST
+      Axel.Quote
+      Axel.Utils.Display
+      Axel.Utils.Recursion
+      Axel.Utils.Resources
+      Axel.Utils.String
   other-modules:
-      Paths_lihsp
+      Paths_axel
   default-language: Haskell2010
 
-executable lihsp-exe
+executable axel-exe
   main-is: Main.hs
   hs-source-dirs:
       app
   ghc-options: -Wall -Werror -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
-    , lihsp
+      axel
+    , base >=4.7 && <5
   other-modules:
-      Paths_lihsp
+      Paths_axel
   default-language: Haskell2010
 
-test-suite lihsp-test
+test-suite axel-test
   type: exitcode-stdio-1.0
-  main-is: Lihsp/Spec.hs
+  main-is: Axel/Spec.hs
   hs-source-dirs:
       test
   ghc-options: -Wall -Werror -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns -threaded -rtsopts -with-rtsopts=-N
@@ -83,5 +83,5 @@ test-suite lihsp-test
       base >=4.7 && <5
     , hspec
   other-modules:
-      Paths_lihsp
+      Paths_axel
   default-language: Haskell2010

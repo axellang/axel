@@ -1,4 +1,4 @@
-module Lihsp.Spec
+module Axel.Spec
   ( main
   ) where
 

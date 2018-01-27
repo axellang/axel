@@ -1,11 +1,11 @@
-module Lihsp.Quote where
+module Axel.Quote where
 
-import qualified Lihsp.AST as AST
+import qualified Axel.AST as AST
   ( Expression(EFunctionApplication, EIdentifier, ELiteral)
   , FunctionApplication(FunctionApplication)
   , Literal(LChar, LInt, LString)
   )
-import qualified Lihsp.Parse as Parse
+import qualified Axel.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   )

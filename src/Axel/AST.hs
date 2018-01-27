@@ -7,14 +7,14 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 
-module Lihsp.AST where
+module Axel.AST where
 
 import Control.Lens.Operators ((^.))
 import Control.Lens.TH (makeFieldsNoPrefix)
 
 import Data.Semigroup ((<>))
 
-import Lihsp.Utils.Display
+import Axel.Utils.Display
   ( Bracket(DoubleQuotes, Parentheses, SingleQuotes, SquareBrackets)
   , Delimiter(Commas, Newlines, Pipes, Spaces)
   , delimit

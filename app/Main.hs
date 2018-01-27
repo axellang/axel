@@ -1,6 +1,6 @@
 module Main where
 
-import Lihsp.Entry (evalFile)
+import Axel.Entry (evalFile)
 
 import System.Environment (getArgs)
 

@@ -1,19 +1,19 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Lihsp.Entry where
+module Axel.Entry where
 
 import Control.Lens.Operators ((.~))
 import Control.Monad.Except (MonadError, runExceptT)
 import Control.Monad.IO.Class (MonadIO)
 
-import Lihsp.AST (ToHaskell(toHaskell))
-import Lihsp.Error (Error)
-import Lihsp.Eval (evalSource)
-import Lihsp.Macros (exhaustivelyExpandMacros, stripMacroDefinitions)
-import Lihsp.Normalize (normalizeStatement)
-import Lihsp.Parse (Expression(Symbol), parseSource)
-import Lihsp.Utils.Recursion (Recursive(bottomUpFmap))
+import Axel.AST (ToHaskell(toHaskell))
+import Axel.Error (Error)
+import Axel.Eval (evalSource)
+import Axel.Macros (exhaustivelyExpandMacros, stripMacroDefinitions)
+import Axel.Normalize (normalizeStatement)
+import Axel.Parse (Expression(Symbol), parseSource)
+import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
 import System.FilePath.Lens (extension)
 

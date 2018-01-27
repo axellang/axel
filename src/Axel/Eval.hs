@@ -1,11 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Lihsp.Eval where
+module Axel.Eval where
 
 import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 
-import Lihsp.Error (Error(MacroError))
+import Axel.Error (Error(MacroError))
 
 import System.Directory (getTemporaryDirectory, removeFile)
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))

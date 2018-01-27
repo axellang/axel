@@ -3,13 +3,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
 
-module Lihsp.Normalize where
+module Axel.Normalize where
 
 import Control.Lens.Operators ((^.))
 import Control.Monad ((>=>))
 import Control.Monad.Except (MonadError, throwError)
 
-import Lihsp.AST
+import Axel.AST
   ( ArgumentList(ArgumentList)
   , CaseBlock(CaseBlock)
   , DataDeclaration(DataDeclaration)
@@ -42,12 +42,12 @@ import Lihsp.AST
   , matches
   )
 
-import Lihsp.Error (Error(NormalizeError))
-import qualified Lihsp.Parse as Parse
+import Axel.Error (Error(NormalizeError))
+import qualified Axel.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   )
-import Lihsp.Quote (quoteParseExpression)
+import Axel.Quote (quoteParseExpression)
 
 normalizeExpression :: (MonadError Error m) => Parse.Expression -> m Expression
 normalizeExpression (Parse.LiteralChar char) = return $ ELiteral (LChar char)

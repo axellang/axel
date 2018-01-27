@@ -1,30 +1,30 @@
--- NOTE Because `Lihsp.Parse.AST` will be used as the header of auto-generated macro programs,
+-- NOTE Because `Axel.Parse.AST` will be used as the header of auto-generated macro programs,
 --      it can't have any project-specific dependencies. As such, the instance definition for
 --      `BottomUp Expression` can't be defined in the same file as `Expression` itself
---      (due to the dependency on `BottomUp`). Fortunately, `Lihsp.Parse.AST` will (should)
+--      (due to the dependency on `BottomUp`). Fortunately, `Axel.Parse.AST` will (should)
 --      never be imported by itself but only implicitly as part of this module.
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Lihsp.Parse
-  ( module Lihsp.Parse
-  , module Lihsp.Parse.AST
+module Axel.Parse
+  ( module Axel.Parse
+  , module Axel.Parse.AST
   ) where
 
 import Control.Monad.Except (MonadError, throwError)
 
-import Lihsp.Error (Error(ParseError))
+import Axel.Error (Error(ParseError))
 
 -- Re-exporting these so that consumers of parsed ASTs do not need
 -- to know about the internal file.
-import Lihsp.Parse.AST
+import Axel.Parse.AST
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   )
-import Lihsp.Utils.Display (isOperator, kebabToCamelCase)
-import Lihsp.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
+import Axel.Utils.Display (isOperator, kebabToCamelCase)
+import Axel.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
 
 import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
 import Text.Parsec.Char

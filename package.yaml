@@ -1,11 +1,11 @@
-name: lihsp
+name: axel
 version: '0.1.0.0'
 category: Lisp, Transpiler
 author: Joshua Grosso
 maintainer: jgrosso256@gmail.com
 copyright: 2017 Joshua Grosso
 license: BSD3
-github: jgrosso/lihsp
+github: jgrosso/axel
 extra-source-files:
 - README.org
 - scripts/**/*
@@ -31,7 +31,7 @@ library:
   - split
   - text
 executables:
-  lihsp-exe:
+  axel-exe:
     main: Main.hs
     source-dirs: app
     ghc-options:
@@ -39,10 +39,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - lihsp
+    - axel
 tests:
-  lihsp-test:
-    main: Lihsp/Spec.hs
+  axel-test:
+    main: Axel/Spec.hs
     source-dirs: test
     ghc-options:
     - -threaded

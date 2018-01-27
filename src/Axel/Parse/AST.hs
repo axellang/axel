@@ -1,6 +1,6 @@
 -- NOTE Because this file will be used as the header of auto-generated macro programs,
 --      it can't have any project-specific dependencies (such as `Fix`).
-module Lihsp.Parse.AST where
+module Axel.Parse.AST where
 
 -- TODO `Expression` should probably be `Traversable`, use recursion schemes, etc.
 --      I should provide `toFix` and `fromFix` functions for macros to take advantage of.
@@ -13,9 +13,9 @@ data Expression
   | Symbol String
   deriving (Eq, Show)
 
-toLihsp :: Expression -> String
-toLihsp (LiteralChar x) = ['\\', x]
-toLihsp (LiteralInt x) = show x
-toLihsp (LiteralString xs) = "\"" ++ xs ++ "\""
-toLihsp (SExpression xs) = "(" ++ unwords (map toLihsp xs) ++ ")"
-toLihsp (Symbol x) = x
+toAxel :: Expression -> String
+toAxel (LiteralChar x) = ['\\', x]
+toAxel (LiteralInt x) = show x
+toAxel (LiteralString xs) = "\"" ++ xs ++ "\""
+toAxel (SExpression xs) = "(" ++ unwords (map toAxel xs) ++ ")"
+toAxel (Symbol x) = x
