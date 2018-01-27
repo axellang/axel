@@ -39,9 +39,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - lens
     - lihsp
-    - mtl
 tests:
   lihsp-test:
     main: Lihsp/Spec.hs

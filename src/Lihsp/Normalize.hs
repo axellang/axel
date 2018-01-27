@@ -180,6 +180,12 @@ normalizeStatement (Parse.SExpression items) =
         input
 normalizeStatement _ = throwError $ NormalizeError "0008"
 
+normalizeProgram :: (MonadError Error m) => Parse.Expression -> m Statement
+normalizeProgram =
+  normalizeStatement >=> \case
+    program@(STopLevel _) -> return program
+    _ -> throwError $ NormalizeError "0014"
+
 denormalizeExpression :: Expression -> Parse.Expression
 denormalizeExpression (ECaseBlock caseBlock) =
   let denormalizedCases =

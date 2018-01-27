@@ -3,7 +3,7 @@
 
 module Lihsp.Macros where
 
-import Control.Lens.Operators ((^.))
+import Control.Lens.Operators ((%~), (^.))
 import Control.Monad (foldM)
 import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -13,22 +13,21 @@ import Data.Semigroup ((<>))
 
 import Lihsp.AST
   ( MacroDefinition
-  , Statement(SMacroDefinition)
+  , Statement(SMacroDefinition, STopLevel)
   , ToHaskell(toHaskell)
-  , TopLevel
   , definitions
   , name
   , statements
   )
 import Lihsp.Error (Error(MacroError))
 import Lihsp.Eval (evalSource)
-import Lihsp.Normalize (denormalizeExpression)
+import Lihsp.Normalize (denormalizeExpression, normalizeProgram)
 import qualified Lihsp.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   , parseMultiple
   )
-import Lihsp.Utils.Recursion (Recursive(bottomUpTraverse))
+import Lihsp.Utils.Recursion (Recursive(bottomUpTraverse), exhaustM)
 import Lihsp.Utils.Resources (readDataFile)
 import Lihsp.Utils.String (replace)
 
@@ -53,6 +52,14 @@ generateMacroProgram macroDefinition applicationArguments =
       in insertApplicationArguments .
          insertDefinitionName . insertDefinitionBody <$>
          readDataFile "macros/Footer.hs"
+
+exhaustivelyExpandMacros ::
+     (MonadError Error m, MonadIO m) => Parse.Expression -> m Parse.Expression
+exhaustivelyExpandMacros = exhaustM expansionPass
+  where
+    expansionPass x = do
+      macroDefinitions <- extractMacroDefinitions <$> normalizeProgram x
+      expandMacros macroDefinitions x
 
 expandMacros ::
      (MonadError Error m, MonadIO m)
@@ -108,8 +115,8 @@ lookupMacroDefinition environment identifierExpression =
         _ -> throwError (MacroError "0012")
 
 -- TODO This probably needs heavy optimization. If so, I will need to decrease the running time.
-extractMacroDefinitions :: TopLevel -> [MacroDefinition]
-extractMacroDefinitions topLevel =
+extractMacroDefinitions :: Statement -> [MacroDefinition]
+extractMacroDefinitions (STopLevel topLevel) =
   foldl'
     (\env statement ->
        case statement of
@@ -121,6 +128,7 @@ extractMacroDefinitions topLevel =
          _ -> env)
     []
     (topLevel ^. statements)
+extractMacroDefinitions _ = []
 
 isDefinitionDependentOnMacro :: MacroDefinition -> MacroDefinition -> Bool
 isDefinitionDependentOnMacro needle haystack =
@@ -136,3 +144,13 @@ isExpressionDependentOnMacro _ (Parse.LiteralString _) = False
 isExpressionDependentOnMacro needle (Parse.SExpression xs) =
   any (isExpressionDependentOnMacro needle) xs
 isExpressionDependentOnMacro needle (Parse.Symbol x) = x == needle ^. name
+
+stripMacroDefinitions :: Statement -> Statement
+stripMacroDefinitions x =
+  case x of
+    STopLevel topLevel ->
+      STopLevel $ (statements %~ filter (not . isMacroDefinition)) topLevel
+    _ -> x
+  where
+    isMacroDefinition (SMacroDefinition _) = True
+    isMacroDefinition _ = False

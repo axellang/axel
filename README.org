@@ -59,7 +59,5 @@
      - Use ~pure~ instead of ~return~ (?)
 ** Code Style
    Use ~hindent~ to format code and ~hlint~ to catch errors.
-** Structure
-   The closest thing the app has to an entry point right now is ~transpileFile~ inside ~src/Lihsp/Transpile.hs~.
 ** Running
    Run ~scripts/build.sh~ to build the project, and ~stack exec lihsp-exe~ to run ~app/Main.hs~.
