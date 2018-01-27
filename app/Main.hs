@@ -73,24 +73,25 @@ stripMacroDefinitions = statements %~ filter (not . isMacroDefinition)
 
 testSource :: String
 testSource =
-  "(defmacro quasiquote\
-  \ (((list (SExpression xs)))\
-  \  (let ((quasiquoteElem (fn (x) (case x\
-  \                                 ((SExpression (list 'unquote x))\
-  \                                  (SExpression (list 'list x)))\
-  \                                 ((SExpression (list 'unquote-splicing x))\
-  \                                  x)\
-  \                                 (atom\
-  \                                  (SExpression\
-  \                                   (list 'list\
-  \                                    (SExpression (list 'quasiquote atom)))))))))\
-  \   (list (SExpression (list 'SExpression (SExpression (list 'concat (SExpression (: 'list (map quasiquoteElem xs))))))))))\
-  \ (((list atom)) (list (SExpression (list 'quote atom)))))\
-
-  \(defmacro when\
-  \ (((list condition body)) (list `(if' ,condition ,body (error \"WHEN\")))))\
-
-  \(= main (IO Unit)\
+  "(defmacro quasiquote; This is a quasiquote macro\n\
+  \ (((list (SExpression xs)))\n\
+  \  (let ((quasiquoteElem (fn (x) (case x\n\
+  \                                 ((SExpression (list 'unquote x))\n\
+  \                                  (SExpression (list 'list x)))\n\
+  \                                 ((SExpression (list 'unquote-splicing x))\n\
+  \                                  x)\n\
+  \                                 (atom\n\
+  \                                  (SExpression\n\
+  \                                   (list 'list\n\
+  \                                    (SExpression (list 'quasiquote atom)))))))))\n\
+  \;blargh\n\
+  \   (list (SExpression (list 'SExpression (SExpression (list 'concat (SExpression (: 'list (map quasiquoteElem xs))))))))))\n\
+  \ (((list atom)) (list (SExpression (list 'quote atom)))))\n\
+  \\n\
+  \(defmacro when\n\
+  \ (((list condition body)) (list `(if' ,condition ,body (error \"WHEN\")))))\n\
+  \\n\
+  \(= main (IO Unit)\n\
   \ (() (return (when (== 1 1) (putStrLn \"Hi!\")))))"
   -- \ (() (return (``(a ,,(LiteralInt (+ 1 2)))))))"
   -- \ (() (return `(begin `(list ,@((LiteralInt 1) ,@(list (LiteralInt (+ 1 1))) (LiteralInt 4))) end))))"

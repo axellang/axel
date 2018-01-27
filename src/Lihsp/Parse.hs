@@ -40,6 +40,28 @@ import Text.Parsec.Char
 import Text.Parsec.Combinator (many1, optional)
 import Text.Parsec.Prim (many)
 
+-- TODO `Expression` should probably instead be an instance of `Traversable`, use recursion schemes, etc.
+--      If so, should I provide `toFix` and `fromFix` functions for macros to take advantage of?
+--      (Maybe all macros have the argument automatically `fromFix`-ed to make consumption simpler?)
+instance Recursive Expression where
+  bottomUpFmap :: (Expression -> Expression) -> Expression -> Expression
+  bottomUpFmap f x =
+    case x of
+      LiteralChar _ -> f x
+      LiteralInt _ -> f x
+      LiteralString _ -> f x
+      SExpression xs -> f $ SExpression (map (bottomUpFmap f) xs)
+      Symbol _ -> f x
+  bottomUpTraverse ::
+       (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
+  bottomUpTraverse f x =
+    case x of
+      LiteralChar _ -> f x
+      LiteralInt _ -> f x
+      LiteralString _ -> f x
+      SExpression xs -> f =<< (SExpression <$> traverse (bottomUpTraverse f) xs)
+      Symbol _ -> f x
+
 parseReadMacro ::
      (Stream s m Char) => String -> String -> ParsecT s u m Expression
 parseReadMacro prefix wrapper = applyWrapper <$> (string prefix *> expression)
@@ -101,27 +123,10 @@ normalizeCase (Symbol x) =
     else Symbol (kebabToCamelCase x)
 normalizeCase x = x
 
--- TODO `Expression` should probably instead be an instance of `Traversable`, use recursion schemes, etc.
---      If so, should I provide `toFix` and `fromFix` functions for macros to take advantage of?
---      (Maybe all macros have the argument automatically `fromFix`-ed to make consumption simpler?)
-instance Recursive Expression where
-  bottomUpFmap :: (Expression -> Expression) -> Expression -> Expression
-  bottomUpFmap f x =
-    case x of
-      LiteralChar _ -> f x
-      LiteralInt _ -> f x
-      LiteralString _ -> f x
-      SExpression xs -> f $ SExpression (map (bottomUpFmap f) xs)
-      Symbol _ -> f x
-  bottomUpTraverse ::
-       (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
-  bottomUpTraverse f x =
-    case x of
-      LiteralChar _ -> f x
-      LiteralInt _ -> f x
-      LiteralString _ -> f x
-      SExpression xs -> f =<< (SExpression <$> traverse (bottomUpTraverse f) xs)
-      Symbol _ -> f x
+stripComments :: String -> String
+stripComments = unlines . map cleanLine . lines
+  where
+    cleanLine = takeWhile (/= ';')
 
 parseMultiple :: (MonadError Error m) => String -> m [Expression]
 parseMultiple =
@@ -135,5 +140,5 @@ parseSingle =
 
 parseSource :: (MonadError Error m) => String -> m Expression
 parseSource input = do
-  statements <- parseMultiple input
+  statements <- parseMultiple $ stripComments input
   return $ SExpression (Symbol "begin" : statements)

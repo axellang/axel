@@ -12,6 +12,7 @@
   But, there's nothing (that I'm aware of) for all three.
   Hence, meet Lihsp! It's a Lisp-like language (with macros and all) that transpiles to Eta, fulfilling all the requirements listed above. :tada:
 ** TODO
+   - ~gensym~?
    - Full support of Haskell syntax
      - ~default~ declaration
      - ~deriving~ clauses
@@ -33,22 +34,23 @@
      - Typeclass definitions
      - List comprehension (implement as a macro)
      - Ranges (implement as a macro)
-   - ~gensym~?
-   - Documentation
+   - Website/documentation
    - Compile-time module system
    - Should case normalization come immediately before normalization rather than immediately after parsing?
-   - Macro-ify common GHC extensions (e.g. ~LambdaCase~)
    - More robust error handling
-   - Test suite
-   - Explore Template Haskell integration
    - CLI
      - Target->Source error message reporting
+   - Macro-ify common GHC extensions (e.g. ~LambdaCase~)
+   - CI
+   - Test suite
+   - Explore Template Haskell integration
    - Backends
      - Java (Eta)
      - JavaScript (PureScript)
    - Cleanup
      - Use recursion schemes ([[http://blog.sumtypeofway.com/recursion-schemes-part-41-2-better-living-through-base-functors/][automatic Template Haskell derivation]])
      - Use qualified imports exclusively (?)
+     - Use ~do~ or ~ApplicativeDo~ blocks where necessary to improve readability
      - Standardize use of ~($)~
      - Rename ~AST~ to ~Target~ (?) and ~Parse~ to ~Reader~ (?)
      - Merge ~AST.Literal~ into ~AST.Expression~ (and rename ~Lambda~ to ~LambdaLiteral~ for consistency).
