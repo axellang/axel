@@ -64,7 +64,7 @@ newtype ArgumentList =
 
 instance ToHaskell ArgumentList where
   toHaskell :: ArgumentList -> String
-  toHaskell (ArgumentList arguments) = concatMap toHaskell arguments
+  toHaskell (ArgumentList arguments) = delimit Spaces $ map toHaskell arguments
 
 data FunctionDefinition = FunctionDefinition
   { _name :: Identifier

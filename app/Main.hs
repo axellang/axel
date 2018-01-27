@@ -1,10 +1,10 @@
 module Main where
 
-import Lihsp.Transpile (transpileFile)
+import Lihsp.Entry (evalFile)
 
 import System.Environment (getArgs)
 
 main :: IO ()
 main = do
   [sourceFilePath] <- getArgs
-  transpileFile sourceFilePath
+  evalFile sourceFilePath

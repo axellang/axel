@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d1d716f076753e7b86f1013cd6f9397219ff5cc4d2ec3aac3dfdd69a827cd242
+-- hash: f9eba8deb743fa48c598384a413cb693a9b49ae76a37612e5980705e960f8989
 
 name:           lihsp
 version:        0.1.0.0
@@ -45,6 +45,7 @@ library
     , text
   exposed-modules:
       Lihsp.AST
+      Lihsp.Entry
       Lihsp.Error
       Lihsp.Eval
       Lihsp.Macros
@@ -52,7 +53,6 @@ library
       Lihsp.Parse
       Lihsp.Parse.AST
       Lihsp.Quote
-      Lihsp.Transpile
       Lihsp.Utils.Display
       Lihsp.Utils.Recursion
       Lihsp.Utils.Resources
@@ -68,9 +68,7 @@ executable lihsp-exe
   ghc-options: -Wall -Werror -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
-    , lens
     , lihsp
-    , mtl
   other-modules:
       Paths_lihsp
   default-language: Haskell2010
