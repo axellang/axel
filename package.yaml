@@ -24,6 +24,7 @@ library:
   exposed-modules:
   dependencies:
   - directory
+  - filepath
   - lens
   - mtl
   - parsec
