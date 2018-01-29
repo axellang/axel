@@ -1,4 +1,5 @@
 %%%MACRO_DEFINITION%%%
 
 main :: IO ()
-main = putStrLn $ unlines $ map toAxel $ %%%MACRO_NAME%%% %%%ARGUMENTS%%%
+main = do result <- %%%MACRO_NAME%%% %%%ARGUMENTS%%%
+          putStrLn $ unlines $ map toAxel result
