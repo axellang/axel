@@ -21,7 +21,7 @@ delimit delimiter = intercalate (lookupDelimiter delimiter)
 
 -- https://stackoverflow.com/questions/10548170/what-characters-are-permitted-for-haskell-operators
 isOperator :: String -> Bool
-isOperator = all $ \x -> isSymbol x || x `elem` "!#$%&*+./<=>?@\\^|-~:"
+isOperator = all $ \x -> isSymbol x || x `elem` "!#$%&*+.,/<=>?@\\^|-~:"
 
 kebabToCamelCase :: String -> String
 kebabToCamelCase input = preserveHead $ concatMap upperFirst $ splitOn "-" input

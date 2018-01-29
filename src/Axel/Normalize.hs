@@ -140,7 +140,7 @@ normalizeStatement (Parse.SExpression items) =
     [Parse.Symbol "importq", Parse.Symbol moduleName, Parse.Symbol alias, Parse.SExpression imports] ->
       SQualifiedImport <$>
       (QualifiedImport moduleName alias <$> normalizeImportList imports)
-    [Parse.Symbol "import-unrestricted", Parse.Symbol moduleName] ->
+    [Parse.Symbol "importUnrestricted", Parse.Symbol moduleName] ->
       return $ SUnrestrictedImport moduleName
     [Parse.Symbol "instance", instanceName', Parse.SExpression definitions'] ->
       let definitions =

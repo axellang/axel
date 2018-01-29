@@ -200,7 +200,7 @@ instance ToHaskell Statement where
   toHaskell (STopLevel xs) = toHaskell xs
   toHaskell (STypeclassInstance x) = toHaskell x
   toHaskell (STypeSynonym x) = toHaskell x
-  toHaskell (SUnrestrictedImport x) = show x
+  toHaskell (SUnrestrictedImport x) = "import " <> x
 
 type Program = [Statement]
 
@@ -233,6 +233,7 @@ makeFieldsNoPrefix ''TypeSynonym
 instance ToHaskell CaseBlock where
   toHaskell :: CaseBlock -> String
   toHaskell caseBlock =
+    surround Parentheses $
     "case " <> toHaskell (caseBlock ^. expr) <> " of " <>
     renderBlock (map matchToHaskell (caseBlock ^. matches))
     where
@@ -269,11 +270,17 @@ instance ToHaskell DataDeclaration where
   toHaskell :: DataDeclaration -> String
   toHaskell dataDeclaration =
     "data " <> toHaskell (dataDeclaration ^. typeDefinition) <> " = " <>
-    delimit Pipes (map toHaskell $ dataDeclaration ^. constructors)
+    delimit
+      Pipes
+      (map (removeSurroundingParentheses . toHaskell) $
+       dataDeclaration ^. constructors)
+    where
+      removeSurroundingParentheses = tail . init
 
 instance ToHaskell Lambda where
   toHaskell :: Lambda -> String
   toHaskell lambda =
+    surround Parentheses $
     "\\" <> delimit Spaces (map toHaskell (lambda ^. arguments)) <> " -> " <>
     toHaskell (lambda ^. body)
 
@@ -285,6 +292,7 @@ instance ToHaskell LanguagePragma where
 instance ToHaskell LetBlock where
   toHaskell :: LetBlock -> String
   toHaskell letBlock =
+    surround Parentheses $
     "let " <> renderBlock (map bindingToHaskell (letBlock ^. bindings)) <>
     " in " <>
     toHaskell (letBlock ^. body)

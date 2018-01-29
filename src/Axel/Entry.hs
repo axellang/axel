@@ -17,6 +17,12 @@ import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
 import System.FilePath.Lens (extension)
 
+convertList :: Expression -> Expression
+convertList =
+  bottomUpFmap $ \case
+    Symbol "List" -> Symbol "[]"
+    x -> x
+
 convertUnit :: Expression -> Expression
 convertUnit =
   bottomUpFmap $ \case
@@ -27,8 +33,8 @@ convertUnit =
 transpileSource :: (MonadError Error m, MonadIO m) => String -> m String
 transpileSource source =
   toHaskell . stripMacroDefinitions <$>
-  (parseSource source >>= exhaustivelyExpandMacros >>=
-   normalizeStatement . convertUnit)
+  (parseSource source >>= exhaustivelyExpandMacros . convertList . convertUnit >>=
+   normalizeStatement)
 
 transpileFile :: FilePath -> FilePath -> IO ()
 transpileFile path newPath =

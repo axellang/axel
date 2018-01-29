@@ -131,12 +131,14 @@ stripComments = unlines . map cleanLine . lines
 parseMultiple :: (MonadError Error m) => String -> m [Expression]
 parseMultiple =
   either (throwError . ParseError) (return . map (bottomUpFmap normalizeCase)) .
-  parse (many1 (expression <* optional whitespace) <* eof) ""
+  parse
+    (many1 (optional whitespace *> expression <* optional whitespace) <* eof)
+    ""
 
 parseSingle :: (MonadError Error m) => String -> m Expression
 parseSingle =
   either (throwError . ParseError) (return . bottomUpFmap normalizeCase) .
-  parse (expression <* optional whitespace <* eof) ""
+  parse (optional whitespace *> expression <* optional whitespace <* eof) ""
 
 parseSource :: (MonadError Error m) => String -> m Expression
 parseSource input = do
