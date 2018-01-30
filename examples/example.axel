@@ -1,0 +1,25 @@
+(defmacro when
+ (((list condition body)) (list `(if ,condition ,body (error "WHEN")))))
+
+(defmacro if
+ (((list cond true false))
+  (list `(case ,cond
+           (True ,true)
+           (False ,false)))))
+
+(defmacro quasiquote
+ (((list (SExpression xs)))
+  (let ((quasiquoteElem (fn (x) (case x
+                                 ((SExpression (list 'unquote x))
+                                  (SExpression (list 'list x)))
+                                 ((SExpression (list 'unquote-splicing x))
+                                  x)
+                                 (atom
+                                  (SExpression
+                                   (list 'list
+                                    (SExpression (list 'quasiquote atom)))))))))
+   (list (SExpression (list 'SExpression (SExpression (list 'concat (SExpression (: 'list (map quasiquoteElem xs))))))))))
+ (((list atom)) (list (SExpression (list 'quote atom)))))
+
+(= main (IO Unit)
+ (() (when (== 1 1) (putStrLn "Hi!"))))
