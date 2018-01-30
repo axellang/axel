@@ -8,4 +8,4 @@
 ** Running
    Run ~scripts/build.sh~ to build the project, and ~stack exec axel-exe~ to run ~app/Main.hs~. The executable takes one argument, the path of the Haskell program to transpile and execute.
 ** Examples
-   See the ~examples` folder for example Axel programs.
+   See the ~examples~ folder for example Axel programs.
