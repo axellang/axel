@@ -1,63 +1,7 @@
 #+OPTIONS: num:nil toc:nil
 * Axel [WIP]
-  Haskell + Lisp + JVM/Node/... = Profit!
-  Three great things for a language to have are:
-  1. Haskell semantics, like Haskell
-  2. Lisp syntax, like Clojure
-  3. A large ecosystem such as the JVM's or Node's
-  Each two of these features already exists in a different language:
-  - 1 and 2: Hackett
-  - 1 and 3: Eta
-  - 2 and 3: Clojure (JVM)/ClojureScript (Node)/...
-  But, there's nothing (that I'm aware of) for all three.
-  Hence, meet Axel! It's a Lisp-like language (with macros and all) that transpiles to Eta, fulfilling all the requirements listed above. :tada:
-** TODO
-   - ~gensym~?
-   - Full support of Haskell syntax
-     - ~default~ declaration
-     - ~deriving~ clauses
-     - ~foreign~ declaration
-     - Guards
-     - ~if~ expressions
-     - Newtype declarations
-     - Number literals
-     - Pragmas
-       - ~INLINE~
-       - ~NOINLINE~
-       - ~SPECIALIZE~
-     - Records
-       - Access
-       - Construction
-       - Definition
-       - Update
-     - Tuples
-     - Typeclass definitions
-     - List comprehension (implement as a macro)
-     - Ranges (implement as a macro)
-   - Website/documentation
-   - Compile-time module system
-   - Should case normalization come immediately before normalization rather than immediately after parsing?
-   - More robust error handling
-   - CLI
-     - Target->Source error message reporting
-   - Macro-ify common GHC extensions (e.g. ~LambdaCase~)
-   - CI
-   - Test suite
-   - Explore Template Haskell integration
-   - Backends
-     - Java (Eta)
-     - JavaScript (PureScript)
-   - Cleanup
-     - Reorder imports alphabetically (now that ~Lihsp~ has been renamed to ~Axel~ in module names)
-     - Use recursion schemes ([[http://blog.sumtypeofway.com/recursion-schemes-part-41-2-better-living-through-base-functors/][automatic Template Haskell derivation]])
-     - Use qualified imports exclusively (?)
-     - Use ~do~ or ~ApplicativeDo~ blocks where necessary to improve readability
-     - Standardize use of ~($)~
-     - Rename ~AST~ to ~Target~ (?) and ~Parse~ to ~Reader~ (?)
-     - Merge ~AST.Literal~ into ~AST.Expression~ (and rename ~Lambda~ to ~LambdaLiteral~ for consistency)
-     - Rename ~Normalize~ to something more appropriate
-     - Find a better suffix than ~Block~ for ~LetBlock~ and ~CaseBlock~ (maybe ~Expression~?)
-     - Use ~pure~ instead of ~return~ (?)
+  See [[https://axellang.github.io]].
+  Haskell + Lisp = Profit!
 ** Code Style
    Use ~hindent~ to format code and ~hlint~ to catch errors.
 ** Running
