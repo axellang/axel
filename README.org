@@ -1,7 +1,8 @@
 #+OPTIONS: num:nil toc:nil
 * Axel [WIP]
-  See [[https://axellang.github.io]].
   Haskell + Lisp = Profit!
+  
+  See [[https://axellang.github.io]].
 ** Code Style
    Use ~hindent~ to format code and ~hlint~ to catch errors.
 ** Running
