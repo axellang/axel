@@ -1,6 +1,6 @@
 #+OPTIONS: num:nil toc:nil
-* Axel [WIP]
-  Haskell + Lisp = Profit!
+* Axel
+  Haskell + Lisp + JVM/Node/... = Profit!
   
   See [[https://axellang.github.io]].
 ** Code Style
