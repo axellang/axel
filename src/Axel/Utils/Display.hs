@@ -2,7 +2,6 @@ module Axel.Utils.Display where
 
 import Data.Char (isSymbol, toLower, toUpper)
 import Data.List (intercalate)
-import Data.List.Split (splitOn)
 import Data.Semigroup ((<>))
 
 data Delimiter
@@ -22,12 +21,6 @@ delimit delimiter = intercalate (lookupDelimiter delimiter)
 -- https://stackoverflow.com/questions/10548170/what-characters-are-permitted-for-haskell-operators
 isOperator :: String -> Bool
 isOperator = all $ \x -> isSymbol x || x `elem` "!#$%&*+.,/<=>?@\\^|-~:"
-
-kebabToCamelCase :: String -> String
-kebabToCamelCase input = preserveHead $ concatMap upperFirst $ splitOn "-" input
-  where
-    preserveHead [] = []
-    preserveHead (_:newIdentifierTail) = head input : newIdentifierTail
 
 lowerFirst :: String -> String
 lowerFirst (x:xs) = toLower x : xs

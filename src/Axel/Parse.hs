@@ -23,7 +23,6 @@ import Axel.Parse.AST
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   )
-import Axel.Utils.Display (isOperator, kebabToCamelCase)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
 
 import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
@@ -80,6 +79,12 @@ literalChar = LiteralChar <$> (char '\\' *> any')
 literalInt :: (Stream s m Char) => ParsecT s u m Expression
 literalInt = LiteralInt . read <$> many1 digit
 
+literalList :: (Stream s m Char) => ParsecT s u m Expression
+literalList =
+  (SExpression . (Symbol "list" :)) <$> (char '[' *> many item <* char ']')
+  where
+    item = try (whitespace *> expression) <|> expression
+
 literalString :: (Stream s m Char) => ParsecT s u m Expression
 literalString = LiteralString <$> (char '"' *> many (noneOf "\"") <* char '"')
 
@@ -109,19 +114,13 @@ unquotedExpression = parseReadMacro "," "unquote"
 
 expression :: (Stream s m Char) => ParsecT s u m Expression
 expression =
-  literalChar <|> literalInt <|> literalString <|> quotedExpression <|>
+  literalChar <|> literalInt <|> literalList <|> literalString <|>
+  quotedExpression <|>
   quasiquotedExpression <|>
   try spliceUnquotedExpression <|>
   unquotedExpression <|>
   sExpression <|>
   symbol
-
-normalizeCase :: Expression -> Expression
-normalizeCase (Symbol x) =
-  if isOperator x
-    then Symbol x
-    else Symbol (kebabToCamelCase x)
-normalizeCase x = x
 
 stripComments :: String -> String
 stripComments = unlines . map cleanLine . lines
@@ -130,14 +129,14 @@ stripComments = unlines . map cleanLine . lines
 
 parseMultiple :: (MonadError Error m) => String -> m [Expression]
 parseMultiple =
-  either (throwError . ParseError) (return . map (bottomUpFmap normalizeCase)) .
+  either (throwError . ParseError) return .
   parse
     (many1 (optional whitespace *> expression <* optional whitespace) <* eof)
     ""
 
 parseSingle :: (MonadError Error m) => String -> m Expression
 parseSingle =
-  either (throwError . ParseError) (return . bottomUpFmap normalizeCase) .
+  either (throwError . ParseError) return .
   parse (optional whitespace *> expression <* optional whitespace <* eof) ""
 
 parseSource :: (MonadError Error m) => String -> m Expression
