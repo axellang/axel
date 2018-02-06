@@ -1,3 +1,4 @@
+-- This is just an example, and, since it's partial, is NOT advised for actual use.
 (defmacro when
  (([condition body]) (return [`(if ,condition ,body (error "WHEN"))])))
 

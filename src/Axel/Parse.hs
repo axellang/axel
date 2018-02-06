@@ -23,6 +23,7 @@ import Axel.Parse.AST
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   )
+import Axel.Utils.List (takeUntil)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
 
 import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
@@ -125,7 +126,7 @@ expression =
 stripComments :: String -> String
 stripComments = unlines . map cleanLine . lines
   where
-    cleanLine = takeWhile (/= ';')
+    cleanLine = takeUntil "--"
 
 parseMultiple :: (MonadError Error m) => String -> m [Expression]
 parseMultiple =
