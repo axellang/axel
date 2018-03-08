@@ -19,14 +19,14 @@ withTempFile nameTemplate f = do
   result <- f fileName handle
   liftIO $ hClose handle
   liftIO $ removeFile fileName
-  return result
+  pure result
 
 execInterpreter :: (MonadError Error m, MonadIO m) => FilePath -> m String
 execInterpreter fileName = do
   (code, stdout, stderr) <-
     liftIO $ readProcessWithExitCode "runghc" [fileName] ""
   case code of
-    ExitSuccess -> return stdout
+    ExitSuccess -> pure stdout
     ExitFailure _ -> throwError $ MacroError stderr
 
 evalSource :: (MonadError Error m, MonadIO m) => String -> m String
@@ -41,4 +41,4 @@ evalSource source =
 forceIO :: Handle -> IO ()
 forceIO handle = do
   contents <- hGetContents handle
-  length contents `seq` return ()
+  length contents `seq` pure ()

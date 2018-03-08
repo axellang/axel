@@ -130,17 +130,17 @@ stripComments = unlines . map cleanLine . lines
 
 parseMultiple :: (MonadError Error m) => String -> m [Expression]
 parseMultiple =
-  either (throwError . ParseError) return .
+  either (throwError . ParseError) pure .
   parse
     (many1 (optional whitespace *> expression <* optional whitespace) <* eof)
     ""
 
 parseSingle :: (MonadError Error m) => String -> m Expression
 parseSingle =
-  either (throwError . ParseError) return .
+  either (throwError . ParseError) pure .
   parse (optional whitespace *> expression <* optional whitespace <* eof) ""
 
 parseSource :: (MonadError Error m) => String -> m Expression
 parseSource input = do
   statements <- parseMultiple $ stripComments input
-  return $ SExpression (Symbol "begin" : statements)
+  pure $ SExpression (Symbol "begin" : statements)

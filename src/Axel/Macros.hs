@@ -80,27 +80,27 @@ expandMacros ::
 expandMacros environment =
   bottomUpTraverse $ \expression ->
     case expression of
-      Parse.LiteralChar _ -> return expression
-      Parse.LiteralInt _ -> return expression
-      Parse.LiteralString _ -> return expression
+      Parse.LiteralChar _ -> pure expression
+      Parse.LiteralInt _ -> pure expression
+      Parse.LiteralString _ -> pure expression
       Parse.SExpression xs ->
         Parse.SExpression <$>
         foldM
           (\acc x ->
              case x of
-               Parse.LiteralChar _ -> return $ acc ++ [x]
-               Parse.LiteralInt _ -> return $ acc ++ [x]
-               Parse.LiteralString _ -> return $ acc ++ [x]
-               Parse.SExpression [] -> return $ acc ++ [x]
+               Parse.LiteralChar _ -> pure $ acc ++ [x]
+               Parse.LiteralInt _ -> pure $ acc ++ [x]
+               Parse.LiteralString _ -> pure $ acc ++ [x]
+               Parse.SExpression [] -> pure $ acc ++ [x]
                Parse.SExpression (function:args) ->
                  lookupMacroDefinition environment function >>= \case
                    Just macroDefinition ->
                      (acc ++) <$> expandMacroApplication macroDefinition args
-                   Nothing -> return $ acc ++ [x]
-               Parse.Symbol _ -> return $ acc ++ [x])
+                   Nothing -> pure $ acc ++ [x]
+               Parse.Symbol _ -> pure $ acc ++ [x])
           []
           xs
-      Parse.Symbol _ -> return expression
+      Parse.Symbol _ -> pure expression
   where
     expandMacroApplication macroDefinition args =
       generateMacroProgram macroDefinition args >>= evalSource >>=
@@ -113,16 +113,16 @@ lookupMacroDefinition ::
   -> m (Maybe MacroDefinition)
 lookupMacroDefinition environment identifierExpression =
   case identifierExpression of
-    Parse.LiteralChar _ -> return Nothing
-    Parse.LiteralInt _ -> return Nothing
-    Parse.LiteralString _ -> return Nothing
-    Parse.SExpression _ -> return Nothing
+    Parse.LiteralChar _ -> pure Nothing
+    Parse.LiteralInt _ -> pure Nothing
+    Parse.LiteralString _ -> pure Nothing
+    Parse.SExpression _ -> pure Nothing
     Parse.Symbol identifier ->
       case filter
              (\macroDefinition -> macroDefinition ^. name == identifier)
              environment of
-        [] -> return Nothing
-        [macroDefinition] -> return $ Just macroDefinition
+        [] -> pure Nothing
+        [macroDefinition] -> pure $ Just macroDefinition
         _ -> throwError (MacroError "0012")
 
 -- TODO This probably needs heavy optimization. If so, I will need to decrease the running time.

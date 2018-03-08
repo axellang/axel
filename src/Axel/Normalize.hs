@@ -49,10 +49,10 @@ import Control.Monad ((>=>))
 import Control.Monad.Except (MonadError, throwError)
 
 normalizeExpression :: (MonadError Error m) => Parse.Expression -> m Expression
-normalizeExpression (Parse.LiteralChar char) = return $ ELiteral (LChar char)
-normalizeExpression (Parse.LiteralInt int) = return $ ELiteral (LInt int)
+normalizeExpression (Parse.LiteralChar char) = pure $ ELiteral (LChar char)
+normalizeExpression (Parse.LiteralInt int) = pure $ ELiteral (LInt int)
 normalizeExpression (Parse.LiteralString string) =
-  return $ ELiteral (LString string)
+  pure $ ELiteral (LString string)
 normalizeExpression (Parse.SExpression items) =
   case items of
     Parse.Symbol "case":var:cases ->
@@ -80,14 +80,13 @@ normalizeExpression (Parse.SExpression items) =
               bindings'
       in ELetBlock <$>
          (LetBlock <$> normalizedBindings <*> normalizeExpression body')
-    [Parse.Symbol "quote", expression] ->
-      return $ quoteParseExpression expression
+    [Parse.Symbol "quote", expression] -> pure $ quoteParseExpression expression
     function':arguments' ->
       EFunctionApplication <$>
       (FunctionApplication <$> normalizeExpression function' <*>
        traverse normalizeExpression arguments')
-    [] -> return EEmptySExpression
-normalizeExpression (Parse.Symbol symbol) = return $ EIdentifier symbol
+    [] -> pure EEmptySExpression
+normalizeExpression (Parse.Symbol symbol) = pure $ EIdentifier symbol
 
 normalizeDefinitions ::
      (MonadError Error m)
@@ -119,7 +118,7 @@ normalizeStatement (Parse.SExpression items) =
             traverse
               (normalizeExpression >=> \case
                  EFunctionApplication functionApplication ->
-                   return functionApplication
+                   pure functionApplication
                  _ -> throwError $ NormalizeError "0003")
               constructors'
       in normalizeExpression typeDefinition' >>= \case
@@ -140,22 +139,22 @@ normalizeStatement (Parse.SExpression items) =
       SQualifiedImport <$>
       (QualifiedImport moduleName alias <$> normalizeImportList imports)
     [Parse.Symbol "importUnrestricted", Parse.Symbol moduleName] ->
-      return $ SUnrestrictedImport moduleName
+      pure $ SUnrestrictedImport moduleName
     [Parse.Symbol "instance", instanceName', Parse.SExpression definitions'] ->
       let definitions =
             traverse
               (normalizeStatement >=> \case
                  SFunctionDefinition functionDefinition ->
-                   return functionDefinition
+                   pure functionDefinition
                  _ -> throwError $ NormalizeError "0005")
               definitions'
       in STypeclassInstance <$>
          (TypeclassInstance <$> normalizeExpression instanceName' <*>
           definitions)
     [Parse.Symbol "language", Parse.Symbol languageName] ->
-      return $ SLanguagePragma (LanguagePragma languageName)
+      pure $ SLanguagePragma (LanguagePragma languageName)
     [Parse.Symbol "module", Parse.Symbol moduleName] ->
-      return $ SModuleDeclaration moduleName
+      pure $ SModuleDeclaration moduleName
     [Parse.Symbol "type", alias', definition'] ->
       let alias = normalizeExpression alias'
           definition = normalizeExpression definition'
@@ -166,12 +165,12 @@ normalizeStatement (Parse.SExpression items) =
       ImportList <$>
       traverse
         (\case
-           Parse.Symbol import' -> return $ ImportItem import'
+           Parse.Symbol import' -> pure $ ImportItem import'
            Parse.SExpression (Parse.Symbol type':imports') ->
              let imports =
                    traverse
                      (\case
-                        Parse.Symbol import' -> return import'
+                        Parse.Symbol import' -> pure import'
                         _ -> throwError $ NormalizeError "0009")
                      imports'
              in ImportType type' <$> imports
@@ -182,7 +181,7 @@ normalizeStatement _ = throwError $ NormalizeError "0008"
 normalizeProgram :: (MonadError Error m) => Parse.Expression -> m Statement
 normalizeProgram =
   normalizeStatement >=> \case
-    program@(STopLevel _) -> return program
+    program@(STopLevel _) -> pure program
     _ -> throwError $ NormalizeError "0014"
 
 denormalizeExpression :: Expression -> Parse.Expression

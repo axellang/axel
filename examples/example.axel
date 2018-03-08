@@ -1,12 +1,12 @@
 -- This is just an example, and, since it's partial, is NOT advised for actual use.
 (defmacro when
- (([condition body]) (return [`(if ,condition ,body (error "WHEN"))])))
+ (([condition body]) (pure [`(if ,condition ,body (error "WHEN"))])))
 
 (defmacro if
  (([cond true false])
-  (return [`(case ,cond
-              (True ,true)
-              (False ,false))])))
+  (pure [`(case ,cond
+            (True ,true)
+            (False ,false))])))
 
 (defmacro quasiquote
  (([(SExpression xs)])
@@ -19,8 +19,8 @@
                                   (SExpression
                                    ['list
                                     (SExpression ['quasiquote atom])]))))))
-   (return [(SExpression ['SExpression (SExpression ['concat (SExpression (: 'list (map quasiquoteElem xs)))])])])))
- (([atom]) (return [(SExpression (list 'quote atom))])))
+   (pure [(SExpression ['SExpression (SExpression ['concat (SExpression (: 'list (map quasiquoteElem xs)))])])])))
+ (([atom]) (pure [(SExpression (list 'quote atom))])))
 
 (= main (IO Unit)
  (() (when (== 1 1) (putStrLn "Hi!"))))
