@@ -3,11 +3,6 @@
 
 module Axel.Entry where
 
-import Control.Lens.Operators ((.~), (^.))
-import Control.Monad (when)
-import Control.Monad.Except (MonadError, runExceptT)
-import Control.Monad.IO.Class (MonadIO)
-
 import Axel.AST (ToHaskell(toHaskell))
 import Axel.Error (Error)
 import Axel.Eval (execInterpreter)
@@ -16,9 +11,14 @@ import Axel.Macros
   , getAstDefinition
   , stripMacroDefinitions
   )
+
 import Axel.Normalize (normalizeStatement)
 import Axel.Parse (Expression(Symbol), parseSource)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
+import Control.Lens.Operators ((.~), (^.))
+import Control.Monad (when)
+import Control.Monad.Except (MonadError, runExceptT)
+import Control.Monad.IO.Class (MonadIO)
 
 import System.Directory
   ( createDirectory

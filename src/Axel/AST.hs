@@ -9,11 +9,6 @@
 
 module Axel.AST where
 
-import Control.Lens.Operators ((^.))
-import Control.Lens.TH (makeFieldsNoPrefix)
-
-import Data.Semigroup ((<>))
-
 import Axel.Utils.Display
   ( Bracket(DoubleQuotes, Parentheses, SingleQuotes, SquareBrackets)
   , Delimiter(Commas, Newlines, Pipes, Spaces)
@@ -23,6 +18,11 @@ import Axel.Utils.Display
   , renderPragma
   , surround
   )
+
+import Control.Lens.Operators ((^.))
+import Control.Lens.TH (makeFieldsNoPrefix)
+
+import Data.Semigroup ((<>))
 
 class ToHaskell a where
   toHaskell :: a -> String

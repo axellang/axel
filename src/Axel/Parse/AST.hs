@@ -3,6 +3,7 @@
 module Axel.Parse.AST where
 
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef)
+
 import System.IO.Unsafe (unsafePerformIO)
 
 -- TODO `Expression` should probably be `Traversable`, use recursion schemes, etc.

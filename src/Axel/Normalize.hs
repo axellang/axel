@@ -5,10 +5,6 @@
 
 module Axel.Normalize where
 
-import Control.Lens.Operators ((^.))
-import Control.Monad ((>=>))
-import Control.Monad.Except (MonadError, throwError)
-
 import Axel.AST
   ( ArgumentList(ArgumentList)
   , CaseBlock(CaseBlock)
@@ -41,13 +37,16 @@ import Axel.AST
   , function
   , matches
   )
-
 import Axel.Error (Error(NormalizeError))
 import qualified Axel.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   )
 import Axel.Quote (quoteParseExpression)
+
+import Control.Lens.Operators ((^.))
+import Control.Monad ((>=>))
+import Control.Monad.Except (MonadError, throwError)
 
 normalizeExpression :: (MonadError Error m) => Parse.Expression -> m Expression
 normalizeExpression (Parse.LiteralChar char) = return $ ELiteral (LChar char)

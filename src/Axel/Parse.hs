@@ -13,8 +13,6 @@ module Axel.Parse
   , module Axel.Parse.AST
   ) where
 
-import Control.Monad.Except (MonadError, throwError)
-
 import Axel.Error (Error(ParseError))
 
 -- Re-exporting these so that consumers of parsed ASTs do not need
@@ -25,6 +23,8 @@ import Axel.Parse.AST
   )
 import Axel.Utils.List (takeUntil)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
+
+import Control.Monad.Except (MonadError, throwError)
 
 import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
 import Text.Parsec.Char

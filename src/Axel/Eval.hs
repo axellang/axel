@@ -2,10 +2,10 @@
 
 module Axel.Eval where
 
+import Axel.Error (Error(MacroError))
+
 import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-
-import Axel.Error (Error(MacroError))
 
 import System.Directory (getTemporaryDirectory, removeFile)
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
