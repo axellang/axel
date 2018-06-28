@@ -1,6 +1,10 @@
 -- This is just an example, and, since it's partial, is NOT advised for actual use.
-(defmacro when
+(defmacro' when
  (([condition body]) (pure [`(if ,condition ,body (error "WHEN"))])))
+
+(defmacro defmacro'
+ ((exprs)
+   (pure [`(defmacro ,@exprs)])))
 
 (defmacro if
  (([cond true false])

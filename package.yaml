@@ -22,6 +22,7 @@ data-files:
 library:
   source-dirs: src
   exposed-modules:
+  - Axel.Entry
   dependencies:
   - directory
   - filepath
