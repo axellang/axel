@@ -15,7 +15,6 @@ import Axel.Error (Error(MacroError))
 import Axel.Eval (evalSource)
 import Axel.Normalize
   ( denormalizeExpression
-  , normalizeProgram
   , normalizeStatement
   )
 import qualified Axel.Parse as Parse
@@ -73,7 +72,7 @@ extractIndependentMacroDefinitions stmts =
   let candidateMacroDefinitions = filter isMacroDefinition stmts
   in filter
        (not . isDependentOnAny candidateMacroDefinitions)
-       candidateMacroDefinitions
+       stmts
   where
     isMacroDefinition (Parse.SExpression (Parse.Symbol "defmacro":_)) = True
     isMacroDefinition _ = False
