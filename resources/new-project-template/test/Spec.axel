@@ -1,0 +1,2 @@
+(= main (IO Unit)
+  (() (putStrLn "Test suite not yet implemented")))
