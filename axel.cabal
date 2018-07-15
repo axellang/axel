@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7a74fea49a616bda50e85edcd18c580f25e1ba8cb21a5eb50aacde69208dcf53
+-- hash: 3cdc936855f78c99cb8b145194f65644f9b27bbdeab5c12959474118b521871c
 
 name:           axel
 version:        0.1.0.0
@@ -76,6 +76,7 @@ library
     , mtl >=2.2.1 && <2.3
     , parsec >=3.1.11 && <3.2
     , process >=1.6.1 && <1.7
+    , regex-pcre >=0.94.4 && <0.95
     , split >=0.2.3 && <0.3
     , strict >=0.3.2 && <0.4
     , text >=1.2.2 && <1.3
