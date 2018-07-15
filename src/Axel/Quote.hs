@@ -25,23 +25,23 @@ quoteParseExpression :: Parse.Expression -> AST.Expression
 quoteParseExpression (Parse.LiteralChar x) =
   AST.EFunctionApplication $
   AST.FunctionApplication
-    (AST.EIdentifier "LiteralChar")
+    (AST.EIdentifier "AST.LiteralChar")
     [AST.ELiteral $ AST.LChar x]
 quoteParseExpression (Parse.LiteralInt x) =
   AST.EFunctionApplication $
   AST.FunctionApplication
-    (AST.EIdentifier "LiteralInt")
+    (AST.EIdentifier "AST.LiteralInt")
     [AST.ELiteral $ AST.LInt x]
 quoteParseExpression (Parse.LiteralString x) =
   AST.EFunctionApplication $
   AST.FunctionApplication
-    (AST.EIdentifier "LiteralString")
+    (AST.EIdentifier "AST.LiteralString")
     [AST.ELiteral $ AST.LString x]
 quoteParseExpression (Parse.SExpression xs) =
   AST.EFunctionApplication $
-  AST.FunctionApplication (AST.EIdentifier "SExpression") [quoteList xs]
+  AST.FunctionApplication (AST.EIdentifier "AST.SExpression") [quoteList xs]
 quoteParseExpression (Parse.Symbol x) =
   AST.EFunctionApplication $
   AST.FunctionApplication
-    (AST.EIdentifier "Symbol")
+    (AST.EIdentifier "AST.Symbol")
     [AST.ELiteral $ AST.LString x]

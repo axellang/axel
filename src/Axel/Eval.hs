@@ -3,42 +3,70 @@
 module Axel.Eval where
 
 import Axel.Error (Error(MacroError))
+import Axel.GHC (buildWithGHC, extractInvalidDefinitionNames, runWithGHC)
 
 import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Trans.Control (MonadBaseControl, control)
 
-import System.Directory (getTemporaryDirectory, removeFile)
-import System.Exit (ExitCode(ExitFailure, ExitSuccess))
-import System.IO (Handle, hClose, hGetContents, hPutStr, openTempFile)
-import System.Process (readProcessWithExitCode)
+import System.Directory
+  ( createDirectoryIfMissing
+  -- , getTemporaryDirectory
+  , withCurrentDirectory
+  )
+import System.FilePath ((</>))
+import System.IO (writeFile)
 
-withTempFile :: (MonadIO m) => FilePath -> (FilePath -> Handle -> m a) -> m a
-withTempFile nameTemplate f = do
-  temporaryDirectory <- liftIO getTemporaryDirectory
-  (fileName, handle) <- liftIO $ openTempFile temporaryDirectory nameTemplate
-  result <- f fileName handle
-  liftIO $ hClose handle
-  liftIO $ removeFile fileName
+withTempDirectory :: (MonadIO m) => (FilePath -> m a) -> m a
+withTempDirectory f
+  -- temporaryDirectory <- liftIO getTemporaryDirectory
+ = do
+  let temporaryDirectory = "/Users/joshuagrosso/Desktop/axelTmp"
+  liftIO $ createDirectoryIfMissing True temporaryDirectory
+  result <- f temporaryDirectory
   pure result
 
-execInterpreter :: (MonadError Error m, MonadIO m) => FilePath -> m String
-execInterpreter fileName = do
-  (code, stdout, stderr) <-
-    liftIO $ readProcessWithExitCode "runghc" [fileName] ""
-  case code of
-    ExitSuccess -> pure stdout
-    ExitFailure _ -> throwError $ MacroError stderr
+withCurrentDirectoryLifted :: (MonadBaseControl IO m) => FilePath -> m a -> m a
+withCurrentDirectoryLifted directory f =
+  control $ \runInIO -> withCurrentDirectory directory (runInIO f)
 
-evalSource :: (MonadError Error m, MonadIO m) => String -> m String
-evalSource source =
-  withTempFile "TempEval.hs" $ \fileName handle -> do
-    liftIO $ hPutStr handle source
-    liftIO $ forceIO handle
-    execInterpreter fileName
+execInterpreter ::
+     (MonadError Error m, MonadIO m)
+  => FilePath
+  -> FilePath
+  -> m (Either [String] String)
+execInterpreter scaffoldFilePath macroDefinitionAndEnvironmentFilePath = do
+  debugResult <- liftIO $ buildWithGHC scaffoldFilePath
+  case debugResult of
+    Right _ -> Right <$> runWithGHC scaffoldFilePath
+    Left (jsonLog, stderr) -> do
+      invalidDefinitionNames <-
+        liftIO $
+        extractInvalidDefinitionNames
+          macroDefinitionAndEnvironmentFilePath
+          jsonLog
+      case invalidDefinitionNames of
+        [] -> throwError $ MacroError stderr
+        _ -> pure $ Left invalidDefinitionNames
 
--- TODO Find an actual, non-hacky solution
--- https://stackoverflow.com/a/2530948/2391244
-forceIO :: Handle -> IO ()
-forceIO handle = do
-  contents <- hGetContents handle
-  length contents `seq` pure ()
+evalMacro ::
+     (MonadBaseControl IO m, MonadError Error m, MonadIO m)
+  => String
+  -> String
+  -> String
+  -> m (Either [String] String)
+evalMacro astDefinition scaffold macroDefinitionAndEnvironment =
+  withTempDirectory $ \directoryName -> do
+    withCurrentDirectoryLifted directoryName $ do
+      let astDirectoryPath = "Axel" </> "Parse"
+      let macroDefinitionAndEnvironmentFileName =
+            "MacroDefinitionAndEnvironment.hs"
+      let scaffoldFileName = "Scaffold.hs"
+      liftIO $ createDirectoryIfMissing True astDirectoryPath
+      liftIO $ writeFile (astDirectoryPath </> "AST.hs") astDefinition
+      liftIO $
+        writeFile
+          macroDefinitionAndEnvironmentFileName
+          macroDefinitionAndEnvironment
+      liftIO $ writeFile scaffoldFileName scaffold
+      execInterpreter scaffoldFileName macroDefinitionAndEnvironmentFileName

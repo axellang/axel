@@ -1,7 +1,6 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TupleSections #-}
 
 module Axel.Normalize where
 
@@ -18,7 +17,7 @@ import Axel.AST
   , Lambda(Lambda)
   , LanguagePragma(LanguagePragma)
   , LetBlock(LetBlock)
-  , Literal(LChar, LInt, LList, LString)
+  , Literal(LChar, LInt, LString)
   , MacroDefinition(MacroDefinition)
   , QualifiedImport(QualifiedImport)
   , RestrictedImport(RestrictedImport)
@@ -30,12 +29,6 @@ import Axel.AST
   , TypeDefinition(ProperType, TypeConstructor)
   , TypeSynonym(TypeSynonym)
   , TypeclassInstance(TypeclassInstance)
-  , arguments
-  , bindings
-  , body
-  , expr
-  , function
-  , matches
   )
 import Axel.Error (Error(NormalizeError))
 import qualified Axel.Parse as Parse
@@ -44,7 +37,6 @@ import qualified Axel.Parse as Parse
   )
 import Axel.Quote (quoteParseExpression)
 
-import Control.Lens.Operators ((^.))
 import Control.Monad ((>=>))
 import Control.Monad.Except (MonadError, throwError)
 
@@ -74,8 +66,9 @@ normalizeExpression (Parse.SExpression items) =
       let normalizedBindings =
             traverse
               (\case
-                 Parse.SExpression [Parse.Symbol name, value'] ->
-                   (name, ) <$> normalizeExpression value'
+                 Parse.SExpression [name', value'] ->
+                   (,) <$> normalizeExpression name' <*>
+                   normalizeExpression value'
                  _ -> throwError $ NormalizeError "0001")
               bindings'
       in ELetBlock <$>
@@ -183,51 +176,3 @@ normalizeProgram =
   normalizeStatement >=> \case
     program@(STopLevel _) -> pure program
     _ -> throwError $ NormalizeError "0014"
-
-denormalizeExpression :: Expression -> Parse.Expression
-denormalizeExpression (ECaseBlock caseBlock) =
-  let denormalizedCases =
-        Parse.SExpression $
-        map
-          (\(pat, res) ->
-             Parse.SExpression
-               [denormalizeExpression pat, denormalizeExpression res])
-          (caseBlock ^. matches)
-  in Parse.SExpression
-       [ Parse.Symbol "case"
-       , denormalizeExpression (caseBlock ^. expr)
-       , denormalizedCases
-       ]
-denormalizeExpression EEmptySExpression = Parse.SExpression []
-denormalizeExpression (EFunctionApplication functionApplication) =
-  Parse.SExpression $
-  denormalizeExpression (functionApplication ^. function) :
-  map denormalizeExpression (functionApplication ^. arguments)
-denormalizeExpression (EIdentifier x) = Parse.Symbol x
-denormalizeExpression (ELambda lambda) =
-  let denormalizedArguments =
-        Parse.SExpression $ map denormalizeExpression (lambda ^. arguments)
-  in Parse.SExpression
-       [ Parse.Symbol "fn"
-       , denormalizedArguments
-       , denormalizeExpression (lambda ^. body)
-       ]
-denormalizeExpression (ELetBlock letBlock) =
-  let denormalizedBindings =
-        Parse.SExpression $
-        map
-          (\(var, val) ->
-             Parse.SExpression [Parse.Symbol var, denormalizeExpression val])
-          (letBlock ^. bindings)
-  in Parse.SExpression
-       [ Parse.Symbol "let"
-       , denormalizedBindings
-       , denormalizeExpression (letBlock ^. body)
-       ]
-denormalizeExpression (ELiteral x) =
-  case x of
-    LChar char -> Parse.LiteralChar char
-    LInt int -> Parse.LiteralInt int
-    LList list ->
-      Parse.SExpression $ Parse.Symbol "list" : map denormalizeExpression list
-    LString string -> Parse.LiteralString string

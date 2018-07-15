@@ -1,30 +1,30 @@
 -- This is just an example, and, since it's partial, is NOT advised for actual use.
 (defmacro' when
- (([condition body]) (pure [`(if ,condition ,body (error "WHEN"))])))
+  (([condition body]) (pure [`(if ~condition ~body (error "WHEN"))])))
 
 (defmacro defmacro'
- ((exprs)
-   (pure [`(defmacro ,@exprs)])))
+  ((exprs)
+   (pure [`(defmacro ~@exprs)])))
 
 (defmacro if
- (([cond true false])
-  (pure [`(case ,cond
-            (True ,true)
-            (False ,false))])))
+  (([cond true false])
+   (pure [`(case ~cond
+             (True ~true)
+             (False ~false))])))
 
 (defmacro quasiquote
- (([(SExpression xs)])
-  (let ((quasiquoteElem (fn (x) (case x
-                                 ((SExpression ['unquote x])
-                                  (SExpression ['list x]))
-                                 ((SExpression ['unquote-splicing x])
-                                  x)
-                                 (atom
-                                  (SExpression
-                                   ['list
-                                    (SExpression ['quasiquote atom])]))))))
-   (pure [(SExpression ['SExpression (SExpression ['concat (SExpression (: 'list (map quasiquoteElem xs)))])])])))
- (([atom]) (pure [(SExpression (list 'quote atom))])))
+  (([(AST.SExpression xs)])
+   (let ((quasiquoteElem (fn (x) (case x
+                                   ((AST.SExpression ['unquote x])
+                                    (AST.SExpression ['list x]))
+                                   ((AST.SExpression ['unquoteSplicing x])
+                                    x)
+                                   (atom
+                                    (AST.SExpression
+                                     ['list
+                                      (AST.SExpression ['quasiquote atom])]))))))
+     (pure [(AST.SExpression ['AST.SExpression (AST.SExpression ['concat (AST.SExpression (: 'list (map quasiquoteElem xs)))])])])))
+  (([atom]) (pure [(AST.SExpression ['quote atom])])))
 
 (= main (IO Unit)
- (() (when (== 1 1) (putStrLn "Hi!"))))
+   (() (if (== 1 1) (putStrLn "Hi!") (putStrLn "wat"))))

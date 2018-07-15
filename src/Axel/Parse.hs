@@ -46,21 +46,23 @@ import Text.Parsec.Prim (many)
 instance Recursive Expression where
   bottomUpFmap :: (Expression -> Expression) -> Expression -> Expression
   bottomUpFmap f x =
+    f $
     case x of
-      LiteralChar _ -> f x
-      LiteralInt _ -> f x
-      LiteralString _ -> f x
-      SExpression xs -> f $ SExpression (map (bottomUpFmap f) xs)
-      Symbol _ -> f x
+      LiteralChar _ -> x
+      LiteralInt _ -> x
+      LiteralString _ -> x
+      SExpression xs -> SExpression (map (bottomUpFmap f) xs)
+      Symbol _ -> x
   bottomUpTraverse ::
        (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
   bottomUpTraverse f x =
+    f =<<
     case x of
-      LiteralChar _ -> f x
-      LiteralInt _ -> f x
-      LiteralString _ -> f x
-      SExpression xs -> f =<< (SExpression <$> traverse (bottomUpTraverse f) xs)
-      Symbol _ -> f x
+      LiteralChar _ -> pure x
+      LiteralInt _ -> pure x
+      LiteralString _ -> pure x
+      SExpression xs -> SExpression <$> traverse (bottomUpTraverse f) xs
+      Symbol _ -> pure x
 
 parseReadMacro ::
      (Stream s m Char) => String -> String -> ParsecT s u m Expression
@@ -101,7 +103,7 @@ sExpression = SExpression <$> (char '(' *> many item <* char ')')
     item = try (whitespace *> expression) <|> expression
 
 spliceUnquotedExpression :: (Stream s m Char) => ParsecT s u m Expression
-spliceUnquotedExpression = parseReadMacro ",@" "unquote-splicing"
+spliceUnquotedExpression = parseReadMacro "~@" "unquoteSplicing"
 
 symbol :: (Stream s m Char) => ParsecT s u m Expression
 symbol =
@@ -111,7 +113,7 @@ symbol =
     validSymbol = oneOf "!@#$%^&*-=~_+,./<>?\\|':"
 
 unquotedExpression :: (Stream s m Char) => ParsecT s u m Expression
-unquotedExpression = parseReadMacro "," "unquote"
+unquotedExpression = parseReadMacro "~" "unquote"
 
 expression :: (Stream s m Char) => ParsecT s u m Expression
 expression =
