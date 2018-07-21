@@ -52,7 +52,7 @@ normalizeExpression expr@(Parse.SExpression items) =
               (\case
                  Parse.SExpression [pat, body] ->
                    (,) <$> normalizeExpression pat <*> normalizeExpression body
-                 x -> throwError $ NormalizeError "0013" [x, expr])
+                 x -> throwError $ NormalizeError "Invalid case!" [x, expr])
               cases
       in ECaseBlock <$>
          (CaseBlock <$> normalizeExpression var <*> normalizedCases)
@@ -67,7 +67,7 @@ normalizeExpression expr@(Parse.SExpression items) =
                  Parse.SExpression [name, value] ->
                    (,) <$> normalizeExpression name <*>
                    normalizeExpression value
-                 x -> throwError $ NormalizeError "0001" [x, expr])
+                 x -> throwError $ NormalizeError "Invalid pattern!" [x, expr])
               bindings
       in ELetBlock <$>
          (LetBlock <$> normalizedBindings <*> normalizeExpression body)
@@ -90,7 +90,7 @@ normalizeDefinitions ctxt =
        Parse.SExpression [Parse.SExpression args, body] ->
          (,) <$> (ArgumentList <$> traverse normalizeExpression args) <*>
          normalizeExpression body
-       x -> throwError $ NormalizeError "0010" [x, ctxt])
+       x -> throwError $ NormalizeError "Invalid definition!" [x, ctxt])
 
 normalizeStatement :: (MonadError Error m) => Parse.Expression -> m Statement
 normalizeStatement expr@(Parse.SExpression items) =
@@ -101,7 +101,8 @@ normalizeStatement expr@(Parse.SExpression items) =
           SFunctionDefinition <$>
           (FunctionDefinition fnName normalizedTypeSig <$>
            normalizeDefinitions expr defs)
-        _ -> throwError $ NormalizeError "0011" [typeSig, expr]
+        _ ->
+          throwError $ NormalizeError "Invalid type signature!" [typeSig, expr]
     Parse.Symbol "begin":stmts ->
       let normalizedStmts = traverse normalizeStatement stmts
       in STopLevel . TopLevel <$> normalizedStmts
@@ -112,7 +113,9 @@ normalizeStatement expr@(Parse.SExpression items) =
                  normalizeExpression x >>= \case
                    EFunctionApplication functionApplication ->
                      pure functionApplication
-                   _ -> throwError $ NormalizeError "0003" [x, expr])
+                   _ ->
+                     throwError $
+                     NormalizeError "Invalid type constructor!" [x, expr])
               constructors
       in normalizeExpression typeDef >>= \case
            EFunctionApplication typeConstructor ->
@@ -122,7 +125,7 @@ normalizeStatement expr@(Parse.SExpression items) =
            EIdentifier properType ->
              SDataDeclaration <$>
              (DataDeclaration (ProperType properType) <$> normalizedConstructors)
-           _ -> throwError $ NormalizeError "0004" [typeDef, expr]
+           _ -> throwError $ NormalizeError "Invalid type!" [typeDef, expr]
     Parse.Symbol "defmacro":Parse.Symbol macroName:defs ->
       SMacroDefinition <$>
       (MacroDefinition macroName <$> normalizeDefinitions expr defs)
@@ -140,7 +143,8 @@ normalizeStatement expr@(Parse.SExpression items) =
               (\x ->
                  normalizeStatement x >>= \case
                    SFunctionDefinition fnDef -> pure fnDef
-                   _ -> throwError $ NormalizeError "0005" [x, expr])
+                   _ ->
+                     throwError $ NormalizeError "Invalid definition!" [x, expr])
               defs
       in STypeclassInstance <$>
          (TypeclassInstance <$> normalizeExpression instanceName <*>
@@ -153,7 +157,7 @@ normalizeStatement expr@(Parse.SExpression items) =
       let normalizedAlias = normalizeExpression alias
           normalizedDef = normalizeExpression def
       in STypeSynonym <$> (TypeSynonym <$> normalizedAlias <*> normalizedDef)
-    _ -> throwError $ NormalizeError "0006" [expr]
+    _ -> throwError $ NormalizeError "Invalid top-level form!" [expr]
   where
     normalizeImportList ctxt input =
       ImportList <$>
@@ -167,15 +171,11 @@ normalizeStatement expr@(Parse.SExpression items) =
                        (\case
                           Parse.Symbol import' -> pure import'
                           x ->
-                            throwError $ NormalizeError "0009" [x, item, ctxt])
+                            throwError $
+                            NormalizeError "Invalid import!" [x, item, ctxt])
                        imports
                in ImportType type' <$> normalizedImports
-             x -> throwError $ NormalizeError "0007" [x, item, ctxt])
+             x -> throwError $ NormalizeError "Invalid import!" [x, item, ctxt])
         input
-normalizeStatement expr = throwError $ NormalizeError "0008" [expr]
-
-normalizeProgram :: (MonadError Error m) => Parse.Expression -> m Statement
-normalizeProgram expr =
-  normalizeStatement expr >>= \case
-    program@(STopLevel _) -> pure program
-    _ -> throwError $ NormalizeError "0014" [expr]
+normalizeStatement expr =
+  throwError $ NormalizeError "Invalid top-level form!" [expr]

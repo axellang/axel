@@ -226,7 +226,10 @@ lookupMacroDefinition macroDefs identifierExpr =
       case filter (\macroDef -> macroDef ^. name == identifier) macroDefs of
         [] -> pure Nothing
         [macroDef] -> pure $ Just macroDef
-        _ -> throwError (MacroError "0012")
+        _ ->
+          throwError
+            (MacroError $
+             "Multiple macro definitions named: `" <> identifier <> "`!")
 
 -- TODO This probably needs heavy optimization. If so, I will need to decrease the running time.
 extractMacroDefinitions :: Statement -> [MacroDefinition]

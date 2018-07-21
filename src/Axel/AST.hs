@@ -21,7 +21,7 @@ import Axel.Utils.Display
   )
 import Axel.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
 
-import Control.Lens.Operators ((^.), (%~))
+import Control.Lens.Operators ((%~), (^.))
 import Control.Lens.TH (makeFieldsNoPrefix)
 import Control.Lens.Tuple (_1, _2)
 
@@ -349,63 +349,64 @@ instance Recursive Expression where
     case x of
       ECaseBlock caseBlock ->
         ECaseBlock $
-        caseBlock &
-          expr %~ bottomUpFmap f &
-          matches %~ map (\(a, b) -> (bottomUpFmap f a, bottomUpFmap f b))
+        caseBlock & expr %~ bottomUpFmap f & matches %~
+        map (\(a, b) -> (bottomUpFmap f a, bottomUpFmap f b))
       EEmptySExpression -> f x
       EFunctionApplication functionApplication ->
         EFunctionApplication $
-        functionApplication &
-          function %~ bottomUpFmap f &
-          arguments %~ map (bottomUpFmap f)
+        functionApplication & function %~ bottomUpFmap f & arguments %~
+        map (bottomUpFmap f)
       EIdentifier _ -> x
       ELambda lambda ->
         ELambda $
-        lambda &
-          arguments %~ map (bottomUpFmap f) &
-          body %~ bottomUpFmap f
+        lambda & arguments %~ map (bottomUpFmap f) & body %~ bottomUpFmap f
       ELetBlock letBlock ->
         ELetBlock $
-        letBlock &
-          bindings %~ map ((_1 %~ bottomUpFmap f) . (_2 %~ bottomUpFmap f)) &
-          body %~ bottomUpFmap f
+        letBlock & bindings %~
+        map ((_1 %~ bottomUpFmap f) . (_2 %~ bottomUpFmap f)) &
+        body %~
+        bottomUpFmap f
       ELiteral literal ->
         case literal of
           LChar _ -> x
           LInt _ -> x
           LList exprs -> ELiteral (LList $ map (bottomUpFmap f) exprs)
           LString _ -> x
-  bottomUpTraverse :: (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
+  bottomUpTraverse ::
+       (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
   bottomUpTraverse f x =
     f =<<
     case x of
       ECaseBlock caseBlock ->
         ECaseBlock <$>
-        (CaseBlock <$>
-        bottomUpTraverse f (caseBlock ^. expr) <*>
-        traverse (\(a, b) -> (,) <$> bottomUpTraverse f a <*> bottomUpTraverse f b) (caseBlock ^. matches))
+        (CaseBlock <$> bottomUpTraverse f (caseBlock ^. expr) <*>
+         traverse
+           (\(a, b) -> (,) <$> bottomUpTraverse f a <*> bottomUpTraverse f b)
+           (caseBlock ^. matches))
       EEmptySExpression -> pure x
       EFunctionApplication functionApplication ->
         EFunctionApplication <$>
         (FunctionApplication <$>
-        bottomUpTraverse f (functionApplication ^. function) <*>
-        traverse (bottomUpTraverse f) (functionApplication ^. arguments))
+         bottomUpTraverse f (functionApplication ^. function) <*>
+         traverse (bottomUpTraverse f) (functionApplication ^. arguments))
       EIdentifier _ -> pure x
       ELambda lambda ->
         ELambda <$>
-        (Lambda <$>
-        traverse (bottomUpTraverse f) (lambda ^. arguments) <*>
-        bottomUpTraverse f (lambda ^. body))
+        (Lambda <$> traverse (bottomUpTraverse f) (lambda ^. arguments) <*>
+         bottomUpTraverse f (lambda ^. body))
       ELetBlock letBlock ->
         ELetBlock <$>
         (LetBlock <$>
-        traverse (\(a, b) -> (a,) <$> bottomUpTraverse f b) (letBlock ^. bindings) <*>
-        bottomUpTraverse f (letBlock ^. body))
+         traverse
+           (\(a, b) -> (a, ) <$> bottomUpTraverse f b)
+           (letBlock ^. bindings) <*>
+         bottomUpTraverse f (letBlock ^. body))
       ELiteral literal ->
         case literal of
           LChar _ -> pure x
           LInt _ -> pure x
-          LList exprs -> ELiteral . LList <$> traverse (bottomUpTraverse f) exprs
+          LList exprs ->
+            ELiteral . LList <$> traverse (bottomUpTraverse f) exprs
           LString _ -> pure x
 
 extractNameFromDefinition :: Statement -> Maybe Identifier
