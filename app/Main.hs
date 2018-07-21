@@ -1,10 +1,13 @@
 module Main where
 
-import Axel.Entry (evalFile)
+import Axel.Project (buildProject, runProject)
 
+import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
 
 main :: IO ()
 main = do
-  [sourceFilePath] <- getArgs
-  evalFile sourceFilePath
+  [projectPath] <- getArgs
+  setCurrentDirectory projectPath
+  buildProject
+  runProject

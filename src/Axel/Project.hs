@@ -7,6 +7,7 @@ import Axel.Utils.Directory (getRecursiveContents)
 
 import Control.Monad (void)
 import Control.Monad.Except (throwError)
+import Control.Monad.IO.Class (liftIO)
 
 import Data.List (foldl')
 import Data.Semigroup ((<>))
@@ -17,6 +18,7 @@ import Paths_axel (getDataFileName)
 import System.Directory (copyFile, getCurrentDirectory, removeFile)
 import System.FilePath ((</>))
 import System.Process (readProcess, readProcessWithExitCode)
+import System.Process.Typed (proc, runProcess)
 
 import Text.Regex.PCRE ((=~), getAllTextSubmatches)
 
@@ -51,7 +53,12 @@ runProject = do
   (_, _, stderr) <- readProcessWithExitCode "stack" ["ide", "targets"] ""
   let targets = lines stderr
   case findExeTargets targets of
-    [target] -> readProcess "stack" ["exec", target] "" >>= putStr
+    [target] -> do
+      liftIO $ putStrLn ("Running " <> target <> "...")
+      void $ runProcess $ proc "stack" ["exec", target]
+      -- createProcess
+        -- (proc "stack" ["exec", target])
+        -- {std_in = Inherit, std_out = Inherit, std_err = Inherit}
     _ -> throwError (userError "No executable target was unambiguously found!")
   where
     findExeTargets =

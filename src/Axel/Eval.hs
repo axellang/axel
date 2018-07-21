@@ -11,17 +11,15 @@ import Control.Monad.Trans.Control (MonadBaseControl, control)
 
 import System.Directory
   ( createDirectoryIfMissing
-  -- , getTemporaryDirectory
+  , getTemporaryDirectory
   , withCurrentDirectory
   )
 import System.FilePath ((</>))
 import System.IO (writeFile)
 
 withTempDirectory :: (MonadIO m) => (FilePath -> m a) -> m a
-withTempDirectory f
-  -- temporaryDirectory <- liftIO getTemporaryDirectory
- = do
-  let temporaryDirectory = "/Users/joshuagrosso/Desktop/axelTmp"
+withTempDirectory f = do
+  temporaryDirectory <- liftIO getTemporaryDirectory
   liftIO $ createDirectoryIfMissing True temporaryDirectory
   result <- f temporaryDirectory
   pure result
@@ -56,7 +54,7 @@ evalMacro ::
   -> String
   -> m (Either [String] String)
 evalMacro astDefinition scaffold macroDefinitionAndEnvironment =
-  withTempDirectory $ \directoryName -> do
+  withTempDirectory $ \directoryName ->
     withCurrentDirectoryLifted directoryName $ do
       let astDirectoryPath = "Axel" </> "Parse"
       let macroDefinitionAndEnvironmentFileName =

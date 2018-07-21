@@ -6,7 +6,10 @@ module Axel.Macros where
 import Axel.AST
   ( Identifier
   , MacroDefinition
-  , Statement(SMacroDefinition, STopLevel)
+  , Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
+          SMacroDefinition, SModuleDeclaration, SQualifiedImport,
+          SRestrictedImport, STopLevel, STypeSynonym, STypeclassInstance,
+          SUnrestrictedImport)
   , ToHaskell(toHaskell)
   , definitions
   , name
@@ -117,6 +120,7 @@ expansionPass programExpr = do
   let independentStatements =
         extractIndependentStatements $ programToStatements programExpr
   normalizedStatements <- traverse normalizeStatement independentStatements
+  let nonconflictingStatements = filter canInclude normalizedStatements
   let (macroDefinitions, auxiliaryEnvironment) =
         foldl
           (\acc x ->
@@ -125,9 +129,23 @@ expansionPass programExpr = do
                  acc & _1 %~ (macroDefinition :)
                _ -> acc & _2 %~ (<> [x]))
           ([], [])
-          normalizedStatements
+          nonconflictingStatements
   expandMacros macroDefinitions auxiliaryEnvironment programExpr
   where
+    canInclude :: Statement -> Bool
+    canInclude =
+      \case
+        SDataDeclaration _ -> True
+        SFunctionDefinition _ -> True
+        SLanguagePragma _ -> True
+        SMacroDefinition _ -> True
+        SModuleDeclaration _ -> False
+        SQualifiedImport _ -> True
+        SRestrictedImport _ -> True
+        STopLevel _ -> False
+        STypeclassInstance _ -> True
+        STypeSynonym _ -> True
+        SUnrestrictedImport _ -> True
     programToStatements :: Parse.Expression -> [Parse.Expression]
     programToStatements (Parse.SExpression (Parse.Symbol "begin":stmts)) = stmts
     programToStatements _ =

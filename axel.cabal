@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3cdc936855f78c99cb8b145194f65644f9b27bbdeab5c12959474118b521871c
+-- hash: 72e1c0a2ad6eab54ed0144120fbe5cb23511fea32286f226574a144ccf14631f
 
 name:           axel
 version:        0.1.0.0
@@ -39,10 +39,11 @@ source-repository head
 
 library
   exposed-modules:
-      Axel.Entry
+      Axel.Project
   other-modules:
       Axel.AST
       Axel.Denormalize
+      Axel.Entry
       Axel.Error
       Axel.Eval
       Axel.GHC
@@ -50,7 +51,6 @@ library
       Axel.Normalize
       Axel.Parse
       Axel.Parse.AST
-      Axel.Project
       Axel.Quote
       Axel.Utils.Directory
       Axel.Utils.Display
@@ -80,6 +80,7 @@ library
     , split >=0.2.3 && <0.3
     , strict >=0.3.2 && <0.4
     , text >=1.2.2 && <1.3
+    , typed-process >=0.2.2 && <0.3
   default-language: Haskell2010
 
 executable axel-exe
@@ -92,6 +93,7 @@ executable axel-exe
   build-depends:
       axel
     , base >=4.11.1 && <4.12
+    , directory >=1.3 && <1.4
   default-language: Haskell2010
 
 test-suite axel-test
