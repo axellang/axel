@@ -103,34 +103,32 @@ extractIndependentStatements stmts =
     macroNameFromDefinition _ =
       error
         "macroNameFromDefinition should only be called with a valid macro definition!"
-    isDependentOn macroDefinition (Parse.SExpression (Parse.Symbol symbol:exprs)) =
-      macroNameFromDefinition macroDefinition == symbol ||
-      any (isDependentOn macroDefinition) exprs
-    isDependentOn macroDefinition (Parse.SExpression exprs) =
-      any (isDependentOn macroDefinition) exprs
+    isDependentOn macroDef (Parse.SExpression (Parse.Symbol symbol:exprs)) =
+      macroNameFromDefinition macroDef == symbol ||
+      any (isDependentOn macroDef) exprs
+    isDependentOn macroDef (Parse.SExpression exprs) =
+      any (isDependentOn macroDef) exprs
     isDependentOn _ _ = False
-    isDependentOnAny macroDefinitions expr =
-      any (`isDependentOn` expr) macroDefinitions
+    isDependentOnAny macroDefs expr = any (`isDependentOn` expr) macroDefs
 
 expansionPass ::
      (MonadBaseControl IO m, MonadError Error m, MonadIO m)
   => Parse.Expression
   -> m Parse.Expression
 expansionPass programExpr = do
-  let independentStatements =
-        extractIndependentStatements $ programToStatements programExpr
-  normalizedStatements <- traverse normalizeStatement independentStatements
-  let nonconflictingStatements = filter canInclude normalizedStatements
-  let (macroDefinitions, auxiliaryEnvironment) =
+  let independentStmts =
+        extractIndependentStatements $ programToStmts programExpr
+  normalizedStmts <- traverse normalizeStatement independentStmts
+  let nonconflictingStmts = filter canInclude normalizedStmts
+  let (macroDefs, auxEnv) =
         foldl
           (\acc x ->
              case x of
-               SMacroDefinition macroDefinition ->
-                 acc & _1 %~ (macroDefinition :)
+               SMacroDefinition macroDef -> acc & _1 %~ (macroDef :)
                _ -> acc & _2 %~ (<> [x]))
           ([], [])
-          nonconflictingStatements
-  expandMacros macroDefinitions auxiliaryEnvironment programExpr
+          nonconflictingStmts
+  expandMacros macroDefs auxEnv programExpr
   where
     canInclude :: Statement -> Bool
     canInclude =
@@ -146,10 +144,10 @@ expansionPass programExpr = do
         STypeclassInstance _ -> True
         STypeSynonym _ -> True
         SUnrestrictedImport _ -> True
-    programToStatements :: Parse.Expression -> [Parse.Expression]
-    programToStatements (Parse.SExpression (Parse.Symbol "begin":stmts)) = stmts
-    programToStatements _ =
-      error "programToStatements must be passed a top-level program!"
+    programToStmts :: Parse.Expression -> [Parse.Expression]
+    programToStmts (Parse.SExpression (Parse.Symbol "begin":stmts)) = stmts
+    programToStmts _ =
+      error "programToStmts must be passed a top-level program!"
 
 exhaustivelyExpandMacros ::
      (MonadBaseControl IO m, MonadError Error m, MonadIO m)
@@ -164,12 +162,12 @@ expandMacros ::
   -> [Statement]
   -> Parse.Expression
   -> m Parse.Expression
-expandMacros macroDefinitions auxiliaryEnvironment =
-  bottomUpTraverse $ \expression ->
-    case expression of
-      Parse.LiteralChar _ -> pure expression
-      Parse.LiteralInt _ -> pure expression
-      Parse.LiteralString _ -> pure expression
+expandMacros macroDefs auxEnv =
+  bottomUpTraverse $ \expr ->
+    case expr of
+      Parse.LiteralChar _ -> pure expr
+      Parse.LiteralInt _ -> pure expr
+      Parse.LiteralString _ -> pure expr
       Parse.SExpression xs ->
         Parse.SExpression <$>
         foldM
@@ -180,18 +178,15 @@ expandMacros macroDefinitions auxiliaryEnvironment =
                Parse.LiteralString _ -> pure $ acc ++ [x]
                Parse.SExpression [] -> pure $ acc ++ [x]
                Parse.SExpression (function:args) ->
-                 lookupMacroDefinition macroDefinitions function >>= \case
+                 lookupMacroDefinition macroDefs function >>= \case
                    Just macroDefinition ->
                      (acc ++) <$>
-                     expandMacroApplication
-                       macroDefinition
-                       auxiliaryEnvironment
-                       args
+                     expandMacroApplication macroDefinition auxEnv args
                    Nothing -> pure $ acc ++ [x]
                Parse.Symbol _ -> pure $ acc ++ [x])
           []
           xs
-      Parse.Symbol _ -> pure expression
+      Parse.Symbol _ -> pure expr
 
 expandMacroApplication ::
      (MonadBaseControl IO m, MonadError Error m, MonadIO m)
@@ -221,28 +216,26 @@ lookupMacroDefinition ::
   => [MacroDefinition]
   -> Parse.Expression
   -> m (Maybe MacroDefinition)
-lookupMacroDefinition macroDefinitions identifierExpression =
-  case identifierExpression of
+lookupMacroDefinition macroDefs identifierExpr =
+  case identifierExpr of
     Parse.LiteralChar _ -> pure Nothing
     Parse.LiteralInt _ -> pure Nothing
     Parse.LiteralString _ -> pure Nothing
     Parse.SExpression _ -> pure Nothing
     Parse.Symbol identifier ->
-      case filter
-             (\macroDefinition -> macroDefinition ^. name == identifier)
-             macroDefinitions of
+      case filter (\macroDef -> macroDef ^. name == identifier) macroDefs of
         [] -> pure Nothing
-        [macroDefinition] -> pure $ Just macroDefinition
+        [macroDef] -> pure $ Just macroDef
         _ -> throwError (MacroError "0012")
 
 -- TODO This probably needs heavy optimization. If so, I will need to decrease the running time.
 extractMacroDefinitions :: Statement -> [MacroDefinition]
 extractMacroDefinitions (STopLevel topLevel) =
   foldl'
-    (\env statement ->
-       case statement of
-         SMacroDefinition macroDefinition ->
-           let newEnv = macroDefinition : env
+    (\env stmt ->
+       case stmt of
+         SMacroDefinition macroDef ->
+           let newEnv = macroDef : env
                isDependentOnNewEnv x =
                  any (`isDefinitionDependentOnMacro` x) newEnv
            in filter (not . isDependentOnNewEnv) newEnv
@@ -267,11 +260,11 @@ isExpressionDependentOnMacro needle (Parse.SExpression xs) =
 isExpressionDependentOnMacro needle (Parse.Symbol x) = x == needle ^. name
 
 stripMacroDefinitions :: Statement -> Statement
-stripMacroDefinitions x =
-  case x of
+stripMacroDefinitions =
+  \case
     STopLevel topLevel ->
       STopLevel $ (statements %~ filter (not . isMacroDefinition)) topLevel
-    _ -> x
+    x -> x
   where
     isMacroDefinition (SMacroDefinition _) = True
     isMacroDefinition _ = False
