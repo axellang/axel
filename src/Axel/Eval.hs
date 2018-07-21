@@ -4,29 +4,15 @@ module Axel.Eval where
 
 import Axel.Error (Error(MacroError))
 import Axel.GHC (buildWithGHC, extractInvalidDefinitionNames, runWithGHC)
+import Axel.Utils.Directory (withCurrentDirectoryLifted, withTempDirectory)
 
 import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Trans.Control (MonadBaseControl, control)
+import Control.Monad.Trans.Control (MonadBaseControl)
 
-import System.Directory
-  ( createDirectoryIfMissing
-  , getTemporaryDirectory
-  , withCurrentDirectory
-  )
+import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>))
 import System.IO (writeFile)
-
-withTempDirectory :: (MonadIO m) => (FilePath -> m a) -> m a
-withTempDirectory f = do
-  temporaryDirectory <- liftIO getTemporaryDirectory
-  liftIO $ createDirectoryIfMissing True temporaryDirectory
-  result <- f temporaryDirectory
-  pure result
-
-withCurrentDirectoryLifted :: (MonadBaseControl IO m) => FilePath -> m a -> m a
-withCurrentDirectoryLifted directory f =
-  control $ \runInIO -> withCurrentDirectory directory (runInIO f)
 
 execInterpreter ::
      (MonadError Error m, MonadIO m)

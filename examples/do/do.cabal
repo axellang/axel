@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: eac431f8f44aa32392a15cd4402428e43964b4dc5d65761ce269121d64886f58
+-- hash: 0037b02c438ca0e266b36bbc6819c4f7b82001900b25cff6b073210c41d253bd
 
 name:           do
 version:        0.1.0.0
@@ -13,7 +13,6 @@ author:         Author name here
 maintainer:     example@example.com
 copyright:      2018 Author name here
 license:        BSD3
-license-file:   LICENSE
 build-type:     Simple
 cabal-version:  >= 1.10
 extra-source-files:
