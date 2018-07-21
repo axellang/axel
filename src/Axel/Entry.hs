@@ -19,7 +19,7 @@ import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
 import Control.Lens.Operators ((.~), (^.))
 import Control.Monad (when)
-import Control.Monad.Except (MonadError, runExceptT)
+import Control.Monad.Except (MonadError, runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 
@@ -72,7 +72,7 @@ transpileFile path newPath = do
   fileContents <- S.readFile path
   result <- runExceptT $ transpileSource fileContents
   case result of
-    Left err -> print err
+    Left err -> throwError $ userError $ show err
     Right newContents -> writeFile newPath newContents
 
 -- Transpile a file in place.
@@ -90,7 +90,7 @@ evalFile path = do
   let newPath = directory .~ tempDirectoryPath $ axelPathToHaskellPath path
   transpileFile path newPath
   evalResult <- runExceptT $ runWithGHC newPath
-  either print putStr evalResult
+  either (throwError . userError . show) putStr evalResult
   where
     tempDirectoryPath = (path ^. directory) </> "axelTemp"
     ensureCleanTempDirectory = do

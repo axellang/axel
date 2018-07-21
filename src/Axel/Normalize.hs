@@ -37,7 +37,6 @@ import qualified Axel.Parse as Parse
   )
 import Axel.Quote (quoteParseExpression)
 
-import Control.Monad ((>=>))
 import Control.Monad.Except (MonadError, throwError)
 
 normalizeExpression :: (MonadError Error m) => Parse.Expression -> m Expression
@@ -45,16 +44,17 @@ normalizeExpression (Parse.LiteralChar char) = pure $ ELiteral (LChar char)
 normalizeExpression (Parse.LiteralInt int) = pure $ ELiteral (LInt int)
 normalizeExpression (Parse.LiteralString string) =
   pure $ ELiteral (LString string)
-normalizeExpression (Parse.SExpression items) =
+normalizeExpression expression@(Parse.SExpression items) =
   case items of
     Parse.Symbol "case":var:cases ->
       let normalizedCases =
             traverse
-              (\case
-                 Parse.SExpression [pattern', result'] ->
-                   (,) <$> normalizeExpression pattern' <*>
-                   normalizeExpression result'
-                 _ -> throwError $ NormalizeError "0013")
+              (\x ->
+                 case x of
+                   Parse.SExpression [pattern', result'] ->
+                     (,) <$> normalizeExpression pattern' <*>
+                     normalizeExpression result'
+                   _ -> throwError $ NormalizeError "0013" [x, expression])
               cases
       in ECaseBlock <$>
          (CaseBlock <$> normalizeExpression var <*> normalizedCases)
@@ -69,11 +69,11 @@ normalizeExpression (Parse.SExpression items) =
                  Parse.SExpression [name', value'] ->
                    (,) <$> normalizeExpression name' <*>
                    normalizeExpression value'
-                 _ -> throwError $ NormalizeError "0001")
+                 x -> throwError $ NormalizeError "0001" [x, expression])
               bindings'
       in ELetBlock <$>
          (LetBlock <$> normalizedBindings <*> normalizeExpression body')
-    [Parse.Symbol "quote", expression] -> pure $ quoteParseExpression expression
+    [Parse.Symbol "quote", expr] -> pure $ quoteParseExpression expr
     function':arguments' ->
       EFunctionApplication <$>
       (FunctionApplication <$> normalizeExpression function' <*>
@@ -83,36 +83,38 @@ normalizeExpression (Parse.Symbol symbol) = pure $ EIdentifier symbol
 
 normalizeDefinitions ::
      (MonadError Error m)
-  => [Parse.Expression]
+  => Parse.Expression
+  -> [Parse.Expression]
   -> m [(ArgumentList, Expression)]
-normalizeDefinitions =
+normalizeDefinitions context =
   traverse
     (\case
        Parse.SExpression [Parse.SExpression args', definition] ->
          (,) <$> (ArgumentList <$> traverse normalizeExpression args') <*>
          normalizeExpression definition
-       _ -> throwError $ NormalizeError "0010")
+       x -> throwError $ NormalizeError "0010" [x, context])
 
 normalizeStatement :: (MonadError Error m) => Parse.Expression -> m Statement
-normalizeStatement (Parse.SExpression items) =
+normalizeStatement expression@(Parse.SExpression items) =
   case items of
     Parse.Symbol "=":Parse.Symbol functionName:typeSignature':definitions ->
       normalizeExpression typeSignature' >>= \case
         EFunctionApplication typeSignature ->
           SFunctionDefinition <$>
           (FunctionDefinition functionName typeSignature <$>
-           normalizeDefinitions definitions)
-        _ -> throwError $ NormalizeError "0011"
+           normalizeDefinitions expression definitions)
+        _ -> throwError $ NormalizeError "0011" [typeSignature', expression]
     Parse.Symbol "begin":statements' ->
       let statements = traverse normalizeStatement statements'
       in STopLevel . TopLevel <$> statements
     [Parse.Symbol "data", typeDefinition', Parse.SExpression constructors'] ->
       let constructors =
             traverse
-              (normalizeExpression >=> \case
-                 EFunctionApplication functionApplication ->
-                   pure functionApplication
-                 _ -> throwError $ NormalizeError "0003")
+              (\x ->
+                 normalizeExpression x >>= \case
+                   EFunctionApplication functionApplication ->
+                     pure functionApplication
+                   _ -> throwError $ NormalizeError "0003" [x, expression])
               constructors'
       in normalizeExpression typeDefinition' >>= \case
            EFunctionApplication typeConstructor ->
@@ -121,25 +123,27 @@ normalizeStatement (Parse.SExpression items) =
            EIdentifier properType ->
              SDataDeclaration <$>
              (DataDeclaration (ProperType properType) <$> constructors)
-           _ -> throwError $ NormalizeError "0004"
+           _ -> throwError $ NormalizeError "0004" [typeDefinition', expression]
     Parse.Symbol "defmacro":Parse.Symbol macroName:definitions ->
       SMacroDefinition <$>
-      (MacroDefinition macroName <$> normalizeDefinitions definitions)
+      (MacroDefinition macroName <$> normalizeDefinitions expression definitions)
     [Parse.Symbol "import", Parse.Symbol moduleName, Parse.SExpression imports] ->
       SRestrictedImport <$>
-      (RestrictedImport moduleName <$> normalizeImportList imports)
+      (RestrictedImport moduleName <$> normalizeImportList expression imports)
     [Parse.Symbol "importq", Parse.Symbol moduleName, Parse.Symbol alias, Parse.SExpression imports] ->
       SQualifiedImport <$>
-      (QualifiedImport moduleName alias <$> normalizeImportList imports)
+      (QualifiedImport moduleName alias <$>
+       normalizeImportList expression imports)
     [Parse.Symbol "importUnrestricted", Parse.Symbol moduleName] ->
       pure $ SUnrestrictedImport moduleName
     [Parse.Symbol "instance", instanceName', Parse.SExpression definitions'] ->
       let definitions =
             traverse
-              (normalizeStatement >=> \case
-                 SFunctionDefinition functionDefinition ->
-                   pure functionDefinition
-                 _ -> throwError $ NormalizeError "0005")
+              (\x ->
+                 normalizeStatement x >>= \case
+                   SFunctionDefinition functionDefinition ->
+                     pure functionDefinition
+                   _ -> throwError $ NormalizeError "0005" [x, expression])
               definitions'
       in STypeclassInstance <$>
          (TypeclassInstance <$> normalizeExpression instanceName' <*>
@@ -152,27 +156,30 @@ normalizeStatement (Parse.SExpression items) =
       let alias = normalizeExpression alias'
           definition = normalizeExpression definition'
       in STypeSynonym <$> (TypeSynonym <$> alias <*> definition)
-    _ -> throwError $ NormalizeError "0006"
+    _ -> throwError $ NormalizeError "0006" [expression]
   where
-    normalizeImportList input =
+    normalizeImportList context input =
       ImportList <$>
       traverse
-        (\case
-           Parse.Symbol import' -> pure $ ImportItem import'
-           Parse.SExpression (Parse.Symbol type':imports') ->
-             let imports =
-                   traverse
-                     (\case
-                        Parse.Symbol import' -> pure import'
-                        _ -> throwError $ NormalizeError "0009")
-                     imports'
-             in ImportType type' <$> imports
-           _ -> throwError $ NormalizeError "0007")
+        (\item ->
+           case item of
+             Parse.Symbol import' -> pure $ ImportItem import'
+             Parse.SExpression (Parse.Symbol type':imports') ->
+               let imports =
+                     traverse
+                       (\case
+                          Parse.Symbol import' -> pure import'
+                          x ->
+                            throwError $
+                            NormalizeError "0009" [x, item, context])
+                       imports'
+               in ImportType type' <$> imports
+             x -> throwError $ NormalizeError "0007" [x, item, context])
         input
-normalizeStatement _ = throwError $ NormalizeError "0008"
+normalizeStatement expression = throwError $ NormalizeError "0008" [expression]
 
 normalizeProgram :: (MonadError Error m) => Parse.Expression -> m Statement
-normalizeProgram =
-  normalizeStatement >=> \case
+normalizeProgram expression =
+  normalizeStatement expression >>= \case
     program@(STopLevel _) -> pure program
-    _ -> throwError $ NormalizeError "0014"
+    _ -> throwError $ NormalizeError "0014" [expression]
