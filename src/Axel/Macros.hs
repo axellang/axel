@@ -17,7 +17,7 @@ import Axel.AST
   , statements
   )
 import Axel.Denormalize (denormalizeExpression, denormalizeStatement)
-import Axel.Error (Error(MacroError))
+import Axel.Error (Error(MacroError), fatal)
 import Axel.Eval (evalMacro)
 import Axel.Normalize (normalizeStatement)
 import qualified Axel.Parse as Parse
@@ -157,6 +157,7 @@ exhaustivelyExpandMacros ::
   -> m Parse.Expression
 exhaustivelyExpandMacros = exhaustM expansionPass
 
+-- TODO This needs heavy optimization.
 expandMacros ::
      (MonadBaseControl IO m, MonadError Error m, MonadIO m)
   => [MacroDefinition]
@@ -198,15 +199,22 @@ expandMacroApplication ::
   -> [Statement]
   -> [Parse.Expression]
   -> m [Parse.Expression]
-expandMacroApplication macroDefinition auxiliaryEnvironment args = do
-  macroProgram <- generateMacroProgram macroDefinition auxiliaryEnvironment args
-  evalResult <- uncurry3 evalMacro macroProgram
-  case evalResult of
+expandMacroApplication macroDef rawAuxEnv args = do
+  auxEnv <- exhaustM pruneEnv rawAuxEnv
+  result <- runMacro auxEnv
+  case result of
     Right x -> Parse.parseMultiple x
-    Left invalidDefinitionNames ->
-      let auxiliaryEnvironment' =
-            removeDefinitionsByName invalidDefinitionNames auxiliaryEnvironment
-      in expandMacroApplication macroDefinition auxiliaryEnvironment' args
+    Left _ -> fatal "expandMacroApplication" "0001"
+  where
+    pruneEnv auxEnv = do
+      result <- runMacro auxEnv
+      pure $
+        case result of
+          Right _ -> auxEnv
+          Left invalidDefs -> removeDefinitionsByName invalidDefs auxEnv
+    runMacro auxEnv = do
+      macroProgram <- generateMacroProgram macroDef auxEnv args
+      uncurry3 evalMacro macroProgram
 
 lookupMacroDefinition ::
      (MonadError Error m)
