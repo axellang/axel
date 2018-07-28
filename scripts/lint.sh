@@ -1,0 +1,1 @@
+hlint app src test
