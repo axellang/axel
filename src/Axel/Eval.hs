@@ -18,7 +18,7 @@ execInterpreter ::
      (MonadError Error m, MonadIO m)
   => FilePath
   -> FilePath
-  -> m (Either [String] String)
+  -> m (Either (String, [String]) String)
 execInterpreter scaffoldFilePath macroDefinitionAndEnvironmentFilePath = do
   debugResult <- liftIO $ buildWithGHC scaffoldFilePath
   case debugResult of
@@ -31,14 +31,14 @@ execInterpreter scaffoldFilePath macroDefinitionAndEnvironmentFilePath = do
           jsonLog
       case invalidDefinitionNames of
         [] -> throwError $ MacroError stderr
-        _ -> pure $ Left invalidDefinitionNames
+        _ -> pure $ Left (stderr, invalidDefinitionNames)
 
 evalMacro ::
      (MonadBaseControl IO m, MonadError Error m, MonadIO m)
   => String
   -> String
   -> String
-  -> m (Either [String] String)
+  -> m (Either (String, [String]) String)
 evalMacro astDefinition scaffold macroDefinitionAndEnvironment =
   withTempDirectory $ \directoryName ->
     withCurrentDirectoryLifted directoryName $ do

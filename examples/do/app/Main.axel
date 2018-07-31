@@ -1,10 +1,10 @@
 (module Main)
 
 (defmacro fnCase
-    ((cases) (<$> (fn (varId)
-                      [`(fn (~varId)
-                            (case ~varId ~@cases))])
-                  AST.gensym)))
+  ((cases) (<$> (fn (varId)
+                  [`(fn (~varId)
+                      (case ~varId ~@cases))])
+                AST.gensym)))
 
 (defmacro quasiquote
   (([(AST.SExpression xs)])
@@ -20,18 +20,20 @@
      (pure [(AST.SExpression ['AST.SExpression (AST.SExpression ['concat (AST.SExpression (: 'list (map quasiquoteElem xs)))])])])))
   (([atom]) (pure [(AST.SExpression ['quote atom])])))
 
+(= do' (-> ([] AST.Expression) AST.Expression)
+   (() (fnCase
+        ((: var (: '<- (: val rest)))
+         `(>>= ~val (fn (~var) ~(do' rest))))
+        ((: val rest)
+         (case rest
+           ([]
+            val)
+           (_
+            `(>> ~val ~(do' rest))))))))
+
 (defmacro do
   ((input)
-   (let ((go (fnCase
-              ((: var (: '<- (: val rest)))
-               `(>>= ~val (fn (~var) ~(go rest))))
-              ((: val rest)
-               (case rest
-                ([]
-                 val)
-                (_
-                 `(>> ~val ~(go rest))))))))
-     (pure [(go input)]))))
+   (pure [(do' input)])))
 
 (= main (IO Unit)
    (() (do

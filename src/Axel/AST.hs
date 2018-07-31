@@ -21,6 +21,7 @@ import Axel.Utils.Display
   )
 import Axel.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
 
+import Control.Arrow ((***))
 import Control.Lens.Operators ((%~), (^.))
 import Control.Lens.TH (makeFieldsNoPrefix)
 import Control.Lens.Tuple (_1, _2)
@@ -350,7 +351,7 @@ instance Recursive Expression where
       ECaseBlock caseBlock ->
         ECaseBlock $
         caseBlock & expr %~ bottomUpFmap f & matches %~
-        map (\(a, b) -> (bottomUpFmap f a, bottomUpFmap f b))
+        map (bottomUpFmap f *** bottomUpFmap f)
       EEmptySExpression -> f x
       EFunctionApplication functionApplication ->
         EFunctionApplication $
