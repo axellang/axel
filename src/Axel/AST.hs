@@ -92,13 +92,15 @@ instance ToHaskell Import where
   toHaskell (ImportType typeName imports) =
     typeName <> surround Parentheses (delimit Commas imports)
 
-newtype ImportList =
-  ImportList [Import]
+data ImportSpecification
+  = ImportAll
+  | ImportOnly [Import]
   deriving (Eq)
 
-instance ToHaskell ImportList where
-  toHaskell :: ImportList -> String
-  toHaskell (ImportList importList) =
+instance ToHaskell ImportSpecification where
+  toHaskell :: ImportSpecification -> String
+  toHaskell ImportAll = ""
+  toHaskell (ImportOnly importList) =
     surround Parentheses $ delimit Commas $ map toHaskell importList
 
 data Lambda = Lambda
@@ -123,12 +125,12 @@ data MacroDefinition = MacroDefinition
 data QualifiedImport = QualifiedImport
   { _moduleName :: Identifier
   , _alias :: Identifier
-  , _imports :: ImportList
+  , _imports :: ImportSpecification
   } deriving (Eq)
 
 data RestrictedImport = RestrictedImport
   { _moduleName :: Identifier
-  , _imports :: ImportList
+  , _imports :: ImportSpecification
   } deriving (Eq)
 
 data TypeclassInstance = TypeclassInstance

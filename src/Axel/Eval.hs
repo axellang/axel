@@ -3,7 +3,7 @@
 module Axel.Eval where
 
 import Axel.Error (Error(MacroError))
-import Axel.GHC (buildWithGHC, extractInvalidDefinitionNames, runWithGHC)
+import Axel.GHC (buildWithGHC, runWithGHC)
 import Axel.Utils.Directory (withCurrentDirectoryLifted, withTempDirectory)
 
 import Control.Monad.Except (MonadError, throwError)
@@ -14,31 +14,19 @@ import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>))
 import System.IO (writeFile)
 
-execInterpreter ::
-     (MonadError Error m, MonadIO m)
-  => FilePath
-  -> FilePath
-  -> m (Either (String, [String]) String)
-execInterpreter scaffoldFilePath macroDefinitionAndEnvironmentFilePath = do
+execInterpreter :: (MonadError Error m, MonadIO m) => FilePath -> m String
+execInterpreter scaffoldFilePath = do
   debugResult <- liftIO $ buildWithGHC scaffoldFilePath
   case debugResult of
-    Right _ -> Right <$> runWithGHC scaffoldFilePath
-    Left (jsonLog, stderr) -> do
-      invalidDefinitionNames <-
-        liftIO $
-        extractInvalidDefinitionNames
-          macroDefinitionAndEnvironmentFilePath
-          jsonLog
-      case invalidDefinitionNames of
-        [] -> throwError $ MacroError stderr
-        _ -> pure $ Left (stderr, invalidDefinitionNames)
+    Right _ -> runWithGHC scaffoldFilePath
+    Left stderr -> throwError $ MacroError stderr
 
 evalMacro ::
      (MonadBaseControl IO m, MonadError Error m, MonadIO m)
   => String
   -> String
   -> String
-  -> m (Either (String, [String]) String)
+  -> m String
 evalMacro astDefinition scaffold macroDefinitionAndEnvironment =
   withTempDirectory $ \directoryName ->
     withCurrentDirectoryLifted directoryName $ do
@@ -53,4 +41,4 @@ evalMacro astDefinition scaffold macroDefinitionAndEnvironment =
           macroDefinitionAndEnvironmentFileName
           macroDefinitionAndEnvironment
       liftIO $ writeFile scaffoldFileName scaffold
-      execInterpreter scaffoldFileName macroDefinitionAndEnvironmentFileName
+      execInterpreter scaffoldFileName

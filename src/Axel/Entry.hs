@@ -7,16 +7,13 @@ module Axel.Entry where
 import Axel.AST (ToHaskell(toHaskell))
 import Axel.Error (Error)
 import Axel.GHC (runWithGHC)
-import Axel.Macros
-  ( exhaustivelyExpandMacros
-  , getAstDefinition
-  , stripMacroDefinitions
-  )
-
+import Axel.Macros (exhaustivelyExpandMacros, stripMacroDefinitions)
 import Axel.Normalize (normalizeStatement)
 import Axel.Parse (Expression(Symbol), parseSource)
 import Axel.Utils.Directory (withTempDirectory)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
+import Axel.Utils.Resources (readResource)
+import qualified Axel.Utils.Resources as Res (astDefinition)
 
 import Control.Lens.Operators ((.~))
 import Control.Monad.Except (MonadError, runExceptT, throwError)
@@ -81,7 +78,7 @@ evalFile :: FilePath -> IO ()
 evalFile path =
   withTempDirectory $ \tempDirectoryPath -> do
     let astDefinitionPath = tempDirectoryPath </> "Axel.hs"
-    getAstDefinition >>= writeFile astDefinitionPath
+    readResource Res.astDefinition >>= writeFile astDefinitionPath
     let newPath = directory .~ tempDirectoryPath $ axelPathToHaskellPath path
     transpileFile path newPath
     evalResult <- runExceptT $ runWithGHC newPath

@@ -5,7 +5,7 @@ import Axel.AST
   , Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
            EIdentifier, ELambda, ELetBlock, ELiteral)
   , Import(ImportItem, ImportType)
-  , ImportList(ImportList)
+  , ImportSpecification(ImportAll, ImportOnly)
   , Literal(LChar, LInt, LList, LString)
   , Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
           SMacroDefinition, SModuleDeclaration, SQualifiedImport,
@@ -91,8 +91,9 @@ denormalizeBinding (ArgumentList argumentList, expression) =
     , denormalizeExpression expression
     ]
 
-denormalizeImportList :: ImportList -> Parse.Expression
-denormalizeImportList (ImportList importList) =
+denormalizeImportSpecification :: ImportSpecification -> Parse.Expression
+denormalizeImportSpecification ImportAll = Parse.Symbol "all"
+denormalizeImportSpecification (ImportOnly importList) =
   Parse.SExpression $ map denormalizeImport importList
   where
     denormalizeImport (ImportItem item) = Parse.Symbol item
@@ -136,13 +137,13 @@ denormalizeStatement (SQualifiedImport qualifiedImport) =
     [ Parse.Symbol "importq"
     , Parse.Symbol $ qualifiedImport ^. moduleName
     , Parse.Symbol $ qualifiedImport ^. alias
-    , denormalizeImportList (qualifiedImport ^. imports)
+    , denormalizeImportSpecification (qualifiedImport ^. imports)
     ]
 denormalizeStatement (SRestrictedImport restrictedImport) =
   Parse.SExpression
     [ Parse.Symbol "import"
     , Parse.Symbol $ restrictedImport ^. moduleName
-    , denormalizeImportList (restrictedImport ^. imports)
+    , denormalizeImportSpecification (restrictedImport ^. imports)
     ]
 denormalizeStatement (STopLevel (TopLevel statements)) =
   Parse.SExpression $ Parse.Symbol "begin" : map denormalizeStatement statements

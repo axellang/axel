@@ -13,7 +13,7 @@ import Axel.AST
   , FunctionApplication(FunctionApplication)
   , FunctionDefinition(FunctionDefinition)
   , Import(ImportItem, ImportType)
-  , ImportList(ImportList)
+  , ImportSpecification(ImportAll, ImportOnly)
   , Lambda(Lambda)
   , LanguagePragma(LanguagePragma)
   , LetBlock(LetBlock)
@@ -132,9 +132,9 @@ normalizeStatement expr@(Parse.SExpression items) =
     [Parse.Symbol "import", Parse.Symbol moduleName, Parse.SExpression imports] ->
       SRestrictedImport <$>
       (RestrictedImport moduleName <$> normalizeImportList expr imports)
-    [Parse.Symbol "importq", Parse.Symbol moduleName, Parse.Symbol alias, Parse.SExpression imports] ->
+    [Parse.Symbol "importq", Parse.Symbol moduleName, Parse.Symbol alias, importSpec] ->
       SQualifiedImport <$>
-      (QualifiedImport moduleName alias <$> normalizeImportList expr imports)
+      (QualifiedImport moduleName alias <$> normalizeImportSpec expr importSpec)
     [Parse.Symbol "importUnrestricted", Parse.Symbol moduleName] ->
       pure $ SUnrestrictedImport moduleName
     [Parse.Symbol "instance", instanceName, Parse.SExpression defs] ->
@@ -159,8 +159,14 @@ normalizeStatement expr@(Parse.SExpression items) =
       in STypeSynonym <$> (TypeSynonym <$> normalizedAlias <*> normalizedDef)
     _ -> throwError $ NormalizeError "Invalid top-level form!" [expr]
   where
+    normalizeImportSpec ctxt importSpec =
+      case importSpec of
+        Parse.Symbol "all" -> pure ImportAll
+        Parse.SExpression importList -> normalizeImportList ctxt importList
+        x ->
+          throwError $ NormalizeError "Invalid import specification!" [x, ctxt]
     normalizeImportList ctxt input =
-      ImportList <$>
+      ImportOnly <$>
       traverse
         (\item ->
            case item of

@@ -2,13 +2,15 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8d0ab6a7586d20892da1b6d2e8108404859096bc5719a7f3a8e30ebb8d4c4cf1
+-- hash: 2c4cdd0178ad6519fe8100252b72565fbc261a394456c96838bcb397d9a9463d
 
 name:           axel
-version:        0.1.0.0
-category:       Lisp, Transpiler
-homepage:       https://github.com/jgrosso/axel#readme
-bug-reports:    https://github.com/jgrosso/axel/issues
+version:        0.0.2
+synopsis:       The Axel programming language.
+description:    Haskell's semantics, plus Lisp's macros. Meet Axel – a purely functional, extensible, and powerful programming language.
+category:       Language, Lisp, Macros, Transpiler
+homepage:       https://github.com/axellang/axel#readme
+bug-reports:    https://github.com/axellang/axel/issues
 author:         Joshua Grosso
 maintainer:     jgrosso256@gmail.com
 copyright:      2017 Joshua Grosso
@@ -17,9 +19,72 @@ license-file:   LICENSE
 build-type:     Simple
 cabal-version:  >= 1.10
 extra-source-files:
+    examples/axelTemp/Axel.hs
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/autogen/Paths_do.dump-hi
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/autogen/cabal_macros.h
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/autogen/Paths_do.hs
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/autogen/cabal_macros.h
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/autogen/Paths_do.hs
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/autogen/Paths_do.dump-hi
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/app/Main.dump-hi
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/Main.hi
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/Main.o
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/Paths_do.hi
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/Paths_do.o
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Lib.dyn_hi
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Lib.dyn_o
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Lib.hi
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Lib.o
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/libHSdo-0.1.0.0-84i3CClUbe35xQ9SiCfZTm-ghc8.4.3.dylib
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/libHSdo-0.1.0.0-84i3CClUbe35xQ9SiCfZTm.a
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Paths_do.dyn_hi
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Paths_do.dyn_o
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Paths_do.hi
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Paths_do.o
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/src/Lib.dump-hi
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/package.conf.inplace/package.cache
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/package.conf.inplace/package.cache.lock
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/setup-config
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/stack-build-caches/exe-do-exe
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/stack-build-caches/lib
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/stack-build-caches/test-do-test
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/stack-cabal-mod
+    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/stack-config-cache
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/bin/do-exe
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/doc/do-0.1.0.0/LICENSE
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/flag-cache/do-0.1.0.0
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/flag-cache/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm/Lib.dyn_hi
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm/Lib.hi
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm/libHSdo-0.1.0.0-84i3CClUbe35xQ9SiCfZTm.a
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm/Paths_do.dyn_hi
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm/Paths_do.hi
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/libHSdo-0.1.0.0-84i3CClUbe35xQ9SiCfZTm-ghc8.4.3.dylib
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/pkgdb/package.cache
+    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/pkgdb/package.cache.lock
+    examples/do/.stack-work/intero/interokbXBrc-TEMP.hs
+    examples/do/.stack-work/intero/interoMkMX0r-TEMP.hs
+    examples/do/app/Main.axel
+    examples/do/app/Main.hs
+    examples/do/cabal.project.local
+    examples/do/dist-newstyle/cache/compiler
+    examples/do/dist-newstyle/cache/config
+    examples/do/dist-newstyle/cache/elaborated-plan
+    examples/do/dist-newstyle/cache/improved-plan
+    examples/do/dist-newstyle/cache/plan.json
+    examples/do/dist-newstyle/cache/solver-plan
+    examples/do/dist-newstyle/cache/source-hashes
+    examples/do/do.cabal
+    examples/do/package.yaml
+    examples/do/Setup.axel
+    examples/do/Setup.hs
+    examples/do/stack.yaml
+    examples/example.axel
     README.org
     scripts/build.sh
     scripts/clean.sh
+    scripts/ghcid.sh
     scripts/lint.sh
 data-files:
     resources/autogenerated/macros/AST.hs
@@ -36,7 +101,7 @@ data-files:
 
 source-repository head
   type: git
-  location: https://github.com/jgrosso/axel
+  location: https://github.com/axellang/axel
 
 library
   exposed-modules:
@@ -53,6 +118,7 @@ library
       Axel.Parse
       Axel.Parse.AST
       Axel.Quote
+      Axel.Utils.Debug
       Axel.Utils.Directory
       Axel.Utils.Display
       Axel.Utils.Function
@@ -63,16 +129,13 @@ library
       Paths_axel
   hs-source-dirs:
       src
-  ghc-options: -Wall -Werror -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns
+  ghc-options: -Wall -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns
   build-depends:
-      aeson >=1.3.1 && <1.4
-    , base >=4.11.1 && <4.12
-    , bytestring >=0.10.8 && <0.11
+      base >=4.11.1 && <4.12
     , directory >=1.3 && <1.4
     , filepath >=1.4.1 && <1.5
-    , ghc ==8.4.3
-    , haskell-src-exts >=1.20.2 && <1.21
-    , lens >=4.16.1 && <4.17
+    , lens >=4.16.1 && <4.18
+    , lens-aeson >=1.0.2 && <1.1
     , monad-control >=1.0.2 && <1.1
     , mtl >=2.2.1 && <2.3
     , parsec >=3.1.11 && <3.2
@@ -82,6 +145,8 @@ library
     , strict >=0.3.2 && <0.4
     , text >=1.2.2 && <1.3
     , typed-process >=0.2.2 && <0.3
+    , vector >=0.12.0 && <0.13
+    , yaml >=0.8.31 && <0.10
   default-language: Haskell2010
 
 executable axel-exe
@@ -90,22 +155,9 @@ executable axel-exe
       Paths_axel
   hs-source-dirs:
       app
-  ghc-options: -Wall -Werror -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       axel
     , base >=4.11.1 && <4.12
     , directory >=1.3 && <1.4
-  default-language: Haskell2010
-
-test-suite axel-test
-  type: exitcode-stdio-1.0
-  main-is: Axel/Spec.hs
-  other-modules:
-      Paths_axel
-  hs-source-dirs:
-      test
-  ghc-options: -Wall -Werror -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.11.1 && <4.12
-    , hspec
   default-language: Haskell2010
