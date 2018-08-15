@@ -1,4 +1,0 @@
-(import Distribution.Simple (defaultMain))
-
-(= main (IO Unit)
-  (() defaultMain))

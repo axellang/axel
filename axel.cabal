@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2c4cdd0178ad6519fe8100252b72565fbc261a394456c96838bcb397d9a9463d
+-- hash: e26c150d164cb5b9dc90bf0ba0d5a3697e068c1128d669d65b9c6edaa3f0f1b1
 
 name:           axel
-version:        0.0.2
+version:        0.0.3
 synopsis:       The Axel programming language.
 description:    Haskell's semantics, plus Lisp's macros. Meet Axel – a purely functional, extensible, and powerful programming language.
 category:       Language, Lisp, Macros, Transpiler
@@ -20,66 +20,7 @@ build-type:     Simple
 cabal-version:  >= 1.10
 extra-source-files:
     examples/axelTemp/Axel.hs
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/autogen/Paths_do.dump-hi
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/autogen/cabal_macros.h
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/autogen/Paths_do.hs
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/autogen/cabal_macros.h
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/autogen/Paths_do.hs
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/autogen/Paths_do.dump-hi
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/app/Main.dump-hi
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/Main.hi
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/Main.o
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/Paths_do.hi
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/do-exe/do-exe-tmp/Paths_do.o
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Lib.dyn_hi
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Lib.dyn_o
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Lib.hi
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Lib.o
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/libHSdo-0.1.0.0-84i3CClUbe35xQ9SiCfZTm-ghc8.4.3.dylib
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/libHSdo-0.1.0.0-84i3CClUbe35xQ9SiCfZTm.a
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Paths_do.dyn_hi
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Paths_do.dyn_o
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Paths_do.hi
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/Paths_do.o
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/build/src/Lib.dump-hi
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/package.conf.inplace/package.cache
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/package.conf.inplace/package.cache.lock
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/setup-config
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/stack-build-caches/exe-do-exe
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/stack-build-caches/lib
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/stack-build-caches/test-do-test
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/stack-cabal-mod
-    examples/do/.stack-work/dist/x86_64-osx/Cabal-2.2.0.1/stack-config-cache
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/bin/do-exe
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/doc/do-0.1.0.0/LICENSE
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/flag-cache/do-0.1.0.0
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/flag-cache/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm/Lib.dyn_hi
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm/Lib.hi
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm/libHSdo-0.1.0.0-84i3CClUbe35xQ9SiCfZTm.a
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm/Paths_do.dyn_hi
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/do-0.1.0.0-84i3CClUbe35xQ9SiCfZTm/Paths_do.hi
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/lib/x86_64-osx-ghc-8.4.3/libHSdo-0.1.0.0-84i3CClUbe35xQ9SiCfZTm-ghc8.4.3.dylib
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/pkgdb/package.cache
-    examples/do/.stack-work/install/x86_64-osx/lts-12.0/8.4.3/pkgdb/package.cache.lock
-    examples/do/.stack-work/intero/interokbXBrc-TEMP.hs
-    examples/do/.stack-work/intero/interoMkMX0r-TEMP.hs
-    examples/do/app/Main.axel
-    examples/do/app/Main.hs
-    examples/do/cabal.project.local
-    examples/do/dist-newstyle/cache/compiler
-    examples/do/dist-newstyle/cache/config
-    examples/do/dist-newstyle/cache/elaborated-plan
-    examples/do/dist-newstyle/cache/improved-plan
-    examples/do/dist-newstyle/cache/plan.json
-    examples/do/dist-newstyle/cache/solver-plan
-    examples/do/dist-newstyle/cache/source-hashes
-    examples/do/do.cabal
-    examples/do/package.yaml
-    examples/do/Setup.axel
-    examples/do/Setup.hs
-    examples/do/stack.yaml
+    examples/do.axel
     examples/example.axel
     README.org
     scripts/build.sh
