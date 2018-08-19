@@ -21,7 +21,7 @@ import Data.Yaml (Value(String), decodeFileEither, encodeFile)
 
 import Paths_axel (getDataFileName, version)
 
-import System.Directory (copyFile, getCurrentDirectory, removeFile)
+import System.Directory (copyFile, removeFile, setCurrentDirectory)
 import System.FilePath ((</>))
 import System.Process (readProcess, readProcessWithExitCode)
 import System.Process.Typed (proc, runProcess)
@@ -30,15 +30,16 @@ import Text.Regex.PCRE ((=~), getAllTextSubmatches)
 
 newProject :: String -> IO ()
 newProject projectName = do
-  currentDirectory <- getCurrentDirectory
   void $ readProcess "stack" ["new", projectName, "new-template"] ""
-  let projectDirectory = currentDirectory </> projectName
+  setCurrentDirectory projectName
+  void $
+    readProcess "stack" ["config", "set", "resolver", "nightly-2018-08-17"] ""
   templatePath <- getDataFileName ("resources" </> "new-project-template")
   let copyAxel filePath = do
         copyFile
           (templatePath </> filePath <> ".axel")
-          (projectDirectory </> filePath <> ".axel")
-        removeFile (projectDirectory </> filePath <> ".hs")
+          (projectName </> filePath <> ".axel")
+        removeFile (projectName </> filePath <> ".hs")
   mapM_ copyAxel ["Setup", "app" </> "Main", "src" </> "Lib", "test" </> "Spec"]
 
 transpileProject :: IO [FilePath]

@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e26c150d164cb5b9dc90bf0ba0d5a3697e068c1128d669d65b9c6edaa3f0f1b1
+-- hash: deb466082a59f53f497793cec5211f873c7f26948954aad70363885d5cd568bd
 
 name:           axel
-version:        0.0.3
+version:        0.0.4
 synopsis:       The Axel programming language.
 description:    Haskell's semantics, plus Lisp's macros. Meet Axel – a purely functional, extensible, and powerful programming language.
 category:       Language, Lisp, Macros, Transpiler
@@ -46,6 +46,7 @@ source-repository head
 
 library
   exposed-modules:
+      Axel.Parse.AST
       Axel.Project
   other-modules:
       Axel.AST
@@ -57,7 +58,6 @@ library
       Axel.Macros
       Axel.Normalize
       Axel.Parse
-      Axel.Parse.AST
       Axel.Quote
       Axel.Utils.Debug
       Axel.Utils.Directory
@@ -70,7 +70,7 @@ library
       Paths_axel
   hs-source-dirs:
       src
-  ghc-options: -Wall -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns
+  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wmissing-import-lists -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.11.1 && <4.12
     , directory >=1.3 && <1.4
@@ -96,7 +96,7 @@ executable axel-exe
       Paths_axel
   hs-source-dirs:
       app
-  ghc-options: -Wall -Wmissing-import-lists -Wincomplete-record-updates -Wincomplete-uni-patterns -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wmissing-import-lists -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       axel
     , base >=4.11.1 && <4.12
