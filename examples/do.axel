@@ -1,5 +1,3 @@
-(module Main)
-
 (importq Axel.Parse.AST AST all)
 
 (defmacro quasiquote

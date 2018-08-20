@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: deb466082a59f53f497793cec5211f873c7f26948954aad70363885d5cd568bd
+-- hash: ac2ca9dedeeb7ddaf6e7db553e82e803f6b77e728a93990c51320eddc2606ef6
 
 name:           axel
 version:        0.0.4
@@ -21,7 +21,7 @@ cabal-version:  >= 1.10
 extra-source-files:
     examples/axelTemp/Axel.hs
     examples/do.axel
-    examples/example.axel
+    examples/fnCase.axel
     README.org
     scripts/build.sh
     scripts/clean.sh
@@ -47,14 +47,14 @@ source-repository head
 library
   exposed-modules:
       Axel.Parse.AST
-      Axel.Project
+      Axel.Haskell.Project
   other-modules:
       Axel.AST
       Axel.Denormalize
       Axel.Entry
       Axel.Error
       Axel.Eval
-      Axel.GHC
+      Axel.Haskell.GHC
       Axel.Macros
       Axel.Normalize
       Axel.Parse

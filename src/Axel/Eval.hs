@@ -3,7 +3,7 @@
 module Axel.Eval where
 
 import Axel.Error (Error(MacroError))
-import Axel.GHC (buildWithGHC, runWithGHC)
+import Axel.Haskell.GHC (buildWithGHC, runWithGHC)
 import Axel.Utils.Directory (withCurrentDirectoryLifted, withTempDirectory)
 
 import Control.Monad.Except (MonadError, throwError)

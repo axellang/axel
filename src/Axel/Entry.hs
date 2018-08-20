@@ -6,7 +6,7 @@ module Axel.Entry where
 
 import Axel.AST (ToHaskell(toHaskell))
 import Axel.Error (Error)
-import Axel.GHC (runWithGHC)
+import Axel.Haskell.GHC (runWithGHC)
 import Axel.Macros (exhaustivelyExpandMacros, stripMacroDefinitions)
 import Axel.Normalize (normalizeStatement)
 import Axel.Parse (Expression(Symbol), parseSource)

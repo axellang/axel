@@ -1,8 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Axel.Project where
+module Axel.Haskell.Project where
 
 import Axel.Entry (transpileFile')
+import Axel.Haskell.GHC (stackResolverWithAxel)
 import Axel.Utils.Directory (getRecursiveContents)
 
 import Control.Lens ((%~))
@@ -33,7 +34,7 @@ newProject projectName = do
   void $ readProcess "stack" ["new", projectName, "new-template"] ""
   setCurrentDirectory projectName
   void $
-    readProcess "stack" ["config", "set", "resolver", "nightly-2018-08-17"] ""
+    readProcess "stack" ["config", "set", "resolver", stackResolverWithAxel] ""
   templatePath <- getDataFileName ("resources" </> "new-project-template")
   let copyAxel filePath = do
         copyFile

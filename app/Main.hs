@@ -1,6 +1,6 @@
 module Main where
 
-import Axel.Project (buildProject, runProject)
+import Axel.Haskell.Project (buildProject, runProject)
 
 import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
