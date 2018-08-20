@@ -21,7 +21,7 @@ data Expression
 -- Internal utilities
 -- ******************************
 toAxel :: Expression -> String
-toAxel (LiteralChar x) = ['\\', x]
+toAxel (LiteralChar x) = ['{', x, '}']
 toAxel (LiteralInt x) = show x
 toAxel (LiteralString xs) = "\"" ++ xs ++ "\""
 toAxel (SExpression xs) = "(" ++ unwords (map toAxel xs) ++ ")"

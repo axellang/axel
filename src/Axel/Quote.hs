@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Axel.Quote where
 
 import qualified Axel.AST as AST
@@ -44,4 +46,9 @@ quoteParseExpression (Parse.Symbol x) =
   AST.EFunctionApplication $
   AST.FunctionApplication
     (AST.EIdentifier "AST.Symbol")
-    [AST.ELiteral $ AST.LString x]
+    [AST.ELiteral $ AST.LString $ handleEscapes x]
+  where
+    handleEscapes =
+      concatMap $ \case
+        '\\' -> "\\\\"
+        c -> [c]

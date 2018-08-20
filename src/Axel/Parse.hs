@@ -77,7 +77,7 @@ whitespace :: (Stream s m Char) => ParsecT s u m String
 whitespace = many space
 
 literalChar :: (Stream s m Char) => ParsecT s u m Expression
-literalChar = LiteralChar <$> (char '\\' *> any')
+literalChar = LiteralChar <$> (char '{' *> any' <* char '}')
 
 literalInt :: (Stream s m Char) => ParsecT s u m Expression
 literalInt = LiteralInt . read <$> many1 digit

@@ -56,7 +56,7 @@ normalizeExpression expr@(Parse.SExpression items) =
               cases
       in ECaseBlock <$>
          (CaseBlock <$> normalizeExpression var <*> normalizedCases)
-    [Parse.Symbol "fn", Parse.SExpression args, body] ->
+    [Parse.Symbol "\\", Parse.SExpression args, body] ->
       let normalizedArguments = traverse normalizeExpression args
       in ELambda <$>
          (Lambda <$> normalizedArguments <*> normalizeExpression body)

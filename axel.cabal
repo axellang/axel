@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ac2ca9dedeeb7ddaf6e7db553e82e803f6b77e728a93990c51320eddc2606ef6
+-- hash: 2c7a11cd39f81006a59c26efdbf988bd763aaade28f9e84d0b268f6959319877
 
 name:           axel
 version:        0.0.4
@@ -20,7 +20,7 @@ build-type:     Simple
 cabal-version:  >= 1.10
 extra-source-files:
     examples/axelTemp/Axel.hs
-    examples/do.axel
+    examples/doNotation.axel
     examples/fnCase.axel
     README.org
     scripts/build.sh

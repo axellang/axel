@@ -59,7 +59,7 @@ denormalizeExpression (ELambda lambda) =
   let denormalizedArguments =
         Parse.SExpression $ map denormalizeExpression (lambda ^. arguments)
   in Parse.SExpression
-       [ Parse.Symbol "fn"
+       [ Parse.Symbol "\\"
        , denormalizedArguments
        , denormalizeExpression (lambda ^. body)
        ]

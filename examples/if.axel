@@ -14,13 +14,12 @@
   (([atom]) (pure [(AST.SExpression ['quote atom])])))
 
 -- NOTE This will eventually be automatically defined by the Axel prelude.
-(defmacro fnCase
-    ((cases) (<$> (\ (varId)
-                    [`(\ (~varId) (case ~varId ~@cases))])
-                  AST.gensym)))
+(defmacro if'
+  (([cond true false])
+   (pure [`(case ~cond
+             (True ~true)
+             (False ~false))])))
 
 (= main (IO Unit)
-   (() ((fnCase
-         ("tada" (putStrLn "🎉"))
-         (_ (putStrLn "Impossible!")))
-        "tada")))
+  (() (putStrLn
+       (if' (== 1 1) "Correct!" "Impossible..."))))
