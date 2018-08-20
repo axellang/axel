@@ -20,23 +20,23 @@
                       (case ~varId ~@cases))])
                 AST.gensym)))
 
-(= do' (-> ([] AST.Expression) AST.Expression)
+(= mdo' (-> ([] AST.Expression) AST.Expression)
    (() (fnCase
         ((: var (: '<- (: val rest)))
-         `(>>= ~val (fn (~var) ~(do' rest))))
+         `(>>= ~val (fn (~var) ~(mdo' rest))))
         ((: val rest)
          (case rest
            ([]
             val)
            (_
-            `(>> ~val ~(do' rest))))))))
+            `(>> ~val ~(mdo' rest))))))))
 
-(defmacro do
+(defmacro mdo
   ((input)
-   (pure [(do' input)])))
+   (pure [(mdo' input)])))
 
 (= main (IO Unit)
-   (() (do
-         line <- getLine
-         (putStrLn line)
-         (pure unit))))
+   (() (mdo
+        line <- getLine
+        (putStrLn line)
+        (pure unit))))

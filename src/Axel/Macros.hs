@@ -121,14 +121,15 @@ expandMacros topLevelExprs =
     (\acc@(stmts, macroDefs) expr -> do
        expandedExpr <- fullyExpandExpr stmts macroDefs expr
        stmt <- normalizeStatement expandedExpr
+       let acc' =
+             case stmt of
+               SMacroDefinition macroDefinition ->
+                 acc & _2 %~ (<> [macroDefinition])
+               _ -> acc
        pure $
-         case stmt of
-           SMacroDefinition macroDefinition ->
-             acc & _2 %~ (<> [macroDefinition])
-           _ ->
-             if isStmtNonconflicting stmt
-               then acc & _1 %~ (<> [stmt])
-               else acc)
+         if isStmtNonconflicting stmt
+           then acc' & _1 %~ (<> [stmt])
+           else acc')
     ([], [])
     topLevelExprs
   where
