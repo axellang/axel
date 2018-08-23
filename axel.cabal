@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2c7a11cd39f81006a59c26efdbf988bd763aaade28f9e84d0b268f6959319877
+-- hash: 75c2302bede3c41c37961a0f4020f79a386d344a6095626b5dd891b8014b08df
 
 name:           axel
 version:        0.0.4
@@ -22,6 +22,7 @@ extra-source-files:
     examples/axelTemp/Axel.hs
     examples/doNotation.axel
     examples/fnCase.axel
+    examples/if.axel
     README.org
     scripts/build.sh
     scripts/clean.sh
@@ -46,39 +47,44 @@ source-repository head
 
 library
   exposed-modules:
-      Axel.Parse.AST
+      Axel.Error
+      Axel.Haskell.File
       Axel.Haskell.Project
+      Axel.Monad.FileSystem
+      Axel.Parse.Args
+      Axel.Parse.AST
   other-modules:
       Axel.AST
       Axel.Denormalize
-      Axel.Entry
-      Axel.Error
-      Axel.Eval
-      Axel.Haskell.GHC
       Axel.Macros
+      Axel.Monad.Haskell.GHC
+      Axel.Monad.Haskell.Stack
+      Axel.Monad.Output
+      Axel.Monad.Process
+      Axel.Monad.Resource
       Axel.Normalize
       Axel.Parse
       Axel.Quote
       Axel.Utils.Debug
-      Axel.Utils.Directory
       Axel.Utils.Display
       Axel.Utils.Function
       Axel.Utils.List
       Axel.Utils.Recursion
-      Axel.Utils.Resources
       Axel.Utils.String
       Paths_axel
   hs-source-dirs:
       src
-  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wmissing-import-lists -Wpartial-fields -Wredundant-constraints
+  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wmissing-import-lists -Wpartial-fields -Wredundant-constraints -Wno-simplifiable-class-constraints
   build-depends:
       base >=4.11.1 && <4.12
+    , bytestring >=0.10.8 && <0.11
     , directory >=1.3 && <1.4
     , filepath >=1.4.1 && <1.5
     , lens >=4.16.1 && <4.18
     , lens-aeson >=1.0.2 && <1.1
     , monad-control >=1.0.2 && <1.1
     , mtl >=2.2.1 && <2.3
+    , optparse-applicative >=0.14.2 && <0.15
     , parsec >=3.1.11 && <3.2
     , process >=1.6.1 && <1.7
     , regex-pcre >=0.94.4 && <0.95
@@ -96,9 +102,28 @@ executable axel-exe
       Paths_axel
   hs-source-dirs:
       app
-  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wmissing-import-lists -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wmissing-import-lists -Wpartial-fields -Wredundant-constraints -Wno-simplifiable-class-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       axel
     , base >=4.11.1 && <4.12
     , directory >=1.3 && <1.4
+    , optparse-applicative >=0.14.2 && <0.15
+  default-language: Haskell2010
+
+test-suite axel-test
+  type: exitcode-stdio-1.0
+  main-is: Driver.hs
+  other-modules:
+      Main
+      Paths_axel
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wmissing-import-lists -Wpartial-fields -Wredundant-constraints -Wno-simplifiable-class-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      axel
+    , base >=4.11.1 && <4.12
+    , tasty
+    , tasty-discover
+    , tasty-hedgehog
+    , tasty-hspec
   default-language: Haskell2010

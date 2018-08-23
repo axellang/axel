@@ -1,93 +1,74 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Axel.Haskell.Project where
 
-import Axel.Entry (transpileFile')
-import Axel.Haskell.GHC (stackResolverWithAxel)
-import Axel.Utils.Directory (getRecursiveContents)
+import Axel.Error (Error)
+import Axel.Haskell.File (transpileFile')
+import Axel.Monad.FileSystem
+  ( MonadFileSystem(copyFile, getCurrentDirectory,
+                getDirectoryContentsRec, removeFile)
+  )
+import Axel.Monad.Haskell.GHC (MonadGHC)
+import Axel.Monad.Haskell.Stack
+  ( MonadStackProject(addStackDependency, buildStackProject,
+                  createStackProject, runStackProject)
+  , axelStackageSpecifier
+  )
+import Axel.Monad.Resource (MonadResource(getResourcePath), newProjectTemplate)
 
-import Control.Lens ((%~))
-import Control.Monad (void)
-import Control.Monad.Except (throwError)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Except (MonadError)
 
-import Data.Aeson.Lens (_Array, key)
-import Data.Function ((&))
-import Data.List (foldl')
 import Data.Semigroup ((<>))
-import qualified Data.Text as T (append, isSuffixOf, pack)
-import Data.Vector (cons)
-import Data.Version (showVersion)
-import Data.Yaml (Value(String), decodeFileEither, encodeFile)
+import qualified Data.Text as T (isSuffixOf, pack)
 
-import Paths_axel (getDataFileName, version)
-
-import System.Directory (copyFile, removeFile, setCurrentDirectory)
 import System.FilePath ((</>))
-import System.Process (readProcess, readProcessWithExitCode)
-import System.Process.Typed (proc, runProcess)
 
-import Text.Regex.PCRE ((=~), getAllTextSubmatches)
+type ProjectPath = FilePath
 
-newProject :: String -> IO ()
+newProject ::
+     (Monad m, MonadFileSystem m, MonadResource m, MonadStackProject m)
+  => String
+  -> m ()
 newProject projectName = do
-  void $ readProcess "stack" ["new", projectName, "new-template"] ""
-  setCurrentDirectory projectName
-  void $
-    readProcess "stack" ["config", "set", "resolver", stackResolverWithAxel] ""
-  templatePath <- getDataFileName ("resources" </> "new-project-template")
-  let copyAxel filePath = do
+  createStackProject projectName
+  addStackDependency axelStackageSpecifier projectName
+  templatePath <- getResourcePath newProjectTemplate
+  let copyAxel :: (Monad m, MonadFileSystem m) => FilePath -> m ()
+      copyAxel filePath = do
         copyFile
           (templatePath </> filePath <> ".axel")
           (projectName </> filePath <> ".axel")
         removeFile (projectName </> filePath <> ".hs")
   mapM_ copyAxel ["Setup", "app" </> "Main", "src" </> "Lib", "test" </> "Spec"]
 
-transpileProject :: IO [FilePath]
+transpileProject ::
+     (MonadError Error m, MonadFileSystem m, MonadGHC m, MonadResource m)
+  => m [FilePath]
 transpileProject = do
-  files <- getRecursiveContents "."
+  files <- getDirectoryContentsRec "."
   let axelFiles =
         filter (\filePath -> ".axel" `T.isSuffixOf` T.pack filePath) files
   mapM transpileFile' axelFiles
 
-addAxelDependency :: IO ()
-addAxelDependency = do
-  let packageConfigPath = "package.yaml"
-  let axelHackageVersion = T.pack $ showVersion version
-  decodeResult <- decodeFileEither packageConfigPath
-  case decodeResult of
-    Right contents ->
-      let newContents :: Value
-          newContents =
-            contents & key "dependencies" . _Array %~
-            cons (String $ T.append "axel ==" axelHackageVersion)
-      in encodeFile packageConfigPath newContents
-    Left err ->
-      throwError
-        (userError $ "`package.yaml` could not be parsed: " <> show err)
-
-buildProject :: IO ()
+buildProject ::
+     ( MonadError Error m
+     , MonadFileSystem m
+     , MonadGHC m
+     , MonadResource m
+     , MonadStackProject m
+     )
+  => m ()
 buildProject = do
+  projectPath <- getCurrentDirectory
   hsPaths <- transpileProject
-  addAxelDependency
-  void $ readProcess "stack" ["build"] ""
+  buildStackProject projectPath
   mapM_ removeFile hsPaths
 
-runProject :: IO ()
-runProject = do
-  (_, _, stderr) <- readProcessWithExitCode "stack" ["ide", "targets"] ""
-  let targets = lines stderr
-  case findExeTargets targets of
-    [target] -> do
-      liftIO $ putStrLn ("Running " <> target <> "...")
-      void $ runProcess $ proc "stack" ["exec", target]
-    _ -> throwError (userError "No executable target was unambiguously found!")
-  where
-    findExeTargets =
-      foldl'
-        (\acc target ->
-           case getAllTextSubmatches $ target =~
-                ("([^:]*):exe:([^:]*)" :: String) of
-             [_fullMatch, _projectName, targetName] -> targetName : acc
-             _ -> acc)
-        []
+runProject ::
+     (MonadError Error m, MonadFileSystem m, MonadStackProject m) => m ()
+runProject = getCurrentDirectory >>= runStackProject

@@ -1,24 +1,27 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
-module Axel.Entry where
+module Axel.Haskell.File where
 
 import Axel.AST (ToHaskell(toHaskell))
 import Axel.Error (Error)
-import Axel.Haskell.GHC (runWithGHC)
 import Axel.Macros (exhaustivelyExpandMacros, stripMacroDefinitions)
+import Axel.Monad.FileSystem (MonadFileSystem)
+import qualified Axel.Monad.FileSystem as FS
+  ( MonadFileSystem(readFile, withTempDirectory, writeFile)
+  )
+import Axel.Monad.Haskell.GHC (MonadGHC(ghcInterpret))
+import Axel.Monad.Output (MonadOutput(outputStr))
+import Axel.Monad.Resource (MonadResource(readResource))
+import qualified Axel.Monad.Resource as Res (astDefinition)
 import Axel.Normalize (normalizeStatement)
 import Axel.Parse (Expression(Symbol), parseSource)
-import Axel.Utils.Directory (withTempDirectory)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
-import Axel.Utils.Resources (readResource)
-import qualified Axel.Utils.Resources as Res (astDefinition)
 
 import Control.Lens.Operators ((.~))
-import Control.Monad.Except (MonadError, runExceptT, throwError)
-import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans.Control (MonadBaseControl)
+import Control.Monad.Except (MonadError)
 
 import Data.Maybe (fromMaybe)
 import Data.Semigroup ((<>))
@@ -26,7 +29,6 @@ import qualified Data.Text as T (isSuffixOf, pack)
 
 import System.FilePath ((</>), stripExtension)
 import System.FilePath.Lens (directory)
-import qualified System.IO.Strict as S (readFile)
 
 convertList :: Expression -> Expression
 convertList =
@@ -42,7 +44,7 @@ convertUnit =
     x -> x
 
 transpileSource ::
-     (MonadBaseControl IO m, MonadError Error m, MonadIO m)
+     (MonadError Error m, MonadFileSystem m, MonadGHC m, MonadResource m)
   => String
   -> m String
 transpileSource source =
@@ -56,30 +58,42 @@ axelPathToHaskellPath axelPath =
         if ".axel" `T.isSuffixOf` T.pack axelPath
           then fromMaybe axelPath $ stripExtension ".axel" axelPath
           else axelPath
-  in basePath <> ".hs"
+   in basePath <> ".hs"
 
--- TODO Switch this to `(MonadError Error m, MonadIO m)` and do the error check in `evalFile`.
-transpileFile :: FilePath -> FilePath -> IO ()
+transpileFile ::
+     (MonadError Error m, MonadFileSystem m, MonadGHC m, MonadResource m)
+  => FilePath
+  -> FilePath
+  -> m ()
 transpileFile path newPath = do
-  fileContents <- S.readFile path
-  result <- runExceptT $ transpileSource fileContents
-  case result of
-    Left err -> throwError $ userError $ show err
-    Right newContents -> writeFile newPath newContents
+  fileContents <- FS.readFile path
+  newContents <- transpileSource fileContents
+  FS.writeFile newPath newContents
 
 -- Transpile a file in place.
-transpileFile' :: FilePath -> IO FilePath
+transpileFile' ::
+     (MonadError Error m, MonadFileSystem m, MonadGHC m, MonadResource m)
+  => FilePath
+  -> m FilePath
 transpileFile' path = do
   let newPath = axelPathToHaskellPath path
   transpileFile path newPath
   pure newPath
 
-evalFile :: FilePath -> IO ()
+evalFile ::
+     ( MonadError Error m
+     , MonadFileSystem m
+     , MonadGHC m
+     , MonadResource m
+     , MonadOutput m
+     )
+  => FilePath
+  -> m ()
 evalFile path =
-  withTempDirectory $ \tempDirectoryPath -> do
+  FS.withTempDirectory $ \tempDirectoryPath -> do
     let astDefinitionPath = tempDirectoryPath </> "Axel.hs"
-    readResource Res.astDefinition >>= writeFile astDefinitionPath
+    readResource Res.astDefinition >>= FS.writeFile astDefinitionPath
     let newPath = directory .~ tempDirectoryPath $ axelPathToHaskellPath path
     transpileFile path newPath
-    evalResult <- runExceptT $ runWithGHC newPath
-    either (throwError . userError . show) putStr evalResult
+    output <- ghcInterpret newPath
+    outputStr output

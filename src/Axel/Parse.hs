@@ -84,7 +84,7 @@ literalInt = LiteralInt . read <$> many1 digit
 
 literalList :: (Stream s m Char) => ParsecT s u m Expression
 literalList =
-  (SExpression . (Symbol "list" :)) <$> (char '[' *> many item <* char ']')
+  SExpression . (Symbol "list" :) <$> (char '[' *> many item <* char ']')
   where
     item = try (whitespace *> expression) <|> expression
 
