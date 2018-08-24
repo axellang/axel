@@ -1,0 +1,1 @@
+**NOTE** These files all use the `UndecidableInstances` extension because our monad instances could lead to an infinite resolution loop. So, we're following `mtl`'s lead and biting the undecidable instances bullet.

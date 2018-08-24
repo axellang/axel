@@ -18,8 +18,9 @@ import Axel.Denormalize (denormalizeStatement)
 import Axel.Error (Error(MacroError))
 import Axel.Monad.FileSystem (MonadFileSystem)
 import qualified Axel.Monad.FileSystem as FS
-  ( MonadFileSystem(createDirectoryIfMissing, withCurrentDirectory,
-                withTempDirectory, writeFile)
+  ( MonadFileSystem(createDirectoryIfMissing, writeFile)
+  , withCurrentDirectory
+  , withTemporaryDirectory
   )
 import Axel.Monad.Haskell.GHC (MonadGHC(ghcInterpret))
 import Axel.Monad.Resource (MonadResource(readResource))
@@ -250,13 +251,13 @@ replaceName oldName newName =
         _ -> expr
 
 evalMacro ::
-     (MonadError Error m, MonadFileSystem m, MonadGHC m)
+     (Monad m, MonadFileSystem m, MonadGHC m)
   => String
   -> String
   -> String
   -> m String
 evalMacro astDefinition scaffold macroDefinitionAndEnvironment =
-  FS.withTempDirectory $ \directoryName ->
+  FS.withTemporaryDirectory $ \directoryName ->
     FS.withCurrentDirectory directoryName $ do
       let astDirectoryPath = "Axel" </> "Parse"
       let macroDefinitionAndEnvironmentFileName =

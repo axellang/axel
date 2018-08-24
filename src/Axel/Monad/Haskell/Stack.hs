@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -9,7 +10,8 @@ module Axel.Monad.Haskell.Stack where
 import Axel.Error (Error(ProjectError), fatal)
 import Axel.Monad.FileSystem (MonadFileSystem)
 import qualified Axel.Monad.FileSystem as FS
-  ( MonadFileSystem(readFile, withCurrentDirectory, writeFile)
+  ( MonadFileSystem(readFile, writeFile)
+  , withCurrentDirectory
   )
 import Axel.Monad.Output (MonadOutput(outputStrLn))
 import Axel.Monad.Process
@@ -72,9 +74,12 @@ getStackProjectTargets projectPath =
     (_, _, stderr) <- readProcessWithExitCode "stack" ["ide", "targets"] ""
     pure $ lines stderr
 
--- NOTE This is undecidable, but `mtl` uses undecidable instances in this scenario(?)....
---      Plus, I can't actually come up with a better solution.
-instance (MonadError Error m, MonadFileSystem m, MonadOutput m, MonadProcess m) =>
+instance ( Monad m
+         , MonadError Error m
+         , MonadFileSystem m
+         , MonadOutput m
+         , MonadProcess m
+         ) =>
          MonadStackProject m where
   addStackDependency :: StackageId -> ProjectPath -> m ()
   addStackDependency dependencyId projectPath =

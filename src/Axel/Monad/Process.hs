@@ -17,8 +17,6 @@ class MonadProcess m where
        FilePath -> [String] -> String -> m (ExitCode, String, String)
   runProcessInheritingStreams :: ProcessConfig stdin stdout stderr -> m ExitCode
 
--- NOTE This is undecidable, but `mtl` uses undecidable instances in this scenario(?)....
---      Plus, I can't actually come up with a better solution.
 instance (MonadIO m) => MonadProcess m where
   readProcess :: FilePath -> [String] -> String -> m String
   readProcess cmd args stdin =

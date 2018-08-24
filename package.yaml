@@ -19,7 +19,6 @@ ghc-options:
 - -Wincomplete-record-updates
 - -Wincomplete-uni-patterns
 - -Wmissing-home-modules
-- -Wmissing-import-lists
 - -Wpartial-fields
 - -Wredundant-constraints
 - -Wno-simplifiable-class-constraints
@@ -29,20 +28,14 @@ data-files:
 - resources/**/*
 library:
   source-dirs: src
-  exposed-modules:
-  - Axel.Error
-  - Axel.Haskell.File
-  - Axel.Haskell.Project
-  - Axel.Monad.FileSystem
-  - Axel.Parse.Args
-  - Axel.Parse.AST
+  ghc-options:
+  - -Wmissing-import-lists
   dependencies:
   - bytestring >=0.10.8 && <0.11
   - directory >=1.3 && <1.4
   - filepath >=1.4.1 && <1.5
   - lens >=4.16.1 && <4.18
   - lens-aeson >=1.0.2 && <1.1
-  - monad-control >=1.0.2 && <1.1
   - mtl >=2.2.1 && <2.3
   - optparse-applicative >=0.14.2 && <0.15
   - parsec >=3.1.11 && <3.2
@@ -62,13 +55,14 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -Wmissing-import-lists
     dependencies:
     - axel
     - directory >=1.3 && <1.4
     - optparse-applicative >=0.14.2 && <0.15
 tests:
   axel-test:
-    main: Driver.hs
+    main: Main.hs
     source-dirs: test
     ghc-options:
     - -threaded
@@ -76,6 +70,8 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - axel
+    - hspec
+    - monad-mock
     - tasty
     - tasty-discover
     - tasty-hedgehog

@@ -14,15 +14,11 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
 import System.Process (readProcessWithExitCode)
 
-class (MonadError Error m) =>
-      MonadGHC m
-  where
+class MonadGHC m where
   ghcCompile :: FilePath -> m String
   ghcInterpret :: FilePath -> m String
 
--- NOTE This is undecidable, but `mtl` uses undecidable instances in this scenario(?)....
---      Plus, I can't actually come up with a better solution.
-instance (MonadError Error m, MonadIO m) => MonadGHC m where
+instance (Monad m, MonadError Error m, MonadIO m) => MonadGHC m where
   ghcCompile :: FilePath -> m String
   ghcCompile filePath = do
     (exitCode, stdout, stderr) <-

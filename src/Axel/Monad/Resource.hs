@@ -20,8 +20,6 @@ class MonadResource m where
   getResourcePath :: ResourceId -> m FilePath
   readResource :: ResourceId -> m String
 
--- NOTE This is undecidable, but `mtl` uses undecidable instances in this scenario(?)....
---      Plus, I can't actually come up with a better solution.
 instance (MonadIO m) => MonadResource m where
   getResourcePath :: ResourceId -> m FilePath
   getResourcePath (ResourceId resource) =

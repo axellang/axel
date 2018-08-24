@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 75c2302bede3c41c37961a0f4020f79a386d344a6095626b5dd891b8014b08df
+-- hash: 929ad73e8a4680f5b235b54cc1f58b726cb3e9ba5803d8d35514ac097a15e039
 
 name:           axel
 version:        0.0.4
@@ -47,16 +47,13 @@ source-repository head
 
 library
   exposed-modules:
+      Axel.AST
+      Axel.Denormalize
       Axel.Error
       Axel.Haskell.File
       Axel.Haskell.Project
-      Axel.Monad.FileSystem
-      Axel.Parse.Args
-      Axel.Parse.AST
-  other-modules:
-      Axel.AST
-      Axel.Denormalize
       Axel.Macros
+      Axel.Monad.FileSystem
       Axel.Monad.Haskell.GHC
       Axel.Monad.Haskell.Stack
       Axel.Monad.Output
@@ -64,6 +61,8 @@ library
       Axel.Monad.Resource
       Axel.Normalize
       Axel.Parse
+      Axel.Parse.Args
+      Axel.Parse.AST
       Axel.Quote
       Axel.Utils.Debug
       Axel.Utils.Display
@@ -71,10 +70,11 @@ library
       Axel.Utils.List
       Axel.Utils.Recursion
       Axel.Utils.String
+  other-modules:
       Paths_axel
   hs-source-dirs:
       src
-  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wmissing-import-lists -Wpartial-fields -Wredundant-constraints -Wno-simplifiable-class-constraints
+  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-simplifiable-class-constraints -Wmissing-import-lists
   build-depends:
       base >=4.11.1 && <4.12
     , bytestring >=0.10.8 && <0.11
@@ -82,7 +82,6 @@ library
     , filepath >=1.4.1 && <1.5
     , lens >=4.16.1 && <4.18
     , lens-aeson >=1.0.2 && <1.1
-    , monad-control >=1.0.2 && <1.1
     , mtl >=2.2.1 && <2.3
     , optparse-applicative >=0.14.2 && <0.15
     , parsec >=3.1.11 && <3.2
@@ -102,7 +101,7 @@ executable axel-exe
       Paths_axel
   hs-source-dirs:
       app
-  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wmissing-import-lists -Wpartial-fields -Wredundant-constraints -Wno-simplifiable-class-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-simplifiable-class-constraints -threaded -rtsopts -with-rtsopts=-N -Wmissing-import-lists
   build-depends:
       axel
     , base >=4.11.1 && <4.12
@@ -112,16 +111,18 @@ executable axel-exe
 
 test-suite axel-test
   type: exitcode-stdio-1.0
-  main-is: Driver.hs
+  main-is: Main.hs
   other-modules:
-      Main
+      Monad.Haskell.Stack
       Paths_axel
   hs-source-dirs:
       test
-  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wmissing-import-lists -Wpartial-fields -Wredundant-constraints -Wno-simplifiable-class-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcpp-undef -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-simplifiable-class-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       axel
     , base >=4.11.1 && <4.12
+    , hspec
+    , monad-mock
     , tasty
     , tasty-discover
     , tasty-hedgehog

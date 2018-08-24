@@ -10,7 +10,8 @@ import Axel.Error (Error)
 import Axel.Macros (exhaustivelyExpandMacros, stripMacroDefinitions)
 import Axel.Monad.FileSystem (MonadFileSystem)
 import qualified Axel.Monad.FileSystem as FS
-  ( MonadFileSystem(readFile, withTempDirectory, writeFile)
+  ( MonadFileSystem(readFile, writeFile)
+  , withTemporaryDirectory
   )
 import Axel.Monad.Haskell.GHC (MonadGHC(ghcInterpret))
 import Axel.Monad.Output (MonadOutput(outputStr))
@@ -90,7 +91,7 @@ evalFile ::
   => FilePath
   -> m ()
 evalFile path =
-  FS.withTempDirectory $ \tempDirectoryPath -> do
+  FS.withTemporaryDirectory $ \tempDirectoryPath -> do
     let astDefinitionPath = tempDirectoryPath </> "Axel.hs"
     readResource Res.astDefinition >>= FS.writeFile astDefinitionPath
     let newPath = directory .~ tempDirectoryPath $ axelPathToHaskellPath path

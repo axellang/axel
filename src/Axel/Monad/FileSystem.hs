@@ -7,7 +7,6 @@ module Axel.Monad.FileSystem where
 
 import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Trans.Control (MonadBaseControl, control)
 
 import qualified System.Directory
   ( copyFile
@@ -18,7 +17,6 @@ import qualified System.Directory
   , getTemporaryDirectory
   , removeFile
   , setCurrentDirectory
-  , withCurrentDirectory
   )
 import System.FilePath ((</>))
 import qualified System.IO.Strict as S (readFile)
@@ -28,16 +26,13 @@ class MonadFileSystem m where
   createDirectoryIfMissing :: Bool -> FilePath -> m ()
   getCurrentDirectory :: m FilePath
   getDirectoryContentsRec :: FilePath -> m [FilePath]
+  getTemporaryDirectory :: m FilePath
   readFile :: FilePath -> m String
   removeFile :: FilePath -> m ()
   setCurrentDirectory :: FilePath -> m ()
-  withCurrentDirectory :: FilePath -> m a -> m a
-  withTempDirectory :: (FilePath -> m a) -> m a
   writeFile :: String -> FilePath -> m ()
 
--- NOTE This is undecidable, but `mtl` uses undecidable instances in this scenario(?)....
---      Plus, I can't actually come up with a better solution.
-instance (MonadBaseControl IO m, MonadIO m) => MonadFileSystem m where
+instance (Monad m, MonadIO m) => MonadFileSystem m where
   copyFile :: FilePath -> FilePath -> m ()
   copyFile src dest = liftIO $ System.Directory.copyFile src dest
   createDirectoryIfMissing :: Bool -> FilePath -> m ()
@@ -58,20 +53,25 @@ instance (MonadBaseControl IO m, MonadIO m) => MonadFileSystem m where
           then getDirectoryContentsRec path
           else pure [path]
     pure $ concat paths
+  getTemporaryDirectory :: m FilePath
+  getTemporaryDirectory = liftIO System.Directory.getTemporaryDirectory
   readFile :: FilePath -> m String
   readFile = liftIO . S.readFile
   removeFile :: FilePath -> m ()
   removeFile = liftIO . System.Directory.removeFile
   setCurrentDirectory :: FilePath -> m ()
   setCurrentDirectory = liftIO . System.Directory.setCurrentDirectory
-  withCurrentDirectory :: FilePath -> m a -> m a
-  withCurrentDirectory directory f =
-    control $ \runInIO ->
-      System.Directory.withCurrentDirectory directory (runInIO f)
-  withTempDirectory :: (FilePath -> m a) -> m a
-  withTempDirectory f = do
-    tempDirectory <- liftIO System.Directory.getTemporaryDirectory
-    createDirectoryIfMissing True tempDirectory
-    f tempDirectory
   writeFile :: FilePath -> String -> m ()
   writeFile filePath contents = liftIO $ Prelude.writeFile filePath contents
+
+withTemporaryDirectory ::
+     (Monad m, MonadFileSystem m) => (FilePath -> m a) -> m a
+withTemporaryDirectory action = getTemporaryDirectory >>= action
+
+withCurrentDirectory :: (Monad m, MonadFileSystem m) => FilePath -> m a -> m a
+withCurrentDirectory directory f = do
+  originalDirectory <- getCurrentDirectory
+  setCurrentDirectory directory
+  result <- f
+  setCurrentDirectory originalDirectory
+  pure result
