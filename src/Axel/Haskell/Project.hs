@@ -10,8 +10,8 @@ module Axel.Haskell.Project where
 import Axel.Error (Error)
 import Axel.Haskell.File (transpileFile')
 import Axel.Monad.FileSystem
-  ( MonadFileSystem(copyFile, getCurrentDirectory,
-                getDirectoryContentsRec, removeFile)
+  ( MonadFileSystem(copyFile, getCurrentDirectory, removeFile)
+  , getDirectoryContentsRec
   )
 import Axel.Monad.Haskell.GHC (MonadGHC)
 import Axel.Monad.Haskell.Stack
