@@ -1,5 +1,7 @@
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -7,21 +9,34 @@
 
 module Axel.Monad.Haskell.Stack where
 
+import Prelude hiding (putStrLn)
+
 import Axel.Error (Error(ProjectError), fatal)
+import Axel.Monad.Console (MonadConsole, putStrLn)
 import Axel.Monad.FileSystem (MonadFileSystem)
 import qualified Axel.Monad.FileSystem as FS
   ( MonadFileSystem(readFile, writeFile)
   , withCurrentDirectory
   )
-import Axel.Monad.Output (MonadOutput(outputStrLn))
 import Axel.Monad.Process
-  ( MonadProcess(readProcess, readProcessWithExitCode,
-             runProcessInheritingStreams)
+  ( MonadProcess(runProcess, runProcessInheritingStreams)
   )
 
 import Control.Lens.Operators ((%~))
 import Control.Monad (void)
 import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Identity (IdentityT)
+import Control.Monad.Trans (MonadTrans, lift)
+import Control.Monad.Trans.Cont (ContT)
+import Control.Monad.Trans.Except (ExceptT)
+import Control.Monad.Trans.Maybe (MaybeT)
+import qualified Control.Monad.Trans.RWS.Lazy as LazyRWS (RWST)
+import qualified Control.Monad.Trans.RWS.Strict as StrictRWS (RWST)
+import Control.Monad.Trans.Reader (ReaderT)
+import qualified Control.Monad.Trans.State.Lazy as LazyState (StateT)
+import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
+import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
+import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 
 import Data.Aeson.Lens (_Array, key)
 import qualified Data.ByteString.Char8 as B (pack, unpack)
@@ -33,8 +48,6 @@ import Data.Version (showVersion)
 import qualified Data.Yaml as Yaml (Value(String), decodeEither', encode)
 
 import Paths_axel (version)
-
-import System.Process.Typed (proc)
 
 import Text.Regex.PCRE ((=~), getAllTextSubmatches)
 
@@ -60,27 +73,73 @@ axelStackageId = "axel-" <> showVersion version
 axelStackageSpecifier :: StackageId
 axelStackageSpecifier = "axel ==" <> axelStackageVersion
 
-class MonadStackProject m where
+class (Monad m) =>
+      MonadStackProject m
+  where
   addStackDependency :: StackageId -> ProjectPath -> m ()
+  default addStackDependency :: (MonadTrans t, MonadStackProject m', m ~ t m') =>
+    StackageId -> ProjectPath -> m ()
+  addStackDependency dependencyId projectPath =
+    lift $ addStackDependency dependencyId projectPath
   buildStackProject :: ProjectPath -> m ()
+  default buildStackProject :: (MonadTrans t, MonadStackProject m', m ~ t m') =>
+    ProjectPath -> m ()
+  buildStackProject = lift . buildStackProject
   createStackProject :: String -> m ()
+  default createStackProject :: (MonadTrans t, MonadStackProject m', m ~ t m') =>
+    String -> m ()
+  createStackProject = lift . createStackProject
   runStackProject :: ProjectPath -> m ()
+  default runStackProject :: (MonadTrans t, MonadStackProject m', m ~ t m') =>
+    ProjectPath -> m ()
+  runStackProject = lift . runStackProject
   setStackageResolver :: StackageResolver -> ProjectPath -> m ()
+  default setStackageResolver :: (MonadTrans t, MonadStackProject m', m ~ t m') =>
+    StackageResolver -> ProjectPath -> m ()
+  setStackageResolver resolver projectPath =
+    lift $ setStackageResolver resolver projectPath
+
+instance (MonadStackProject m) => MonadStackProject (ContT r m)
+
+instance (MonadStackProject m) => MonadStackProject (ExceptT e m)
+
+instance (MonadStackProject m) => MonadStackProject (IdentityT m)
+
+instance (MonadStackProject m) => MonadStackProject (MaybeT m)
+
+instance (MonadStackProject m) => MonadStackProject (ReaderT r m)
+
+instance (Monoid w, MonadStackProject m) =>
+         MonadStackProject (LazyRWS.RWST r w s m)
+
+instance (Monoid w, MonadStackProject m) =>
+         MonadStackProject (StrictRWS.RWST r w s m)
+
+instance (MonadStackProject m) => MonadStackProject (LazyState.StateT s m)
+
+instance (MonadStackProject m) =>
+         MonadStackProject (StrictState.StateT s m)
+
+instance (Monoid w, MonadStackProject m) =>
+         MonadStackProject (LazyWriter.WriterT w m)
+
+instance (Monoid w, MonadStackProject m) =>
+         MonadStackProject (StrictWriter.WriterT w m)
 
 getStackProjectTargets ::
      (Monad m, MonadFileSystem m, MonadProcess m) => ProjectPath -> m [Target]
 getStackProjectTargets projectPath =
   FS.withCurrentDirectory projectPath $ do
-    (_, _, stderr) <- readProcessWithExitCode "stack" ["ide", "targets"] ""
+    (_, _, stderr) <- runProcess "stack" ["ide", "targets"] ""
     pure $ lines stderr
 
-instance ( Monad m
-         , MonadError Error m
-         , MonadFileSystem m
-         , MonadOutput m
-         , MonadProcess m
-         ) =>
-         MonadStackProject m where
+instance {-# OVERLAPPABLE #-} ( Monad m
+                              , MonadConsole m
+                              , MonadError Error m
+                              , MonadFileSystem m
+                              , MonadProcess m
+                              ) =>
+                              MonadStackProject m where
   addStackDependency :: StackageId -> ProjectPath -> m ()
   addStackDependency dependencyId projectPath =
     FS.withCurrentDirectory projectPath $ do
@@ -96,19 +155,18 @@ instance ( Monad m
         Left _ -> fatal "addStackDependency" "0001"
   buildStackProject :: ProjectPath -> m ()
   buildStackProject projectPath =
-    void $ FS.withCurrentDirectory projectPath $
-    readProcess "stack" ["build"] ""
+    void $ FS.withCurrentDirectory projectPath $ runProcess "stack" ["build"] ""
   createStackProject :: String -> m ()
   createStackProject projectName = do
-    void $ readProcess "stack" ["new", projectName, "new-template"] ""
+    void $ runProcess "stack" ["new", projectName, "new-template"] ""
     setStackageResolver projectName stackageResolverWithAxel
   runStackProject :: ProjectPath -> m ()
   runStackProject projectPath = do
     targets <- getStackProjectTargets projectPath
     case findExeTargets targets of
       [target] -> do
-        outputStrLn ("Running " <> target <> "...")
-        void $ runProcessInheritingStreams $ proc "stack" ["exec", target]
+        putStrLn ("Running " <> target <> "...")
+        void $ runProcessInheritingStreams "stack" ["exec", target]
       _ ->
         throwError $
         ProjectError "No executable target was unambiguously found!"
@@ -124,4 +182,4 @@ instance ( Monad m
   setStackageResolver :: StackageResolver -> ProjectPath -> m ()
   setStackageResolver resolver projectPath =
     void $ FS.withCurrentDirectory projectPath $
-    readProcess "stack" ["config", "set", "resolver", resolver] ""
+    runProcess "stack" ["config", "set", "resolver", resolver] ""

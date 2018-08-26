@@ -31,15 +31,12 @@ import System.FilePath ((</>))
 type ProjectPath = FilePath
 
 newProject ::
-     (Monad m, MonadFileSystem m, MonadResource m, MonadStackProject m)
-  => String
-  -> m ()
+     (MonadFileSystem m, MonadResource m, MonadStackProject m) => String -> m ()
 newProject projectName = do
   createStackProject projectName
   addStackDependency axelStackageSpecifier projectName
   templatePath <- getResourcePath newProjectTemplate
-  let copyAxel :: (Monad m, MonadFileSystem m) => FilePath -> m ()
-      copyAxel filePath = do
+  let copyAxel filePath = do
         copyFile
           (templatePath </> filePath <> ".axel")
           (projectName </> filePath <> ".axel")

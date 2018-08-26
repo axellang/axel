@@ -5,17 +5,19 @@
 
 module Axel.Haskell.File where
 
+import Prelude hiding (putStr)
+
 import Axel.AST (ToHaskell(toHaskell))
 import Axel.Error (Error)
 import Axel.Macros (exhaustivelyExpandMacros, stripMacroDefinitions)
+import Axel.Monad.Console (MonadConsole(putStr))
 import Axel.Monad.FileSystem (MonadFileSystem)
 import qualified Axel.Monad.FileSystem as FS
   ( MonadFileSystem(readFile, writeFile)
   , withTemporaryDirectory
   )
 import Axel.Monad.Haskell.GHC (MonadGHC(ghcInterpret))
-import Axel.Monad.Output (MonadOutput(outputStr))
-import Axel.Monad.Resource (MonadResource(readResource))
+import Axel.Monad.Resource (MonadResource, readResource)
 import qualified Axel.Monad.Resource as Res (astDefinition)
 import Axel.Normalize (normalizeStatement)
 import Axel.Parse (Expression(Symbol), parseSource)
@@ -82,11 +84,11 @@ transpileFile' path = do
   pure newPath
 
 evalFile ::
-     ( MonadError Error m
+     ( MonadConsole m
+     , MonadError Error m
      , MonadFileSystem m
      , MonadGHC m
      , MonadResource m
-     , MonadOutput m
      )
   => FilePath
   -> m ()
@@ -97,4 +99,4 @@ evalFile path =
     let newPath = directory .~ tempDirectoryPath $ axelPathToHaskellPath path
     transpileFile path newPath
     output <- ghcInterpret newPath
-    outputStr output
+    putStr output

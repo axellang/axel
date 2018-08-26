@@ -23,7 +23,7 @@ import qualified Axel.Monad.FileSystem as FS
   , withTemporaryDirectory
   )
 import Axel.Monad.Haskell.GHC (MonadGHC(ghcInterpret))
-import Axel.Monad.Resource (MonadResource(readResource))
+import Axel.Monad.Resource (MonadResource, readResource)
 import qualified Axel.Monad.Resource as Res
   ( astDefinition
   , macroDefinitionAndEnvironmentHeader
@@ -54,7 +54,7 @@ import Data.Semigroup ((<>))
 import System.FilePath ((</>))
 
 generateMacroProgram ::
-     (MonadError Error m, MonadResource m)
+     (MonadError Error m, MonadFileSystem m, MonadResource m)
   => MacroDefinition
   -> [Statement]
   -> [Parse.Expression]
@@ -77,7 +77,7 @@ generateMacroProgram macroDefinition environment applicationArguments = do
             delimit Newlines $
             map toHaskell (environment <> [hygenicMacroDefinition])
       pure source
-    getScaffold :: (Functor m, MonadResource m) => m String
+    getScaffold :: (Monad m, MonadFileSystem m, MonadResource m) => m String
     getScaffold =
       let insertApplicationArguments =
             let applicationArgumentsPlaceholder = "%%%ARGUMENTS%%%"
@@ -251,11 +251,7 @@ replaceName oldName newName =
         _ -> expr
 
 evalMacro ::
-     (Monad m, MonadFileSystem m, MonadGHC m)
-  => String
-  -> String
-  -> String
-  -> m String
+     (MonadFileSystem m, MonadGHC m) => String -> String -> String -> m String
 evalMacro astDefinition scaffold macroDefinitionAndEnvironment =
   FS.withTemporaryDirectory $ \directoryName ->
     FS.withCurrentDirectory directoryName $ do

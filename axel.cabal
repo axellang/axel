@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 97cc743a4fc5347ffade02e2ea7cc1d396568bb2ec98493bda904f842108bc37
+-- hash: 69eec6dfb4e6198574f1440f8ba716df97b188acab9eb2115e9cbac2ecbc09c5
 
 name:           axel
 version:        0.0.4
@@ -53,10 +53,10 @@ library
       Axel.Haskell.File
       Axel.Haskell.Project
       Axel.Macros
+      Axel.Monad.Console
       Axel.Monad.FileSystem
       Axel.Monad.Haskell.GHC
       Axel.Monad.Haskell.Stack
-      Axel.Monad.Output
       Axel.Monad.Process
       Axel.Monad.Resource
       Axel.Normalize
@@ -80,7 +80,6 @@ library
     , bytestring >=0.10.8 && <0.11
     , directory >=1.3 && <1.4
     , filepath >=1.4.1 && <1.5
-    , free >=5.1 && <5.2
     , lens >=4.16.1 && <4.18
     , lens-aeson >=1.0.2 && <1.1
     , mtl >=2.2.1 && <2.3
@@ -91,6 +90,7 @@ library
     , split >=0.2.3 && <0.3
     , strict >=0.3.2 && <0.4
     , text >=1.2.2 && <1.3
+    , transformers >=0.5.5 && <0.6
     , typed-process >=0.2.2 && <0.3
     , vector >=0.12.0 && <0.13
     , yaml >=0.8.31 && <0.10
@@ -107,6 +107,7 @@ executable axel-exe
       axel
     , base >=4.11.1 && <4.12
     , directory >=1.3 && <1.4
+    , mtl >=2.2.1 && <2.3
     , optparse-applicative >=0.14.2 && <0.15
   default-language: Haskell2010
 
@@ -114,7 +115,14 @@ test-suite axel-test
   type: exitcode-stdio-1.0
   main-is: Main.hs
   other-modules:
-      Monad.FileSystem
+      MockUtils
+      Monad.ConsoleMock
+      Monad.ConsoleSpec
+      Monad.FileSystemMock
+      Monad.FileSystemSpec
+      Monad.ProcessMock
+      Monad.ResourceMock
+      Monad.ResourceSpec
       Paths_axel
   hs-source-dirs:
       test
@@ -123,12 +131,12 @@ test-suite axel-test
       axel
     , base >=4.11.1 && <4.12
     , filepath
-    , free
-    , hspec
     , lens
-    , mtl
+    , mtl >=2.2.1 && <2.3
+    , split
     , tasty
     , tasty-discover
     , tasty-hedgehog
     , tasty-hspec
+    , transformers
   default-language: Haskell2010
