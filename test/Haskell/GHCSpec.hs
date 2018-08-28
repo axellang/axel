@@ -2,13 +2,10 @@
 
 module Haskell.GHCSpec where
 
-import Axel.Error
 import Axel.Haskell.GHC as GHC
-import Axel.Monad.Haskell.Stack as Stack
-import Axel.Monad.Process as Proc
+import Axel.Haskell.Stack as Stack
 
 import Control.Lens
-import Control.Monad.Except
 
 import qualified Monad.ProcessMock as Mock
 

@@ -9,14 +9,17 @@ module Axel.Haskell.Project where
 
 import Axel.Error (Error)
 import Axel.Haskell.File (transpileFile')
+import Axel.Haskell.Stack
+  ( addStackDependency
+  , axelStackageSpecifier
+  , buildStackProject
+  , createStackProject
+  , runStackProject
+  )
+import Axel.Monad.Console (MonadConsole)
 import Axel.Monad.FileSystem
   ( MonadFileSystem(copyFile, getCurrentDirectory, removeFile)
   , getDirectoryContentsRec
-  )
-import Axel.Monad.Haskell.Stack
-  ( MonadStackProject(addStackDependency, buildStackProject,
-                  createStackProject, runStackProject)
-  , axelStackageSpecifier
   )
 import Axel.Monad.Process (MonadProcess)
 import Axel.Monad.Resource (MonadResource(getResourcePath), newProjectTemplate)
@@ -31,7 +34,7 @@ import System.FilePath ((</>))
 type ProjectPath = FilePath
 
 newProject ::
-     (MonadFileSystem m, MonadResource m, MonadStackProject m) => String -> m ()
+     (MonadFileSystem m, MonadProcess m, MonadResource m) => String -> m ()
 newProject projectName = do
   createStackProject projectName
   addStackDependency axelStackageSpecifier projectName
@@ -53,12 +56,7 @@ transpileProject = do
   mapM transpileFile' axelFiles
 
 buildProject ::
-     ( MonadError Error m
-     , MonadFileSystem m
-     , MonadProcess m
-     , MonadResource m
-     , MonadStackProject m
-     )
+     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
   => m ()
 buildProject = do
   projectPath <- getCurrentDirectory
@@ -67,5 +65,6 @@ buildProject = do
   mapM_ removeFile hsPaths
 
 runProject ::
-     (MonadError Error m, MonadFileSystem m, MonadStackProject m) => m ()
+     (MonadConsole m, MonadError Error m, MonadFileSystem m, MonadProcess m)
+  => m ()
 runProject = getCurrentDirectory >>= runStackProject

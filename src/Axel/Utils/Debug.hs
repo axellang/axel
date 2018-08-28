@@ -2,8 +2,8 @@ module Axel.Utils.Debug where
 
 import Debug.Trace (trace, traceShow)
 
-unsafeTee :: String -> a -> a
-unsafeTee = trace
+unsafeTee :: String -> String
+unsafeTee x = trace x x
 
 unsafeTeeS :: Show a => a -> a
 unsafeTeeS x = traceShow x x

@@ -83,7 +83,41 @@ deleteNode _ (File _ _) = Nothing
 insertNode :: [FilePath] -> FSNode -> FSNode -> Maybe FSNode
 insertNode pathSegments newNode (Directory rootPath children) =
   case pathSegments of
-    [] -> pure $ Directory rootPath (newNode : children)
+    [] ->
+      pure . Directory rootPath $
+      case newNode of
+        Directory needle _ ->
+          if any
+               (\case
+                  Directory path _ -> needle == path
+                  _ -> False)
+               children
+            then map
+                   (\child ->
+                      case child of
+                        Directory path _ ->
+                          if needle == path
+                            then newNode
+                            else child
+                        File _ _ -> child)
+                   children
+            else newNode : children
+        File needle _ ->
+          if any
+               (\case
+                  File path _ -> needle == path
+                  _ -> False)
+               children
+            then map
+                   (\child ->
+                      case child of
+                        File path _ ->
+                          if needle == path
+                            then newNode
+                            else child
+                        Directory _ _ -> child)
+                   children
+            else newNode : children
     nodeName:xs ->
       Directory rootPath <$>
       mapM
@@ -93,7 +127,11 @@ insertNode pathSegments newNode (Directory rootPath children) =
                if path == nodeName
                  then insertNode xs newNode child
                  else pure child
-             File _ _ -> pure child)
+             File path _ ->
+               pure $
+               if path == nodeName
+                 then newNode
+                 else child)
         children
 insertNode _ _ (File _ _) = Nothing
 
@@ -245,7 +283,7 @@ instance (Monad m) => MonadFileSystem (FileSystemT m) where
     FileSystemT $ do
       path <- absify relativePath
       fsCurrentDirectory .= path
-  writeFile contents relativePath =
+  writeFile relativePath contents =
     FileSystemT $ do
       path <- absify relativePath
       fsRoot . at path ?= File (takeFileName path) contents

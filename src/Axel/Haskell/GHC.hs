@@ -7,7 +7,7 @@
 
 module Axel.Haskell.GHC where
 
-import Axel.Monad.Haskell.Stack (axelStackageId, stackageResolverWithAxel)
+import Axel.Haskell.Stack (axelStackageId, stackageResolverWithAxel)
 import Axel.Monad.Process (MonadProcess(runProcess))
 
 import Control.Monad.Except (MonadError, throwError)

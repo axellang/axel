@@ -27,7 +27,7 @@ spec_FileSystem = do
                   ]
               ]
       let expected = ["dir1/file1", "dir1/dir2/file2"]
-      case runExcept $ Mock.runFileSystemT origState action of
+      case Mock.runFileSystem origState action of
         Left err -> expectationFailure err
         Right result -> result `shouldBe` (expected, origState)
   describe "withCurrentDirectory" $ do
@@ -50,7 +50,7 @@ spec_FileSystem = do
              Mock.File "insideDir" "insideDirContents") &
             (Mock.fsRoot . at "outsideDir" ?~
              Mock.File "outsideDir" "outsideDirContents")
-      case runExcept $ Mock.runFileSystemT origState action of
+      case Mock.runFileSystem origState action of
         Left err -> expectationFailure err
         Right result -> result `shouldBe` ((), expected)
   describe "withTemporaryDirectory" $ do
@@ -73,6 +73,6 @@ spec_FileSystem = do
                "tmp2"
                [Mock.File "insideTemp2" "insideTemp2Contents"]) &
             (Mock.fsTempCounter .~ 2)
-      case runExcept $ Mock.runFileSystemT origState action of
+      case Mock.runFileSystem origState action of
         Left err -> expectationFailure err
         Right result -> result `shouldBe` ((), expected)

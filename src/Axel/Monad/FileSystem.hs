@@ -81,10 +81,10 @@ class (Monad m) =>
   default setCurrentDirectory :: (MonadTrans t, MonadFileSystem m', m ~ t m') =>
     FilePath -> m ()
   setCurrentDirectory = lift . setCurrentDirectory
-  writeFile :: String -> FilePath -> m ()
+  writeFile :: FilePath -> String -> m ()
   default writeFile :: (MonadTrans t, MonadFileSystem m', m ~ t m') =>
     String -> FilePath -> m ()
-  writeFile contents path = lift $ writeFile contents path
+  writeFile path contents = lift $ writeFile path contents
 
 instance (MonadFileSystem m) => MonadFileSystem (ContT r m)
 
@@ -158,6 +158,5 @@ withCurrentDirectory directory f = do
   setCurrentDirectory originalDirectory
   pure result
 
-withTemporaryDirectory ::
-     (MonadFileSystem m) => (FilePath -> m a) -> m a
+withTemporaryDirectory :: (MonadFileSystem m) => (FilePath -> m a) -> m a
 withTemporaryDirectory action = getTemporaryDirectory >>= action

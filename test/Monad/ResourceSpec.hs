@@ -13,8 +13,7 @@ spec_Resource :: SpecWith ()
 spec_Resource =
   describe "readResource" $ do
     it "reads a resource's contents from the file system" $ do
-      let action =
-            Res.readResource (Res.ResourceId "resGroup1/res1") :: Mock.ResourceT Mock.FileSystem FilePath
+      let action = Res.readResource (Res.ResourceId "resGroup1/res1")
       let origFSState =
             Mock.mkFSState
               [ Mock.Directory
