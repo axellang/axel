@@ -6,7 +6,6 @@ module Monad.ResourceMock where
 
 import Axel.Monad.Console as Console
 import Axel.Monad.FileSystem as FS
-import Axel.Monad.Haskell.GHC as GHC
 import Axel.Monad.Process as Proc
 import Axel.Monad.Resource as Res
 
@@ -21,7 +20,6 @@ newtype ResourceT m a =
            , Monad
            , MonadConsole
            , MonadFileSystem
-           , MonadGHC
            , MonadProcess
            )
 

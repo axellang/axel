@@ -13,12 +13,12 @@ import Axel.Monad.FileSystem
   ( MonadFileSystem(copyFile, getCurrentDirectory, removeFile)
   , getDirectoryContentsRec
   )
-import Axel.Monad.Haskell.GHC (MonadGHC)
 import Axel.Monad.Haskell.Stack
   ( MonadStackProject(addStackDependency, buildStackProject,
                   createStackProject, runStackProject)
   , axelStackageSpecifier
   )
+import Axel.Monad.Process (MonadProcess)
 import Axel.Monad.Resource (MonadResource(getResourcePath), newProjectTemplate)
 
 import Control.Monad.Except (MonadError)
@@ -44,7 +44,7 @@ newProject projectName = do
   mapM_ copyAxel ["Setup", "app" </> "Main", "src" </> "Lib", "test" </> "Spec"]
 
 transpileProject ::
-     (MonadError Error m, MonadFileSystem m, MonadGHC m, MonadResource m)
+     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
   => m [FilePath]
 transpileProject = do
   files <- getDirectoryContentsRec "."
@@ -55,7 +55,7 @@ transpileProject = do
 buildProject ::
      ( MonadError Error m
      , MonadFileSystem m
-     , MonadGHC m
+     , MonadProcess m
      , MonadResource m
      , MonadStackProject m
      )

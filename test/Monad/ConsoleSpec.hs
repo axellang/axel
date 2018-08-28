@@ -8,13 +8,11 @@ import Test.Tasty.Hspec
 
 spec_Console :: SpecWith ()
 spec_Console =
-  describe "Console" $ do
-    describe "putStrLn" $ do
-      it "prints to the console with a trailing newline" $ do
-        let action = Console.putStrLn "line1\nline2"
-            origState = Mock.mkConsoleState
-            expected =
-              Mock.ConsoleState {Mock._consoleOutput = "line1\nline2\n"}
-        case Mock.runConsoleT origState action of
-          Left err -> error err
-          Right result -> result `shouldBe` ((), expected)
+  describe "putStrLn" $ do
+    it "prints to the console with a trailing newline" $ do
+      let action = Console.putStrLn "line1\nline2"
+      let origState = Mock.mkConsoleState
+      let expected = Mock.ConsoleState {Mock._consoleOutput = "line1\nline2\n"}
+      case Mock.runConsoleT origState action of
+        Left err -> expectationFailure err
+        Right result -> result `shouldBe` ((), expected)

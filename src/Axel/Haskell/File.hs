@@ -8,7 +8,8 @@ module Axel.Haskell.File where
 import Prelude hiding (putStr)
 
 import Axel.AST (ToHaskell(toHaskell))
-import Axel.Error (Error)
+import Axel.Error (Error(EvalError), mapError)
+import Axel.Haskell.GHC (ghcInterpret)
 import Axel.Macros (exhaustivelyExpandMacros, stripMacroDefinitions)
 import Axel.Monad.Console (MonadConsole(putStr))
 import Axel.Monad.FileSystem (MonadFileSystem)
@@ -16,7 +17,7 @@ import qualified Axel.Monad.FileSystem as FS
   ( MonadFileSystem(readFile, writeFile)
   , withTemporaryDirectory
   )
-import Axel.Monad.Haskell.GHC (MonadGHC(ghcInterpret))
+import Axel.Monad.Process (MonadProcess)
 import Axel.Monad.Resource (MonadResource, readResource)
 import qualified Axel.Monad.Resource as Res (astDefinition)
 import Axel.Normalize (normalizeStatement)
@@ -47,7 +48,7 @@ convertUnit =
     x -> x
 
 transpileSource ::
-     (MonadError Error m, MonadFileSystem m, MonadGHC m, MonadResource m)
+     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
   => String
   -> m String
 transpileSource source =
@@ -64,7 +65,7 @@ axelPathToHaskellPath axelPath =
    in basePath <> ".hs"
 
 transpileFile ::
-     (MonadError Error m, MonadFileSystem m, MonadGHC m, MonadResource m)
+     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
   => FilePath
   -> FilePath
   -> m ()
@@ -75,7 +76,7 @@ transpileFile path newPath = do
 
 -- Transpile a file in place.
 transpileFile' ::
-     (MonadError Error m, MonadFileSystem m, MonadGHC m, MonadResource m)
+     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
   => FilePath
   -> m FilePath
 transpileFile' path = do
@@ -87,7 +88,7 @@ evalFile ::
      ( MonadConsole m
      , MonadError Error m
      , MonadFileSystem m
-     , MonadGHC m
+     , MonadProcess m
      , MonadResource m
      )
   => FilePath
@@ -98,5 +99,5 @@ evalFile path =
     readResource Res.astDefinition >>= FS.writeFile astDefinitionPath
     let newPath = directory .~ tempDirectoryPath $ axelPathToHaskellPath path
     transpileFile path newPath
-    output <- ghcInterpret newPath
+    output <- ghcInterpret newPath `mapError` EvalError
     putStr output

@@ -10,7 +10,6 @@ module Monad.FileSystemMock where
 
 import Axel.Monad.Console as Console
 import Axel.Monad.FileSystem as FS
-import Axel.Monad.Haskell.GHC as GHC
 import Axel.Monad.Process as Proc
 import Axel.Monad.Resource as Res
 
@@ -171,7 +170,6 @@ newtype FileSystemT m a =
            , Applicative
            , Monad
            , MonadConsole
-           , MonadGHC
            , MonadProcess
            , MonadResource
            )
@@ -204,7 +202,7 @@ instance (Monad m) => MonadFileSystem (FileSystemT m) where
                         (origRoot, [])
                         (splitDirectories path))
             else throwInterpretError
-                   "CreateDirectoryIfMissing"
+                   "createDirectoryIfMissing"
                    ("Missing parents for directory: " <> path)
   doesDirectoryExist relativePath =
     FileSystemT $ do
@@ -223,7 +221,7 @@ instance (Monad m) => MonadFileSystem (FileSystemT m) where
         Just (Directory _ children) -> pure $ map (^. fsPath) children
         _ ->
           throwInterpretError
-            "GetDirectoryContents"
+            "getDirectoryContents"
             ("No such directory: " <> path)
   getTemporaryDirectory = do
     tempCounter <- FileSystemT $ fsTempCounter <<+= 1
@@ -236,13 +234,13 @@ instance (Monad m) => MonadFileSystem (FileSystemT m) where
       fileNode <- gets (^. fsRoot . at path)
       case fileNode of
         Just (File _ contents) -> pure contents
-        _ -> throwInterpretError "ReadFile" ("No such file: " <> path)
+        _ -> throwInterpretError "readFile" ("No such file: " <> path)
   removeFile relativePath =
     FileSystemT $ do
       path <- absify relativePath
       gets (deleteNode (splitDirectories path) . (^. fsRoot)) >>= \case
         Just newRoot -> fsRoot .= newRoot
-        Nothing -> throwInterpretError "RemoveFile" ("No such file: " <> path)
+        Nothing -> throwInterpretError "removeFile" ("No such file: " <> path)
   setCurrentDirectory relativePath =
     FileSystemT $ do
       path <- absify relativePath

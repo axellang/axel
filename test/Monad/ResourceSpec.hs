@@ -11,21 +11,17 @@ import Test.Tasty.Hspec
 
 spec_Resource :: SpecWith ()
 spec_Resource =
-  describe "Resource" $ do
-    describe "readResource" $ do
-      it "reads a resource's contents from the file system" $ do
-        let action =
-              Res.readResource (Res.ResourceId "resGroup1/res1") :: Mock.ResourceT Mock.FileSystem FilePath
-            expected = "res1Contents"
-            origFSState =
-              Mock.mkFSState
-                [ Mock.Directory
-                    "resources"
-                    [ Mock.Directory
-                        "resGroup1"
-                        [Mock.File "res1" "res1Contents"]
-                    ]
-                ]
-        case Mock.runFileSystem origFSState $ Mock.runResourceT action of
-          Left err -> error err
-          Right result -> result `shouldBe` (expected, origFSState)
+  describe "readResource" $ do
+    it "reads a resource's contents from the file system" $ do
+      let action =
+            Res.readResource (Res.ResourceId "resGroup1/res1") :: Mock.ResourceT Mock.FileSystem FilePath
+      let origFSState =
+            Mock.mkFSState
+              [ Mock.Directory
+                  "resources"
+                  [Mock.Directory "resGroup1" [Mock.File "res1" "res1Contents"]]
+              ]
+      let expected = "res1Contents"
+      case Mock.runFileSystem origFSState $ Mock.runResourceT action of
+        Left err -> expectationFailure err
+        Right result -> result `shouldBe` (expected, origFSState)

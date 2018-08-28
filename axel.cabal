@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 69eec6dfb4e6198574f1440f8ba716df97b188acab9eb2115e9cbac2ecbc09c5
+-- hash: 8368fb9f9a477f4cf0e4b95af5f5e16ee474cfdfb85922cdd6172e008e34c8d4
 
 name:           axel
 version:        0.0.4
@@ -51,11 +51,11 @@ library
       Axel.Denormalize
       Axel.Error
       Axel.Haskell.File
+      Axel.Haskell.GHC
       Axel.Haskell.Project
       Axel.Macros
       Axel.Monad.Console
       Axel.Monad.FileSystem
-      Axel.Monad.Haskell.GHC
       Axel.Monad.Haskell.Stack
       Axel.Monad.Process
       Axel.Monad.Resource
@@ -115,6 +115,7 @@ test-suite axel-test
   type: exitcode-stdio-1.0
   main-is: Main.hs
   other-modules:
+      Haskell.GHCSpec
       MockUtils
       Monad.ConsoleMock
       Monad.ConsoleSpec

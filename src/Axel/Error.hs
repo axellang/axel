@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -13,7 +14,8 @@ import Data.Semigroup ((<>))
 import Text.Parsec (ParseError)
 
 data Error
-  = MacroError String
+  = EvalError String
+  | MacroError String
   | NormalizeError String
                    [Expression]
   | ParseError ParseError
@@ -21,6 +23,7 @@ data Error
 
 instance Show Error where
   show :: Error -> String
+  show (EvalError err) = err
   show (MacroError err) = err
   show (NormalizeError err context) =
     "error:\n" <> err <> "\n\n" <> "context:\n" <> unlines (map toAxel context)
@@ -36,3 +39,9 @@ toIO f = do
   case result of
     Left err -> throwError $ userError $ show err
     Right x -> pure x
+
+mapError :: (MonadError e' m) => ExceptT e m a -> (e -> e') -> m a
+x `mapError` f =
+  runExceptT x >>= \case
+    Left err -> throwError (f err)
+    Right res -> pure res
