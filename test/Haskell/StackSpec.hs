@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 
 module Haskell.StackSpec where
 
@@ -46,6 +47,32 @@ spec_Stack = do
             (procState ^. Mock.procExecutionLog ==
              [("stack", ["build"], Just "")]) &&
             (fsState ^. Mock.fsCurrentDirectory == "/")
+      case Mock.runFileSystem origFSState $ runExceptT $
+           Mock.runProcessT origProcState action of
+        Left err -> expectationFailure err
+        Right (x, fsState) ->
+          case x of
+            Left err -> expectationFailure err
+            Right (x', procState) ->
+              (x', (procState, fsState)) `shouldSatisfy` expectedPred
+  describe "createStackProject" $ do
+    it "creates a new Stack project" $ do
+      let action = Stack.createStackProject "newProject"
+      let origFSState = Mock.mkFSState []
+      let origProcState =
+            Mock.mkProcessState
+              []
+              [(ExitSuccess, Just ("", "")), (ExitSuccess, Just ("", ""))]
+      let expectedPred ((), (procState, fsState)) =
+            (procState ^. Mock.procExecutionLog ==
+             [ ("stack", ["new", "newProject", "new-template"], Just "")
+             , ( "stack"
+               , ["config", "set", "resolver", stackageResolverWithAxel]
+               , Just "")
+             ]) &&
+            (fsState ^. Mock.fsCurrentDirectory == "/") &&
+            (fsState ^. Mock.fsRoot . at "newProject" . _Just . Mock.fsPath ==
+             "newProject")
       case Mock.runFileSystem origFSState $ runExceptT $
            Mock.runProcessT origProcState action of
         Left err -> expectationFailure err

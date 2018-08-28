@@ -116,9 +116,9 @@ runStackProject projectPath = do
 
 setStackageResolver ::
      (MonadFileSystem m, MonadProcess m)
-  => StackageResolver
-  -> ProjectPath
+  => ProjectPath
+  -> StackageResolver
   -> m ()
-setStackageResolver resolver projectPath =
+setStackageResolver projectPath resolver =
   void $ FS.withCurrentDirectory projectPath $
   runProcess "stack" ["config", "set", "resolver", resolver] ""
