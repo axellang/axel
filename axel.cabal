@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f8420caf085fd784b34bfcdefffcab4481d4ec1564c81a7118934f63a19e12df
+-- hash: 86d010639b315ca6d57b11679dc7563e45b1e92eec002237870a7e360119f8b1
 
 name:           axel
 version:        0.0.4
@@ -115,16 +115,16 @@ test-suite axel-test
   type: exitcode-stdio-1.0
   main-is: Main.hs
   other-modules:
-      Haskell.GHCSpec
-      Haskell.StackSpec
-      MockUtils
-      Monad.ConsoleMock
-      Monad.ConsoleSpec
-      Monad.FileSystemMock
-      Monad.FileSystemSpec
-      Monad.ProcessMock
-      Monad.ResourceMock
-      Monad.ResourceSpec
+      Axel.Test.Haskell.GHCSpec
+      Axel.Test.Haskell.StackSpec
+      Axel.Test.MockUtils
+      Axel.Test.Monad.ConsoleMock
+      Axel.Test.Monad.ConsoleSpec
+      Axel.Test.Monad.FileSystemMock
+      Axel.Test.Monad.FileSystemSpec
+      Axel.Test.Monad.ProcessMock
+      Axel.Test.Monad.ResourceMock
+      Axel.Test.Monad.ResourceSpec
       Paths_axel
   hs-source-dirs:
       test

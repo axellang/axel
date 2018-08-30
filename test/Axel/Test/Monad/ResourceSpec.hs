@@ -1,13 +1,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Monad.ResourceSpec where
+module Axel.Test.Monad.ResourceSpec where
 
 import qualified Axel.Monad.Resource as Res
-
-import qualified Monad.FileSystemMock as Mock
-import qualified Monad.ResourceMock as Mock
+import qualified Axel.Test.Monad.FileSystemMock as Mock
+import qualified Axel.Test.Monad.ResourceMock as Mock
 
 import Test.Tasty.Hspec
+
+{-# ANN module "HLint: ignore Redundant do" #-}
 
 spec_Resource :: SpecWith ()
 spec_Resource =

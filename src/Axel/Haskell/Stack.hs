@@ -1,4 +1,3 @@
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -21,7 +20,6 @@ import qualified Axel.Monad.FileSystem as FS
 import Axel.Monad.Process
   ( MonadProcess(runProcess, runProcessInheritingStreams)
   )
-import Axel.Utils.Debug
 
 import Control.Lens.Operators ((%~))
 import Control.Monad (void)

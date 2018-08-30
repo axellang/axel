@@ -2,16 +2,22 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
-module Monad.FileSystemMock where
+module Axel.Test.Monad.FileSystemMock where
 
 import Axel.Monad.Console as Console
 import Axel.Monad.FileSystem as FS
 import Axel.Monad.Process as Proc
 import Axel.Monad.Resource as Res
+import Axel.Test.MockUtils
+import Axel.Utils.Debug
 
 import Control.Lens hiding (children)
 import Control.Monad.Except
@@ -19,8 +25,6 @@ import Control.Monad.State.Lazy
 
 import Data.List.Split
 import Data.Maybe
-
-import MockUtils
 
 import System.FilePath
 
@@ -58,105 +62,73 @@ mkFSState rootContents =
     , _fsTempCounter = 0
     }
 
+lookupNode :: [FilePath] -> FSNode -> Maybe FSNode
+lookupNode _ (File _ _) = Nothing
+lookupNode [] _ = Nothing
+lookupNode ["."] rootNode = pure rootNode
+lookupNode [segment] (Directory _ rootChildren) =
+  let matchingChildren =
+        filter (\child -> child ^. fsPath == segment) rootChildren
+   in case matchingChildren of
+        [child] -> pure child
+        _ -> Nothing
+lookupNode (segment:xs) rootNode@(Directory _ _) = do
+  child@(Directory _ _) <- lookupNode [segment] rootNode
+  lookupNode xs child
+
 deleteNode :: [FilePath] -> FSNode -> Maybe FSNode
-deleteNode pathSegments root@(Directory rootPath children) =
-  case pathSegments of
-    [] -> Nothing
-    [nodeName] -> do
-      nodeToDelete <- lookupNode [nodeName] root
-      let newChildren = filter (/= nodeToDelete) children
-      pure $ Directory rootPath newChildren
-    (nodeName:xs) -> do
-      newChildren <-
-        mapM
-          (\child ->
-             case child of
-               Directory path _ ->
-                 if path == nodeName
-                   then deleteNode xs child
-                   else pure child
-               File _ _ -> pure child)
-          children
-      pure $ Directory rootPath newChildren
 deleteNode _ (File _ _) = Nothing
+deleteNode [] _ = Nothing
+deleteNode [segment] rootNode@(Directory rootPath rootChildren) = do
+  child <- lookupNode [segment] rootNode
+  let rootChildren' = filter (/= child) rootChildren
+  pure $ Directory rootPath rootChildren'
+deleteNode (segment:xs) rootNode@(Directory rootPath rootChildren) = do
+  needle <- lookupNode [segment] rootNode
+  rootChildren' <-
+    mapM
+      (\child ->
+         case child of
+           File _ _ -> pure child
+           _ ->
+             if child == needle
+               then deleteNode xs child
+               else pure child)
+      rootChildren
+  pure $ Directory rootPath rootChildren'
 
 insertNode :: [FilePath] -> FSNode -> FSNode -> Maybe FSNode
-insertNode pathSegments newNode (Directory rootPath children) =
-  case pathSegments of
-    [] ->
-      pure . Directory rootPath $
-      case newNode of
-        Directory needle _ ->
-          if any
-               (\case
-                  Directory path _ -> needle == path
-                  _ -> False)
-               children
-            then map
-                   (\child ->
-                      case child of
-                        Directory path _ ->
-                          if needle == path
-                            then newNode
-                            else child
-                        File _ _ -> child)
-                   children
-            else newNode : children
-        File needle _ ->
-          if any
-               (\case
-                  File path _ -> needle == path
-                  _ -> False)
-               children
-            then map
-                   (\child ->
-                      case child of
-                        File path _ ->
-                          if needle == path
-                            then newNode
-                            else child
-                        Directory _ _ -> child)
-                   children
-            else newNode : children
-    nodeName:xs ->
-      Directory rootPath <$>
-      mapM
-        (\child ->
-           case child of
-             Directory path _ ->
-               if path == nodeName
-                 then insertNode xs newNode child
-                 else pure child
-             File path _ ->
-               pure $
-               if path == nodeName
-                 then newNode
-                 else child)
-        children
 insertNode _ _ (File _ _) = Nothing
-
-lookupNode :: [FilePath] -> FSNode -> Maybe FSNode
-lookupNode pathSegments (Directory _ children) =
-  case pathSegments of
-    [] -> Nothing
-    nodeName:xs -> do
-      childNode <-
-        listToMaybe $
-        filter
-          (\case
-             Directory path _ -> path == nodeName
-             File path _ -> path == nodeName)
-          children
-      case xs of
-        [] -> pure childNode
-        _ -> lookupNode xs childNode
-lookupNode _ (File _ _) = Nothing
+insertNode [] _ _ = Nothing
+insertNode [segment] newNode (Directory rootPath rootChildren) =
+  if newNode ^. fsPath == segment
+    then let rootChildren' =
+               filter
+                 (\child -> child ^. fsPath /= newNode ^. fsPath)
+                 rootChildren
+          in pure $ Directory rootPath (newNode : rootChildren')
+    else Nothing
+insertNode (segment:xs) newNode rootNode@(Directory rootPath rootChildren) = do
+  needle <- lookupNode [segment] rootNode
+  rootChildren' <-
+    mapM
+      (\child ->
+         case child of
+           File _ _ -> pure child
+           _ ->
+             if child == needle
+               then insertNode xs newNode child
+               else pure child)
+      rootChildren
+  pure $ Directory rootPath rootChildren'
 
 type instance Index FSNode = FilePath
 
 type instance IxValue FSNode = FSNode
 
 instance Ixed FSNode where
+  ix ::
+       (Applicative f) => FilePath -> (FSNode -> f FSNode) -> FSNode -> f FSNode
   ix path f root =
     case lookupNode pathSegments root of
       Just node ->
@@ -167,40 +139,42 @@ instance Ixed FSNode where
       pathSegments = splitDirectories path
 
 instance At FSNode where
-  at path f root =
-    f node <&> \case
-      Just newNode -> fromJust $ insertNode pathSegments newNode root
-      Nothing ->
-        maybe root (const (fromJust $ deleteNode pathSegments root)) node
+  at :: FilePath -> Lens' FSNode (Maybe FSNode)
+  at path =
+    let setter :: FSNode -> Maybe FSNode -> FSNode
+        setter root =
+          fromMaybe root . \case
+            Just newNode -> insertNode pathSegments newNode root
+            Nothing -> deleteNode pathSegments root
+     in lens (lookupNode pathSegments) setter
     where
       pathSegments :: [FilePath]
       pathSegments = splitDirectories path
-      node :: Maybe FSNode
-      node = lookupNode pathSegments root
 
-absify :: (MonadState FSState f) => FilePath -> f FilePath
-absify relativePath = do
-  currentDirectory <- gets (^. fsCurrentDirectory)
+absifyPath :: FilePath -> FilePath -> FilePath
+absifyPath relativePath currentDirectory =
   let absolutePath =
         case relativePath of
           '/':_ -> relativePath
-          _ -> currentDirectory </> relativePath
-  let normalizedSegments =
+          _ -> "/" </> currentDirectory </> relativePath
+      normalizedSegments =
         concatMap
           (\case
              [_, ".."] -> []
              ["."] -> []
              xs -> xs) $
         chunksOf 2 $
-        splitPath absolutePath
-  let absSegments =
-        case normalizedSegments of
-          "/":xs ->
-            case xs of
-              [] -> normalizedSegments
-              _ -> xs
-          _ -> normalizedSegments
-  pure $ joinPath absSegments
+        dropLeadingSlash $
+        splitDirectories absolutePath
+   in case joinPath normalizedSegments of
+        "" -> "/"
+        path -> path
+  where
+    dropLeadingSlash ("/":xs) = xs
+    dropLeadingSlash xs = xs
+
+absify :: (MonadState FSState f) => FilePath -> f FilePath
+absify relativePath = absifyPath relativePath <$> gets (^. fsCurrentDirectory)
 
 newtype FileSystemT m a =
   FileSystemT (StateT FSState (ExceptT String m) a)
@@ -214,13 +188,22 @@ newtype FileSystemT m a =
 
 type FileSystem = FileSystemT Identity
 
+instance Eq (FileSystemT m a) where
+  _ == _ = False
+
+instance Show (FileSystemT m a) where
+  show _ = "<FileSystemT>"
+
+instance MonadTrans FileSystemT where
+  lift = FileSystemT . lift . lift
+
 instance (Monad m) => MonadFileSystem (FileSystemT m) where
   copyFile src dest = do
     contents <- FS.readFile src
     FS.writeFile contents dest
   createDirectoryIfMissing createParents relativePath =
     FileSystemT $ do
-      path <- (</> relativePath) <$> gets (^. fsCurrentDirectory)
+      path <- absify relativePath
       parentNode <- gets (^. fsRoot . at (takeDirectory path))
       case parentNode of
         Just _ -> fsRoot . at path ?= Directory (takeFileName path) []
@@ -230,13 +213,14 @@ instance (Monad m) => MonadFileSystem (FileSystemT m) where
                    fst
                      (foldl
                         (\(root, segments) pathSegment ->
-                           let newRoot =
-                                 case root ^. at pathSegment of
+                           let newSegments = segments <> [pathSegment]
+                               newRoot =
+                                 case root ^. at (joinPath newSegments) of
                                    Just _ -> root
                                    Nothing ->
-                                     root & at pathSegment ?~
+                                     root & at (joinPath newSegments) ?~
                                      Directory pathSegment []
-                            in (newRoot, segments <> [pathSegment]))
+                            in (newRoot, newSegments))
                         (origRoot, [])
                         (splitDirectories path))
             else throwInterpretError
@@ -263,7 +247,7 @@ instance (Monad m) => MonadFileSystem (FileSystemT m) where
             ("No such directory: " <> path)
   getTemporaryDirectory = do
     tempCounter <- FileSystemT $ fsTempCounter <<+= 1
-    let tempDirName = "tmp" </> show tempCounter
+    let tempDirName = "/tmp" </> show tempCounter
     FS.createDirectoryIfMissing True tempDirName
     pure tempDirName
   readFile relativePath =

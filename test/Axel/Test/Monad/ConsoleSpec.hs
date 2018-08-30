@@ -1,10 +1,11 @@
-module Monad.ConsoleSpec where
+module Axel.Test.Monad.ConsoleSpec where
 
 import qualified Axel.Monad.Console as Console
-
-import qualified Monad.ConsoleMock as Mock
+import qualified Axel.Test.Monad.ConsoleMock as Mock
 
 import Test.Tasty.Hspec
+
+{-# ANN module "HLint: ignore Redundant do" #-}
 
 spec_Console :: SpecWith ()
 spec_Console =

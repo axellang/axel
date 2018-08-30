@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module MockUtils where
+module Axel.Test.MockUtils where
 
 import Control.Monad.Except
 import Control.Monad.State.Lazy
@@ -11,7 +11,7 @@ throwInterpretError actionName message = do
   errorMsg <-
     gets $ \ctxt ->
       "\n----------\nACTION\t" <> actionName <> "\n\nMESSAGE\t" <> message <>
-      "\n\nSTATE\t\t" <>
+      "\n\nSTATE\t" <>
       show ctxt <>
       "\n----------\n"
   throwError errorMsg

@@ -1,15 +1,15 @@
-module Monad.FileSystemSpec where
+module Axel.Test.Monad.FileSystemSpec where
 
 import qualified Axel.Monad.FileSystem as FS
+import qualified Axel.Test.Monad.FileSystemMock as Mock
 
 import Control.Lens
-import Control.Monad.Except
-
-import qualified Monad.FileSystemMock as Mock
 
 import System.FilePath
 
 import Test.Tasty.Hspec
+
+{-# ANN module "HLint: ignore Redundant do" #-}
 
 spec_FileSystem :: SpecWith ()
 spec_FileSystem = do
@@ -58,20 +58,16 @@ spec_FileSystem = do
       "creates a temporary directory and resets the current directory afterwards" $ do
       let action = do
             FS.withTemporaryDirectory $ \tempDir ->
-              FS.writeFile (tempDir </> "insideTemp1") "insideTemp1Contents"
+              FS.writeFile (tempDir </> "insideTemp0") "insideTemp0Contents"
             FS.withTemporaryDirectory $ \tempDir ->
-              FS.writeFile (tempDir </> "insideTemp2") "insideTemp2Contents"
+              FS.writeFile (tempDir </> "insideTemp1") "insideTemp1Contents"
       let origState = Mock.mkFSState []
       let expected =
-            origState &
-            (Mock.fsRoot . at "tmp1" ?~
-             Mock.Directory
-               "tmp1"
-               [Mock.File "insideTemp1" "insideTemp1Contents"]) &
-            (Mock.fsRoot . at "tmp2" ?~
-             Mock.Directory
-               "tmp2"
-               [Mock.File "insideTemp2" "insideTemp2Contents"]) &
+            origState & (Mock.fsRoot . at "tmp" ?~ Mock.Directory "tmp" []) &
+            (Mock.fsRoot . at "tmp/0" ?~
+             Mock.Directory "0" [Mock.File "insideTemp0" "insideTemp0Contents"]) &
+            (Mock.fsRoot . at "tmp/1" ?~
+             Mock.Directory "1" [Mock.File "insideTemp1" "insideTemp1Contents"]) &
             (Mock.fsTempCounter .~ 2)
       case Mock.runFileSystem origState action of
         Left err -> expectationFailure err

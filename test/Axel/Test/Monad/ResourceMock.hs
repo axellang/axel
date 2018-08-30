@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Monad.ResourceMock where
+module Axel.Test.Monad.ResourceMock where
 
 import Axel.Monad.Console as Console
 import Axel.Monad.FileSystem as FS
@@ -10,6 +10,7 @@ import Axel.Monad.Process as Proc
 import Axel.Monad.Resource as Res
 
 import Control.Monad.Identity
+import Control.Monad.Trans
 
 import System.FilePath
 
@@ -24,6 +25,9 @@ newtype ResourceT m a =
            )
 
 type Resource = ResourceT Identity
+
+instance MonadTrans ResourceT where
+  lift = ResourceT
 
 instance (Monad m) => MonadResource (ResourceT m) where
   getResourcePath (Res.ResourceId resourceId) =

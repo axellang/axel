@@ -4,7 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Monad.ConsoleMock where
+module Axel.Test.Monad.ConsoleMock where
 
 import Axel.Monad.Console as Console
 import Axel.Monad.FileSystem as FS
