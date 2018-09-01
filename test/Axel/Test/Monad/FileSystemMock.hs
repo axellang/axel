@@ -17,7 +17,6 @@ import Axel.Monad.FileSystem as FS
 import Axel.Monad.Process as Proc
 import Axel.Monad.Resource as Res
 import Axel.Test.MockUtils
-import Axel.Utils.Debug
 
 import Control.Lens hiding (children)
 import Control.Monad.Except

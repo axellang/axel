@@ -6,7 +6,7 @@ import Axel.AST
            EIdentifier, ELambda, ELetBlock, ELiteral)
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
-  , Literal(LChar, LInt, LList, LString)
+  , Literal(LChar, LInt, LString)
   , Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
           SMacroDefinition, SModuleDeclaration, SQualifiedImport,
           SRestrictedImport, STopLevel, STypeSynonym, STypeclassInstance,
@@ -46,9 +46,9 @@ denormalizeExpression (ECaseBlock caseBlock) =
              Parse.SExpression
                [denormalizeExpression pat, denormalizeExpression res])
           (caseBlock ^. matches)
-  in Parse.SExpression $
-     Parse.Symbol "case" :
-     denormalizeExpression (caseBlock ^. expr) : denormalizedCases
+   in Parse.SExpression $
+      Parse.Symbol "case" :
+      denormalizeExpression (caseBlock ^. expr) : denormalizedCases
 denormalizeExpression EEmptySExpression = Parse.SExpression []
 denormalizeExpression (EFunctionApplication functionApplication) =
   Parse.SExpression $
@@ -58,11 +58,11 @@ denormalizeExpression (EIdentifier x) = Parse.Symbol x
 denormalizeExpression (ELambda lambda) =
   let denormalizedArguments =
         Parse.SExpression $ map denormalizeExpression (lambda ^. arguments)
-  in Parse.SExpression
-       [ Parse.Symbol "\\"
-       , denormalizedArguments
-       , denormalizeExpression (lambda ^. body)
-       ]
+   in Parse.SExpression
+        [ Parse.Symbol "\\"
+        , denormalizedArguments
+        , denormalizeExpression (lambda ^. body)
+        ]
 denormalizeExpression (ELetBlock letBlock) =
   let denormalizedBindings =
         Parse.SExpression $
@@ -71,17 +71,15 @@ denormalizeExpression (ELetBlock letBlock) =
              Parse.SExpression
                [denormalizeExpression var, denormalizeExpression val])
           (letBlock ^. bindings)
-  in Parse.SExpression
-       [ Parse.Symbol "let"
-       , denormalizedBindings
-       , denormalizeExpression (letBlock ^. body)
-       ]
+   in Parse.SExpression
+        [ Parse.Symbol "let"
+        , denormalizedBindings
+        , denormalizeExpression (letBlock ^. body)
+        ]
 denormalizeExpression (ELiteral x) =
   case x of
     LChar char -> Parse.LiteralChar char
     LInt int -> Parse.LiteralInt int
-    LList list ->
-      Parse.SExpression $ Parse.Symbol "list" : map denormalizeExpression list
     LString string -> Parse.LiteralString string
 
 denormalizeBinding :: (ArgumentList, Expression) -> Parse.Expression
@@ -107,14 +105,14 @@ denormalizeStatement (SDataDeclaration dataDeclaration) =
           TypeConstructor typeConstructor ->
             denormalizeExpression $ EFunctionApplication typeConstructor
           ProperType properType -> Parse.Symbol properType
-  in Parse.SExpression
-       [ Parse.Symbol "data"
-       , denormalizedTypeDefinition
-       , Parse.SExpression $
-         map
-           (denormalizeExpression . EFunctionApplication)
-           (dataDeclaration ^. constructors)
-       ]
+   in Parse.SExpression
+        [ Parse.Symbol "data"
+        , denormalizedTypeDefinition
+        , Parse.SExpression $
+          map
+            (denormalizeExpression . EFunctionApplication)
+            (dataDeclaration ^. constructors)
+        ]
 denormalizeStatement (SFunctionDefinition functionDefinition) =
   Parse.SExpression $
   Parse.Symbol "=" :

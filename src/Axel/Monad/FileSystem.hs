@@ -25,8 +25,6 @@ import qualified Control.Monad.Trans.State.Strict as StrictState (StateT)
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT)
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT)
 
-import Axel.Utils.Debug
-
 import qualified System.Directory
   ( copyFile
   , createDirectoryIfMissing

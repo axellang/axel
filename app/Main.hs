@@ -15,8 +15,11 @@ import Control.Monad.IO.Class (MonadIO)
 import Options.Applicative (execParser, info, progDesc)
 
 newtype AppM a = AppM
-  { runAppT :: ExceptT Error IO a
+  { runAppM :: ExceptT Error IO a
   } deriving (Functor, Applicative, Monad, MonadError Error, MonadIO)
+
+runAppM' :: AppM a -> IO a
+runAppM' = Error.toIO . runAppM
 
 app :: ModeCommand -> AppM ()
 app (File filePath) = evalFile filePath
@@ -26,4 +29,4 @@ main :: IO ()
 main = do
   modeCommand <-
     execParser $ info modeCommandParser (progDesc "The command to run.")
-  Error.toIO $ runAppT $ app modeCommand
+  runAppM' $ app modeCommand

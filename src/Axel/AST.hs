@@ -9,7 +9,6 @@
 
 module Axel.AST where
 
-import Axel.Error (fatal)
 import Axel.Utils.Display
   ( Bracket(DoubleQuotes, Parentheses, SingleQuotes, SquareBrackets)
   , Delimiter(Commas, Newlines, Pipes, Spaces)
@@ -37,12 +36,12 @@ type Identifier = String
 data CaseBlock = CaseBlock
   { _expr :: Expression
   , _matches :: [(Expression, Expression)]
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 data FunctionApplication = FunctionApplication
   { _function :: Expression
   , _arguments :: [Expression]
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 newtype TopLevel = TopLevel
   { _statements :: [Statement]
@@ -106,7 +105,7 @@ instance ToHaskell ImportSpecification where
 data Lambda = Lambda
   { _arguments :: [Expression]
   , _body :: Expression
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 newtype LanguagePragma = LanguagePragma
   { _language :: Identifier
@@ -115,7 +114,7 @@ newtype LanguagePragma = LanguagePragma
 data LetBlock = LetBlock
   { _bindings :: [(Expression, Expression)]
   , _body :: Expression
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 data MacroDefinition = MacroDefinition
   { _name :: Identifier
@@ -151,7 +150,7 @@ data Expression
   | ELambda Lambda
   | ELetBlock LetBlock
   | ELiteral Literal
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance ToHaskell Expression where
   toHaskell :: Expression -> String
@@ -169,16 +168,13 @@ instance ToHaskell Expression where
 data Literal
   = LChar Char
   | LInt Int
-  | LList [Expression]
   | LString String
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance ToHaskell Literal where
   toHaskell :: Literal -> String
   toHaskell (LChar x) = surround SingleQuotes [x]
   toHaskell (LInt x) = show x
-  toHaskell (LList xs) =
-    surround SquareBrackets $ delimit Commas $ map toHaskell xs
   toHaskell (LString x) = surround DoubleQuotes x
 
 data Statement
@@ -352,28 +348,26 @@ instance Recursive Expression where
     case x of
       ECaseBlock caseBlock ->
         ECaseBlock $
-        caseBlock & expr %~ bottomUpFmap f & matches %~
-        map (bottomUpFmap f *** bottomUpFmap f)
+        caseBlock & expr %~ bottomUpFmap f &
+        matches %~ map (bottomUpFmap f *** bottomUpFmap f)
       EEmptySExpression -> f x
       EFunctionApplication functionApplication ->
         EFunctionApplication $
-        functionApplication & function %~ bottomUpFmap f & arguments %~
-        map (bottomUpFmap f)
+        functionApplication & function %~ bottomUpFmap f &
+        arguments %~ map (bottomUpFmap f)
       EIdentifier _ -> x
       ELambda lambda ->
         ELambda $
         lambda & arguments %~ map (bottomUpFmap f) & body %~ bottomUpFmap f
       ELetBlock letBlock ->
         ELetBlock $
-        letBlock & bindings %~
-        map ((_1 %~ bottomUpFmap f) . (_2 %~ bottomUpFmap f)) &
-        body %~
-        bottomUpFmap f
+        letBlock &
+        bindings %~ map ((_1 %~ bottomUpFmap f) . (_2 %~ bottomUpFmap f)) &
+        body %~ bottomUpFmap f
       ELiteral literal ->
         case literal of
           LChar _ -> x
           LInt _ -> x
-          LList exprs -> ELiteral (LList $ map (bottomUpFmap f) exprs)
           LString _ -> x
   bottomUpTraverse ::
        (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
@@ -408,42 +402,4 @@ instance Recursive Expression where
         case literal of
           LChar _ -> pure x
           LInt _ -> pure x
-          LList exprs ->
-            ELiteral . LList <$> traverse (bottomUpTraverse f) exprs
           LString _ -> pure x
-
-extractNameFromDefinition :: Statement -> Maybe Identifier
-extractNameFromDefinition (SDataDeclaration dataDeclaration) =
-  Just $
-  case dataDeclaration ^. typeDefinition of
-    ProperType typeName -> typeName
-    TypeConstructor fnApp ->
-      case fnApp ^. function of
-        ELiteral (LString typeName) -> typeName
-        _ -> fatal "extractNameFromDefinition" "0001"
-extractNameFromDefinition (SFunctionDefinition functionDefinition) =
-  Just $ functionDefinition ^. name
-extractNameFromDefinition (SLanguagePragma _) = Nothing
-extractNameFromDefinition (SMacroDefinition _) = Nothing
-extractNameFromDefinition (SModuleDeclaration _) = Nothing
-extractNameFromDefinition (SQualifiedImport _) = Nothing
-extractNameFromDefinition (SRestrictedImport _) = Nothing
-extractNameFromDefinition (STopLevel _) = Nothing
-extractNameFromDefinition (STypeclassInstance typeclassInstance) =
-  case typeclassInstance ^. instanceName of
-    ELiteral (LString identifier) -> Just identifier
-    _ -> Nothing
-extractNameFromDefinition (STypeSynonym typeSynonym) =
-  case typeSynonym ^. alias of
-    ELiteral (LString identifier) -> Just identifier
-    _ -> Nothing
-extractNameFromDefinition (SUnrestrictedImport _) = Nothing
-
-removeDefinitionsByName :: [String] -> [Statement] -> [Statement]
-removeDefinitionsByName namesToRemove =
-  filter
-    (\statement ->
-       not $
-       case extractNameFromDefinition statement of
-         Just definitionName -> definitionName `elem` namesToRemove
-         Nothing -> False)
