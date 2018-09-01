@@ -130,9 +130,9 @@ normalizeStatement expr@(Parse.SExpression items) =
     Parse.Symbol "defmacro":Parse.Symbol macroName:defs ->
       SMacroDefinition <$>
       (MacroDefinition macroName <$> normalizeDefinitions expr defs)
-    [Parse.Symbol "import", Parse.Symbol moduleName, Parse.SExpression imports] ->
+    [Parse.Symbol "import", Parse.Symbol moduleName, importSpec] ->
       SRestrictedImport <$>
-      (RestrictedImport moduleName <$> normalizeImportList expr imports)
+      (RestrictedImport moduleName <$> normalizeImportSpec expr importSpec)
     [Parse.Symbol "importq", Parse.Symbol moduleName, Parse.Symbol alias, importSpec] ->
       SQualifiedImport <$>
       (QualifiedImport moduleName alias <$> normalizeImportSpec expr importSpec)

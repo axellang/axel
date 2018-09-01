@@ -45,12 +45,12 @@ data FunctionApplication = FunctionApplication
 
 newtype TopLevel = TopLevel
   { _statements :: [Statement]
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 data TypeDefinition
   = ProperType Identifier
   | TypeConstructor FunctionApplication
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance ToHaskell TypeDefinition where
   toHaskell :: TypeDefinition -> String
@@ -60,11 +60,11 @@ instance ToHaskell TypeDefinition where
 data DataDeclaration = DataDeclaration
   { _typeDefinition :: TypeDefinition
   , _constructors :: [FunctionApplication]
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 newtype ArgumentList =
   ArgumentList [Expression]
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance ToHaskell ArgumentList where
   toHaskell :: ArgumentList -> String
@@ -74,13 +74,13 @@ data FunctionDefinition = FunctionDefinition
   { _name :: Identifier
   , _typeSignature :: FunctionApplication
   , _definitions :: [(ArgumentList, Expression)]
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 data Import
   = ImportItem Identifier
   | ImportType Identifier
                [Identifier]
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance ToHaskell Import where
   toHaskell :: Import -> String
@@ -94,7 +94,7 @@ instance ToHaskell Import where
 data ImportSpecification
   = ImportAll
   | ImportOnly [Import]
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance ToHaskell ImportSpecification where
   toHaskell :: ImportSpecification -> String
@@ -109,7 +109,7 @@ data Lambda = Lambda
 
 newtype LanguagePragma = LanguagePragma
   { _language :: Identifier
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 data LetBlock = LetBlock
   { _bindings :: [(Expression, Expression)]
@@ -119,28 +119,28 @@ data LetBlock = LetBlock
 data MacroDefinition = MacroDefinition
   { _name :: Identifier
   , _definitions :: [(ArgumentList, Expression)]
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 data QualifiedImport = QualifiedImport
   { _moduleName :: Identifier
   , _alias :: Identifier
   , _imports :: ImportSpecification
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 data RestrictedImport = RestrictedImport
   { _moduleName :: Identifier
   , _imports :: ImportSpecification
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 data TypeclassInstance = TypeclassInstance
   { _instanceName :: Expression
   , _definitions :: [FunctionDefinition]
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 data TypeSynonym = TypeSynonym
   { _alias :: Expression
   , _definition :: Expression
-  } deriving (Eq)
+  } deriving (Eq, Show)
 
 data Expression
   = ECaseBlock CaseBlock
@@ -189,7 +189,7 @@ data Statement
   | STypeclassInstance TypeclassInstance
   | STypeSynonym TypeSynonym
   | SUnrestrictedImport Identifier
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance ToHaskell Statement where
   toHaskell :: Statement -> String
