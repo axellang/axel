@@ -40,9 +40,7 @@ packages:
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
-extra-deps:
-- github: jgrosso/monad-mock
-  commit: 8749f1340dcf5b5d28427c336dd59ede4e382574
+extra-deps: []
 
 # Override default flag values for local packages and extra-deps
 flags: {}

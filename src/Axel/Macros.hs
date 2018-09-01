@@ -17,6 +17,7 @@ import Axel.AST
 import Axel.Denormalize (denormalizeStatement)
 import Axel.Error (Error(MacroError), mapError)
 import Axel.Haskell.GHC (ghcInterpret)
+import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Monad.FileSystem (MonadFileSystem)
 import qualified Axel.Monad.FileSystem as FS
   ( MonadFileSystem(createDirectoryIfMissing, writeFile)
@@ -75,6 +76,7 @@ generateMacroProgram macroDefinition environment applicationArguments = do
           newMacroName
           (SMacroDefinition macroDefinition)
       let source =
+            prettifyHaskell $
             delimit Newlines $
             map toHaskell (environment <> [hygenicMacroDefinition])
       pure source

@@ -10,6 +10,7 @@ import Prelude hiding (putStr)
 import Axel.AST (ToHaskell(toHaskell))
 import Axel.Error (Error(EvalError), mapError)
 import Axel.Haskell.GHC (ghcInterpret)
+import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Macros (exhaustivelyExpandMacros, stripMacroDefinitions)
 import Axel.Monad.Console (MonadConsole(putStr))
 import Axel.Monad.FileSystem (MonadFileSystem)
@@ -52,7 +53,7 @@ transpileSource ::
   => String
   -> m String
 transpileSource source =
-  toHaskell . stripMacroDefinitions <$>
+  prettifyHaskell . toHaskell . stripMacroDefinitions <$>
   (parseSource source >>= exhaustivelyExpandMacros . convertList . convertUnit >>=
    normalizeStatement)
 

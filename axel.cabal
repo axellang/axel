@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e6bc09b77abe952f45a5f757ae7c749972d1b0080a85bba1108546fa949e52a7
+-- hash: 857022c656803b15b79cbc831c55c4f6104bfddb05c54066e951430f52d2f88e
 
 name:           axel
 version:        0.0.4
@@ -34,13 +34,9 @@ data-files:
     resources/macros/MacroDefinitionAndEnvironmentHeader.hs
     resources/macros/Scaffold.hs
     resources/new-project-template/app/Main.axel
-    resources/new-project-template/app/Main.hs
     resources/new-project-template/Setup.axel
-    resources/new-project-template/Setup.hs
     resources/new-project-template/src/Lib.axel
-    resources/new-project-template/src/Lib.hs
     resources/new-project-template/test/Spec.axel
-    resources/new-project-template/test/Spec.hs
 
 source-repository head
   type: git
@@ -53,6 +49,7 @@ library
       Axel.Error
       Axel.Haskell.File
       Axel.Haskell.GHC
+      Axel.Haskell.Prettify
       Axel.Haskell.Project
       Axel.Haskell.Stack
       Axel.Macros
@@ -81,6 +78,7 @@ library
     , bytestring >=0.10.8 && <0.11
     , directory >=1.3 && <1.4
     , filepath >=1.4.1 && <1.5
+    , haskell-src-exts >=1.20.2 && <1.21
     , lens >=4.16.1 && <4.18
     , lens-aeson >=1.0.2 && <1.1
     , mtl >=2.2.1 && <2.3
