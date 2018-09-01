@@ -28,7 +28,7 @@ instance Show Error where
   show (NormalizeError err context) =
     "error:\n" <> err <> "\n\n" <> "context:\n" <> unlines (map toAxel context)
   show (ParseError err) = show err
-  show (ProjectError err) = show err
+  show (ProjectError err) = err
 
 fatal :: String -> String -> a
 fatal context message = error $ "[FATAL] " <> context <> " - " <> message

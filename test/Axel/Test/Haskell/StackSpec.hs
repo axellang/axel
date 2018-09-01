@@ -9,6 +9,7 @@ import Axel.Test.Monad.FileSystemMock as Mock
 import Axel.Test.Monad.ProcessMock as Mock
 
 import Control.Lens
+import Control.Monad.Except
 
 import System.Exit
 
@@ -47,13 +48,15 @@ spec_Stack = do
             Mock.mkProcessState
               []
               [ProcessResultT ((ExitSuccess, Just ("", "")), pure ())]
-      let expectation ((), (procState, fsState)) = do
+      let expectation result (procState, fsState) = do
+            result `shouldBe` ()
             procState ^. Mock.procExecutionLog `shouldBe`
               [("stack", ["build"], Just "")]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
-      case Mock.runProcess (origProcState, origFSState) action of
+      case Mock.runProcess (origProcState, origFSState) $ runExceptT action of
         Left err -> expectationFailure err
-        Right result -> expectation result
+        Right (Left err, _) -> expectationFailure $ show err
+        Right (Right x, state) -> expectation x state
   describe "createStackProject" $ do
     it "creates a new Stack project" $ do
       let action = Stack.createStackProject "newProject"

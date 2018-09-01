@@ -36,6 +36,8 @@ import qualified Data.Yaml as Yaml (Value(String), decodeEither', encode)
 
 import Paths_axel (version)
 
+import System.Exit (ExitCode(ExitFailure, ExitSuccess))
+
 import Text.Regex.PCRE ((=~), getAllTextSubmatches)
 
 type ProjectPath = FilePath
@@ -81,9 +83,20 @@ addStackDependency dependencyId projectPath =
          in FS.writeFile packageConfigPath encodedContents
       Left _ -> fatal "addStackDependency" "0001"
 
-buildStackProject :: (MonadFileSystem m, MonadProcess m) => ProjectPath -> m ()
-buildStackProject projectPath =
-  void $ FS.withCurrentDirectory projectPath $ runProcess "stack" ["build"] ""
+buildStackProject ::
+     (MonadError Error m, MonadFileSystem m, MonadProcess m)
+  => ProjectPath
+  -> m ()
+buildStackProject projectPath = do
+  result <-
+    FS.withCurrentDirectory projectPath $ runProcess "stack" ["build"] ""
+  case result of
+    (ExitSuccess, _, _) -> pure ()
+    (ExitFailure _, stdout, stderr) ->
+      throwError $
+      ProjectError
+        ("Project failed to build.\n\nStdout:\n" <> stdout <> "\n\nStderr:\n" <>
+         stderr)
 
 createStackProject :: (MonadFileSystem m, MonadProcess m) => String -> m ()
 createStackProject projectName = do
