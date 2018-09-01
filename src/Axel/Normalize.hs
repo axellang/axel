@@ -54,12 +54,12 @@ normalizeExpression expr@(Parse.SExpression items) =
                    (,) <$> normalizeExpression pat <*> normalizeExpression body
                  x -> throwError $ NormalizeError "Invalid case!" [x, expr])
               cases
-      in ECaseBlock <$>
-         (CaseBlock <$> normalizeExpression var <*> normalizedCases)
+       in ECaseBlock <$>
+          (CaseBlock <$> normalizeExpression var <*> normalizedCases)
     [Parse.Symbol "\\", Parse.SExpression args, body] ->
       let normalizedArguments = traverse normalizeExpression args
-      in ELambda <$>
-         (Lambda <$> normalizedArguments <*> normalizeExpression body)
+       in ELambda <$>
+          (Lambda <$> normalizedArguments <*> normalizeExpression body)
     [Parse.Symbol "let", Parse.SExpression bindings, body] ->
       let normalizedBindings =
             traverse
@@ -69,8 +69,8 @@ normalizeExpression expr@(Parse.SExpression items) =
                    normalizeExpression value
                  x -> throwError $ NormalizeError "Invalid pattern!" [x, expr])
               bindings
-      in ELetBlock <$>
-         (LetBlock <$> normalizedBindings <*> normalizeExpression body)
+       in ELetBlock <$>
+          (LetBlock <$> normalizedBindings <*> normalizeExpression body)
     [Parse.Symbol "quote", expr'] -> pure $ quoteParseExpression expr'
     fn:args ->
       EFunctionApplication <$>
@@ -105,7 +105,7 @@ normalizeStatement expr@(Parse.SExpression items) =
           throwError $ NormalizeError "Invalid type signature!" [typeSig, expr]
     Parse.Symbol "begin":stmts ->
       let normalizedStmts = traverse normalizeStatement stmts
-      in STopLevel . TopLevel <$> normalizedStmts
+       in STopLevel . TopLevel <$> normalizedStmts
     [Parse.Symbol "data", typeDef, Parse.SExpression constructors] ->
       let normalizedConstructors =
             traverse
@@ -117,15 +117,16 @@ normalizeStatement expr@(Parse.SExpression items) =
                      throwError $
                      NormalizeError "Invalid type constructor!" [x, expr])
               constructors
-      in normalizeExpression typeDef >>= \case
-           EFunctionApplication typeConstructor ->
-             SDataDeclaration <$>
-             (DataDeclaration (TypeConstructor typeConstructor) <$>
-              normalizedConstructors)
-           EIdentifier properType ->
-             SDataDeclaration <$>
-             (DataDeclaration (ProperType properType) <$> normalizedConstructors)
-           _ -> throwError $ NormalizeError "Invalid type!" [typeDef, expr]
+       in normalizeExpression typeDef >>= \case
+            EFunctionApplication typeConstructor ->
+              SDataDeclaration <$>
+              (DataDeclaration (TypeConstructor typeConstructor) <$>
+               normalizedConstructors)
+            EIdentifier properType ->
+              SDataDeclaration <$>
+              (DataDeclaration (ProperType properType) <$>
+               normalizedConstructors)
+            _ -> throwError $ NormalizeError "Invalid type!" [typeDef, expr]
     Parse.Symbol "defmacro":Parse.Symbol macroName:defs ->
       SMacroDefinition <$>
       (MacroDefinition macroName <$> normalizeDefinitions expr defs)
@@ -146,9 +147,9 @@ normalizeStatement expr@(Parse.SExpression items) =
                    _ ->
                      throwError $ NormalizeError "Invalid definition!" [x, expr])
               defs
-      in STypeclassInstance <$>
-         (TypeclassInstance <$> normalizeExpression instanceName <*>
-          normalizedDefs)
+       in STypeclassInstance <$>
+          (TypeclassInstance <$> normalizeExpression instanceName <*>
+           normalizedDefs)
     [Parse.Symbol "language", Parse.Symbol languageName] ->
       pure $ SLanguagePragma (LanguagePragma languageName)
     [Parse.Symbol "module", Parse.Symbol moduleName] ->
@@ -156,7 +157,7 @@ normalizeStatement expr@(Parse.SExpression items) =
     [Parse.Symbol "type", alias, def] ->
       let normalizedAlias = normalizeExpression alias
           normalizedDef = normalizeExpression def
-      in STypeSynonym <$> (TypeSynonym <$> normalizedAlias <*> normalizedDef)
+       in STypeSynonym <$> (TypeSynonym <$> normalizedAlias <*> normalizedDef)
     _ -> throwError $ NormalizeError "Invalid top-level form!" [expr]
   where
     normalizeImportSpec ctxt importSpec =
@@ -180,7 +181,7 @@ normalizeStatement expr@(Parse.SExpression items) =
                             throwError $
                             NormalizeError "Invalid import!" [x, item, ctxt])
                        imports
-               in ImportType type' <$> normalizedImports
+                in ImportType type' <$> normalizedImports
              x -> throwError $ NormalizeError "Invalid import!" [x, item, ctxt])
         input
 normalizeStatement expr =

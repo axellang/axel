@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bc93db7c8ae246fb98adde0b2853fb2770bd5f0f6100aa3bd59b5a39e90f7c47
+-- hash: 65e30cd726d2f1473f370449256ed80115a42bc0e76222843f3af45a8dbc0287
 
 name:           axel
 version:        0.0.4
@@ -26,6 +26,7 @@ extra-source-files:
     README.org
     scripts/build.sh
     scripts/clean.sh
+    scripts/format.sh
     scripts/ghcid.sh
     scripts/lint.sh
 data-files:
