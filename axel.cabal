@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 65e30cd726d2f1473f370449256ed80115a42bc0e76222843f3af45a8dbc0287
+-- hash: e6bc09b77abe952f45a5f757ae7c749972d1b0080a85bba1108546fa949e52a7
 
 name:           axel
 version:        0.0.4
@@ -126,6 +126,8 @@ test-suite axel-test
       Axel.Test.Monad.ProcessMock
       Axel.Test.Monad.ResourceMock
       Axel.Test.Monad.ResourceSpec
+      Axel.Test.NormalizeSpec
+      Axel.Test.Parse.ASTGen
       Paths_axel
   hs-source-dirs:
       test
