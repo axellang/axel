@@ -7,6 +7,8 @@ module Axel.Test.MockUtils where
 import Control.Monad.Except
 import Control.Monad.State.Lazy
 
+import GHC.Exts (IsString(fromString))
+
 import Language.Haskell.TH.Quote
 
 throwInterpretError ::
