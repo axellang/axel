@@ -120,7 +120,6 @@ exhaustivelyExpandMacros ::
   -> m Parse.Expression
 exhaustivelyExpandMacros = exhaustM expansionPass
 
--- TODO This needs heavy optimization.
 expandMacros ::
      (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
   => [Parse.Expression]

@@ -5,6 +5,7 @@ module Axel.Test.Haskell.StackSpec where
 
 import Axel.Haskell.Stack as Stack
 import Axel.Monad.FileSystem as FS
+import Axel.Test.Monad.ConsoleMock as Mock
 import Axel.Test.Monad.FileSystemMock as Mock
 import Axel.Test.Monad.ProcessMock as Mock
 
@@ -82,3 +83,33 @@ spec_Stack = do
       case Mock.runProcess (origProcState, origFSState) action of
         Left err -> expectationFailure err
         Right result -> expectation result
+  describe "runStackProject" $ do
+    it "runs a Stack project" $ do
+      let action = Stack.runStackProject "project/path"
+      let origConsoleState = Mock.mkConsoleState
+      let origFSState =
+            Mock.mkFSState [Mock.Directory "project" [Mock.Directory "path" []]]
+      let origProcState =
+            Mock.mkProcessState
+              []
+              [ ProcessResultT
+                  ( ( ExitSuccess
+                    , Just ("", "foo:lib\nfoo:exe:foo-exe\nfoo:test:foo-test"))
+                  , pure ())
+              , ProcessResultT ((ExitSuccess, Nothing), pure ())
+              ]
+      let expectation result (consoleState, procState, fsState) = do
+            result `shouldBe` ()
+            procState ^. Mock.procExecutionLog `shouldBe`
+              [ ("stack", ["ide", "targets"], Just "")
+              , ("stack", ["exec", "foo-exe"], Nothing)
+              ]
+            fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
+            consoleState ^. Mock.consoleOutput `shouldBe` "Running foo-exe...\n"
+      case Mock.runProcess (origProcState, origFSState) $
+           Mock.runConsoleT origConsoleState $
+           runExceptT action of
+        Left err -> expectationFailure err
+        Right ((Left err, _), _) -> expectationFailure $ show err
+        Right ((Right x, consoleState), (procState, fsState)) ->
+          expectation x (consoleState, procState, fsState)
