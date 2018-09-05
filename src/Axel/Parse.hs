@@ -5,6 +5,7 @@
 --      never be imported by itself but only implicitly as part of this module.
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
@@ -22,7 +23,9 @@ import Axel.Parse.AST
            Symbol)
   )
 import Axel.Utils.List (takeUntil)
-import Axel.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
+import Axel.Utils.Recursion
+  ( Recursive(bottomUpFmap, bottomUpTraverse, topDownFmap)
+  )
 
 import Control.Monad.Except (MonadError, throwError)
 
@@ -63,6 +66,14 @@ instance Recursive Expression where
       LiteralString _ -> pure x
       SExpression xs -> SExpression <$> traverse (bottomUpTraverse f) xs
       Symbol _ -> pure x
+  topDownFmap :: (Expression -> Expression) -> Expression -> Expression
+  topDownFmap f x =
+    case f x of
+      LiteralChar _ -> x
+      LiteralInt _ -> x
+      LiteralString _ -> x
+      SExpression xs -> SExpression (map (topDownFmap f) xs)
+      Symbol _ -> x
 
 parseReadMacro ::
      (Stream s m Char) => String -> String -> ParsecT s u m Expression
@@ -125,22 +136,50 @@ expression =
   sExpression <|>
   symbol
 
+-- TODO Derive this with Template Haskell (it's really brittle, currently).
+quoteParseExpression :: Expression -> Expression
+quoteParseExpression (LiteralChar x) =
+  SExpression [Symbol "AST.LiteralChar", LiteralChar x]
+quoteParseExpression (LiteralInt x) =
+  SExpression [Symbol "AST.LiteralInt", LiteralInt x]
+quoteParseExpression (LiteralString x) =
+  SExpression [Symbol "AST.LiteralString", LiteralString x]
+quoteParseExpression (SExpression xs) =
+  SExpression
+    [ Symbol "AST.SExpression"
+    , SExpression (Symbol "list" : map quoteParseExpression xs)
+    ]
+quoteParseExpression (Symbol x) =
+  SExpression [Symbol "AST.Symbol", LiteralString (handleEscapes x)]
+  where
+    handleEscapes =
+      concatMap $ \case
+        '\\' -> "\\\\"
+        c -> [c]
+
+parseMultiple :: (MonadError Error m) => String -> m [Expression]
+parseMultiple =
+  either (throwError . ParseError . show) (pure . map expandQuotes) .
+  parse
+    (many1 (optional whitespace *> expression <* optional whitespace) <* eof)
+    ""
+  where
+    expandQuotes =
+      topDownFmap
+        (\case
+           SExpression [Symbol "quote", x] -> quoteParseExpression x
+           x -> x)
+
+parseSingle :: (MonadError Error m) => String -> m Expression
+parseSingle input =
+  parseMultiple input >>= \case
+    [x] -> pure x
+    _ -> throwError $ ParseError "Only one expression was expected"
+
 stripComments :: String -> String
 stripComments = unlines . map cleanLine . lines
   where
     cleanLine = takeUntil "--"
-
-parseMultiple :: (MonadError Error m) => String -> m [Expression]
-parseMultiple =
-  either (throwError . ParseError) pure .
-  parse
-    (many1 (optional whitespace *> expression <* optional whitespace) <* eof)
-    ""
-
-parseSingle :: (MonadError Error m) => String -> m Expression
-parseSingle =
-  either (throwError . ParseError) pure .
-  parse (optional whitespace *> expression <* optional whitespace <* eof) ""
 
 parseSource :: (MonadError Error m) => String -> m Expression
 parseSource input = do

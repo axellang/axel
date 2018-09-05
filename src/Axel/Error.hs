@@ -11,14 +11,12 @@ import Control.Monad.Except (ExceptT, MonadError(throwError), runExceptT)
 
 import Data.Semigroup ((<>))
 
-import Text.Parsec (ParseError)
-
 data Error
   = EvalError String
   | MacroError String
   | NormalizeError String
                    [Expression]
-  | ParseError ParseError
+  | ParseError String
   | ProjectError String
 
 instance Show Error where
@@ -27,7 +25,7 @@ instance Show Error where
   show (MacroError err) = err
   show (NormalizeError err context) =
     "error:\n" <> err <> "\n\n" <> "context:\n" <> unlines (map toAxel context)
-  show (ParseError err) = show err
+  show (ParseError err) = err
   show (ProjectError err) = err
 
 fatal :: String -> String -> a

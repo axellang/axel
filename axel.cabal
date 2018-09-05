@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1fb7300c732e4e2033def9152fa5902cbdf7e2e328068ff053cc45a5fa6230ad
+-- hash: cdd78f3acc95d09f418231b65b1d3d7caca11cfa3487fb9ec98c95bb79b97bc1
 
 name:           axel
 version:        0.0.4
@@ -61,7 +61,6 @@ library
       Axel.Parse
       Axel.Parse.Args
       Axel.Parse.AST
-      Axel.Quote
       Axel.Utils.Debug
       Axel.Utils.Display
       Axel.Utils.Function

@@ -10,22 +10,22 @@ import Test.Tasty.Hspec
 spec_Parse :: SpecWith ()
 spec_Parse = do
   describe "parseSingle" $ do
-    it "can parse a literal character" $ do
+    it "can parse a character literal" $ do
       let result = LiteralChar 'a'
       case parseSingle "{a}" of
         Left err -> expectationFailure $ show err
         Right x -> x `shouldBe` result
-    it "can parse a literal integer" $ do
+    it "can parse an integer literal" $ do
       let result = LiteralInt 123
       case parseSingle "123" of
         Left err -> expectationFailure $ show err
         Right x -> x `shouldBe` result
-    it "can parse a literal list" $ do
+    it "can parse a list literal" $ do
       let result = SExpression [Symbol "list", LiteralInt 1, LiteralChar 'a']
       case parseSingle "[1 {a}]" of
         Left err -> expectationFailure $ show err
         Right x -> x `shouldBe` result
-    it "can parse a literal string" $ do
+    it "can parse a string literal" $ do
       let result = LiteralString "a b"
       case parseSingle "\"a b\"" of
         Left err -> expectationFailure $ show err
@@ -35,13 +35,6 @@ spec_Parse = do
             SExpression
               [Symbol "quasiquote", SExpression [Symbol "foo", Symbol "bar"]]
       case parseSingle "`(foo bar)" of
-        Left err -> expectationFailure $ show err
-        Right x -> x `shouldBe` result
-    it "can parse a quoted expression" $ do
-      let result =
-            SExpression
-              [Symbol "quote", SExpression [Symbol "foo", Symbol "bar"]]
-      case parseSingle "'(foo bar)" of
         Left err -> expectationFailure $ show err
         Right x -> x `shouldBe` result
     it "can parse an s-expression" $ do
@@ -68,6 +61,66 @@ spec_Parse = do
             SExpression
               [Symbol "unquote", SExpression [Symbol "foo", Symbol "bar"]]
       case parseSingle "~(foo bar)" of
+        Left err -> expectationFailure $ show err
+        Right x -> x `shouldBe` result
+    it "can quote a character character" $ do
+      let result = SExpression [Symbol "AST.LiteralChar", LiteralChar 'a']
+      case parseSingle "'{a}" of
+        Left err -> expectationFailure $ show err
+        Right x -> x `shouldBe` result
+    it "can quote an integer literal" $ do
+      let result = SExpression [Symbol "AST.LiteralInt", LiteralInt 123]
+      case parseSingle "'123" of
+        Left err -> expectationFailure $ show err
+        Right x -> x `shouldBe` result
+    it "can quote a list literal" $ do
+      let result =
+            SExpression
+              [ Symbol "AST.SExpression"
+              , SExpression
+                  [ Symbol "list"
+                  , SExpression [Symbol "AST.Symbol", LiteralString "list"]
+                  , SExpression [Symbol "AST.LiteralInt", LiteralInt 1]
+                  , SExpression [Symbol "AST.LiteralInt", LiteralInt 2]
+                  ]
+              ]
+      case parseSingle "'[1 2]" of
+        Left err -> expectationFailure $ show err
+        Right x -> x `shouldBe` result
+    it "can quote a string literal" $ do
+      let result = SExpression [Symbol "AST.LiteralString", LiteralString "foo"]
+      case parseSingle "'\"foo\"" of
+        Left err -> expectationFailure $ show err
+        Right x -> x `shouldBe` result
+    it "can quote an s-expression" $ do
+      let result =
+            SExpression
+              [ Symbol "AST.SExpression"
+              , SExpression
+                  [ Symbol "list"
+                  , SExpression [Symbol "AST.LiteralInt", LiteralInt 1]
+                  , SExpression [Symbol "AST.LiteralInt", LiteralInt 2]
+                  ]
+              ]
+      case parseSingle "'(1 2)" of
+        Left err -> expectationFailure $ show err
+        Right x -> x `shouldBe` result
+    it "can quote a symbol" $ do
+      let result = SExpression [Symbol "AST.Symbol", LiteralString "foo"]
+      case parseSingle "'foo" of
+        Left err -> expectationFailure $ show err
+        Right x -> x `shouldBe` result
+    it "can quote a quoted expression" $ do
+      let result =
+            SExpression
+              [ Symbol "AST.SExpression"
+              , SExpression
+                  [ Symbol "list"
+                  , SExpression [Symbol "AST.Symbol", LiteralString "quote"]
+                  , SExpression [Symbol "AST.Symbol", LiteralString "foo"]
+                  ]
+              ]
+      case parseSingle "''foo" of
         Left err -> expectationFailure $ show err
         Right x -> x `shouldBe` result
   describe "parseMultiple" $ do

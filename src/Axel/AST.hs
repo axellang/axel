@@ -18,13 +18,13 @@ import Axel.Utils.Display
   , renderPragma
   , surround
   )
-import Axel.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
+import Axel.Utils.Recursion
+  ( Recursive(bottomUpFmap, bottomUpTraverse, topDownFmap)
+  )
 
 import Control.Arrow ((***))
 import Control.Lens.Operators ((%~), (^.))
 import Control.Lens.TH (makeFieldsNoPrefix)
-import Control.Lens.Tuple (_1, _2)
-
 import Data.Function ((&))
 import Data.Semigroup ((<>))
 
@@ -350,7 +350,7 @@ instance Recursive Expression where
         ECaseBlock $
         caseBlock & expr %~ bottomUpFmap f &
         matches %~ map (bottomUpFmap f *** bottomUpFmap f)
-      EEmptySExpression -> f x
+      EEmptySExpression -> x
       EFunctionApplication functionApplication ->
         EFunctionApplication $
         functionApplication & function %~ bottomUpFmap f &
@@ -361,8 +361,32 @@ instance Recursive Expression where
         lambda & arguments %~ map (bottomUpFmap f) & body %~ bottomUpFmap f
       ELetBlock letBlock ->
         ELetBlock $
-        letBlock &
-        bindings %~ map ((_1 %~ bottomUpFmap f) . (_2 %~ bottomUpFmap f)) &
+        letBlock & bindings %~ map (bottomUpFmap f *** bottomUpFmap f) &
+        body %~ bottomUpFmap f
+      ELiteral literal ->
+        case literal of
+          LChar _ -> x
+          LInt _ -> x
+          LString _ -> x
+  topDownFmap :: (Expression -> Expression) -> Expression -> Expression
+  topDownFmap f x =
+    case f x of
+      ECaseBlock caseBlock ->
+        ECaseBlock $
+        caseBlock & expr %~ bottomUpFmap f &
+        matches %~ map (bottomUpFmap f *** bottomUpFmap f)
+      EEmptySExpression -> x
+      EFunctionApplication functionApplication ->
+        EFunctionApplication $
+        functionApplication & function %~ bottomUpFmap f &
+        arguments %~ map (bottomUpFmap f)
+      EIdentifier _ -> x
+      ELambda lambda ->
+        ELambda $
+        lambda & arguments %~ map (bottomUpFmap f) & body %~ bottomUpFmap f
+      ELetBlock letBlock ->
+        ELetBlock $
+        letBlock & bindings %~ map (bottomUpFmap f *** bottomUpFmap f) &
         body %~ bottomUpFmap f
       ELiteral literal ->
         case literal of

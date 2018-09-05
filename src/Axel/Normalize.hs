@@ -35,7 +35,6 @@ import qualified Axel.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   )
-import Axel.Quote (quoteParseExpression)
 
 import Control.Monad.Except (MonadError, throwError)
 
@@ -71,7 +70,6 @@ normalizeExpression expr@(Parse.SExpression items) =
               bindings
        in ELetBlock <$>
           (LetBlock <$> normalizedBindings <*> normalizeExpression body)
-    [Parse.Symbol "quote", expr'] -> pure $ quoteParseExpression expr'
     fn:args ->
       EFunctionApplication <$>
       (FunctionApplication <$> normalizeExpression fn <*>
