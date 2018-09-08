@@ -67,8 +67,8 @@ genFunctionDefinition =
   Gen.list (Range.linear 0 3) genExpression <*>
   genExpression
 
-genLanguagePragma :: (MonadGen m) => m AST.LanguagePragma
-genLanguagePragma = AST.LanguagePragma <$> genIdentifier
+genPragma :: (MonadGen m) => m AST.Pragma
+genPragma = AST.Pragma <$> Gen.string (Range.linear 0 10) Gen.ascii
 
 genMacroDefinition :: (MonadGen m) => m AST.MacroDefinition
 genMacroDefinition = AST.MacroDefinition <$> genFunctionDefinition
@@ -117,7 +117,7 @@ genStatement =
     Gen.choice
     [ AST.SDataDeclaration <$> genDataDeclaration
     , AST.SFunctionDefinition <$> genFunctionDefinition
-    , AST.SLanguagePragma <$> genLanguagePragma
+    , AST.SPragma <$> genPragma
     , AST.SMacroDefinition <$> genMacroDefinition
     , AST.SModuleDeclaration <$> genIdentifier
     , AST.SQualifiedImport <$> genQualifiedImport

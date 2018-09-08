@@ -99,10 +99,6 @@ data Lambda = Lambda
   , _body :: Expression
   } deriving (Eq, Show)
 
-newtype LanguagePragma = LanguagePragma
-  { _language :: Identifier
-  } deriving (Eq, Show)
-
 data LetBlock = LetBlock
   { _bindings :: [(Expression, Expression)]
   , _body :: Expression
@@ -110,6 +106,10 @@ data LetBlock = LetBlock
 
 newtype MacroDefinition = MacroDefinition
   { _functionDefinition :: FunctionDefinition
+  } deriving (Eq, Show)
+
+newtype Pragma = Pragma
+  { _pragmaSpecification :: String
   } deriving (Eq, Show)
 
 data QualifiedImport = QualifiedImport
@@ -176,9 +176,9 @@ instance ToHaskell Literal where
 data Statement
   = SDataDeclaration DataDeclaration
   | SFunctionDefinition FunctionDefinition
-  | SLanguagePragma LanguagePragma
   | SMacroDefinition MacroDefinition
   | SModuleDeclaration Identifier
+  | SPragma Pragma
   | SQualifiedImport QualifiedImport
   | SRestrictedImport RestrictedImport
   | STopLevel TopLevel
@@ -192,7 +192,7 @@ instance ToHaskell Statement where
   toHaskell :: Statement -> String
   toHaskell (SDataDeclaration x) = toHaskell x
   toHaskell (SFunctionDefinition x) = toHaskell x
-  toHaskell (SLanguagePragma x) = toHaskell x
+  toHaskell (SPragma x) = toHaskell x
   toHaskell (SMacroDefinition x) = toHaskell x
   toHaskell (SModuleDeclaration x) = "module " <> x <> " where"
   toHaskell (SQualifiedImport x) = toHaskell x
@@ -215,11 +215,11 @@ makeFieldsNoPrefix ''FunctionDefinition
 
 makeFieldsNoPrefix ''Lambda
 
-makeFieldsNoPrefix ''LanguagePragma
-
 makeFieldsNoPrefix ''LetBlock
 
 makeFieldsNoPrefix ''MacroDefinition
+
+makeFieldsNoPrefix ''Pragma
 
 makeFieldsNoPrefix ''QualifiedImport
 
@@ -286,10 +286,9 @@ instance ToHaskell Lambda where
     "\\" <> delimit Spaces (map toHaskell (lambda ^. arguments)) <> " -> " <>
     toHaskell (lambda ^. body)
 
-instance ToHaskell LanguagePragma where
-  toHaskell :: LanguagePragma -> String
-  toHaskell languagePragma =
-    renderPragma $ "LANGUAGE " <> languagePragma ^. language
+instance ToHaskell Pragma where
+  toHaskell :: Pragma -> String
+  toHaskell pragma = renderPragma (pragma ^. pragmaSpecification)
 
 instance ToHaskell LetBlock where
   toHaskell :: LetBlock -> String

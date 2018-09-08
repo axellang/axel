@@ -15,16 +15,16 @@ import Axel.AST
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Lambda(Lambda)
-  , LanguagePragma(LanguagePragma)
   , LetBlock(LetBlock)
   , Literal(LChar, LInt, LString)
   , MacroDefinition(MacroDefinition)
+  , Pragma(Pragma)
   , QualifiedImport(QualifiedImport)
   , RestrictedImport(RestrictedImport)
-  , Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
-          SMacroDefinition, SModuleDeclaration, SQualifiedImport,
-          SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
-          STypeclassInstance, SUnrestrictedImport)
+  , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
+          SModuleDeclaration, SPragma, SQualifiedImport, SRestrictedImport,
+          STopLevel, STypeSignature, STypeSynonym, STypeclassInstance,
+          SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , TypeSignature(TypeSignature)
@@ -142,8 +142,8 @@ normalizeStatement expr@(Parse.SExpression items) =
        in STypeclassInstance <$>
           (TypeclassInstance <$> normalizeExpression instanceName <*>
            normalizedDefs)
-    [Parse.Symbol "language", Parse.Symbol languageName] ->
-      pure $ SLanguagePragma (LanguagePragma languageName)
+    [Parse.Symbol "pragma", Parse.LiteralString pragma] ->
+      pure $ SPragma (Pragma pragma)
     [Parse.Symbol "module", Parse.Symbol moduleName] ->
       pure $ SModuleDeclaration moduleName
     [Parse.Symbol "type", alias, def] ->

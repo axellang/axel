@@ -1,0 +1,2 @@
+(pragma "LANGUAGE TypeOperators")
+(pragma "OPTIONS_GHC -F -pgmF tasty-discover")

@@ -6,10 +6,10 @@ import Axel.AST
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Literal(LChar, LInt, LString)
-  , Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
-          SMacroDefinition, SModuleDeclaration, SQualifiedImport,
-          SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
-          STypeclassInstance, SUnrestrictedImport)
+  , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
+          SModuleDeclaration, SPragma, SQualifiedImport, SRestrictedImport,
+          STopLevel, STypeSignature, STypeSynonym, STypeclassInstance,
+          SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , alias
@@ -24,10 +24,10 @@ import Axel.AST
   , functionDefinition
   , imports
   , instanceName
-  , language
   , matches
   , moduleName
   , name
+  , pragmaSpecification
   , typeDefinition
   )
 import qualified Axel.Parse as Parse
@@ -108,9 +108,9 @@ denormalizeStatement (SFunctionDefinition fnDef) =
     , Parse.SExpression (map denormalizeExpression (fnDef ^. arguments))
     , denormalizeExpression (fnDef ^. body)
     ]
-denormalizeStatement (SLanguagePragma languagePragma) =
+denormalizeStatement (SPragma pragma) =
   Parse.SExpression
-    [Parse.Symbol "language", Parse.Symbol $ languagePragma ^. language]
+    [Parse.Symbol "pragma", Parse.LiteralString (pragma ^. pragmaSpecification)]
 denormalizeStatement (SMacroDefinition macroDef) =
   Parse.SExpression
     [ Parse.Symbol "macro"

@@ -6,10 +6,10 @@ module Axel.Macros where
 import Axel.AST
   ( Identifier
   , MacroDefinition
-  , Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
-          SMacroDefinition, SModuleDeclaration, SQualifiedImport,
-          SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
-          STypeclassInstance, SUnrestrictedImport)
+  , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
+          SModuleDeclaration, SPragma, SQualifiedImport, SRestrictedImport,
+          STopLevel, STypeSignature, STypeSynonym, STypeclassInstance,
+          SUnrestrictedImport)
   , ToHaskell(toHaskell)
   , functionDefinition
   , name
@@ -146,7 +146,7 @@ expandMacros topLevelExprs =
       \case
         SDataDeclaration _ -> True
         SFunctionDefinition _ -> True
-        SLanguagePragma _ -> True
+        SPragma _ -> True
         SMacroDefinition _ -> True
         SModuleDeclaration _ -> False
         SQualifiedImport _ -> True
