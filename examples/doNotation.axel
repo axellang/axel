@@ -11,9 +11,9 @@
                                        (AST.SExpression
                                         ['list
                                          (AST.SExpression ['quasiquote atom])]))))))
-         (pure [(AST.SExpression ['AST.SExpression (AST.SExpression ['concat (AST.SExpression (: 'list (map quasiquoteElem xs)))])])]))
-       (macro quasiquote ([atom])
-              (pure [(AST.SExpression ['quote atom])])))
+         (pure [(AST.SExpression ['AST.SExpression (AST.SExpression ['concat (AST.SExpression (: 'list (map quasiquoteElem xs)))])])])))
+(macro quasiquote ([atom])
+       (pure [(AST.SExpression ['quote atom])]))
 
 -- NOTE This will eventually be automatically defined by the Axel prelude.
 (macro fnCase (cases)
@@ -21,7 +21,7 @@
              [`(\ (~varId) (case ~varId ~@cases))])
             AST.gensym))
 
-(:: mdo' (-> ([] AST.Expression) AST.Expression))
+(:: mdo' (-> (List AST.Expression) AST.Expression))
 (= mdo' ()
    (fnCase
     ((: var (: '<- (: val rest)))
