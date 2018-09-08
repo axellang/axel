@@ -46,6 +46,7 @@ import Axel.Utils.Recursion
   )
 import Axel.Utils.String (replace)
 
+import Control.Lens.Cons (snoc)
 import Control.Lens.Operators ((%~), (^.))
 import Control.Lens.Tuple (_1, _2)
 import Control.Monad (foldM)
@@ -120,6 +121,20 @@ exhaustivelyExpandMacros ::
   -> m Parse.Expression
 exhaustivelyExpandMacros = exhaustM expansionPass
 
+isStatementNonconflicting :: Statement -> Bool
+isStatementNonconflicting (SDataDeclaration _) = True
+isStatementNonconflicting (SFunctionDefinition _) = True
+isStatementNonconflicting (SPragma _) = True
+isStatementNonconflicting (SMacroDefinition _) = True
+isStatementNonconflicting (SModuleDeclaration _) = False
+isStatementNonconflicting (SQualifiedImport _) = True
+isStatementNonconflicting (SRestrictedImport _) = True
+isStatementNonconflicting (STopLevel _) = False
+isStatementNonconflicting (STypeclassInstance _) = True
+isStatementNonconflicting (STypeSignature _) = True
+isStatementNonconflicting (STypeSynonym _) = True
+isStatementNonconflicting (SUnrestrictedImport _) = True
+
 expandMacros ::
      (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
   => [Parse.Expression]
@@ -133,29 +148,12 @@ expandMacros topLevelExprs =
        let acc' =
              case stmt of
                SMacroDefinition macroDefinition ->
-                 acc & _2 %~ (<> [macroDefinition])
+                 acc & _2 %~ flip snoc macroDefinition
                _ -> acc
-       pure $
-         if isStmtNonconflicting stmt
-           then acc' & _1 %~ (<> [stmt])
-           else acc')
+       pure $ acc' & _1 %~ flip snoc stmt)
     ([], [])
     topLevelExprs
   where
-    isStmtNonconflicting =
-      \case
-        SDataDeclaration _ -> True
-        SFunctionDefinition _ -> True
-        SPragma _ -> True
-        SMacroDefinition _ -> True
-        SModuleDeclaration _ -> False
-        SQualifiedImport _ -> True
-        SRestrictedImport _ -> True
-        STopLevel _ -> False
-        STypeclassInstance _ -> True
-        STypeSignature _ -> True
-        STypeSynonym _ -> True
-        SUnrestrictedImport _ -> True
     fullyExpandExpr ::
          ( MonadError Error m
          , MonadFileSystem m
@@ -183,7 +181,10 @@ expandMacros topLevelExprs =
                       lookupMacroDefinition macroDefs function >>= \case
                         Just macroDefinition ->
                           (acc ++) <$>
-                          expandMacroApplication macroDefinition stmts args
+                          expandMacroApplication
+                            macroDefinition
+                            (filter isStatementNonconflicting stmts)
+                            args
                         Nothing -> pure $ acc ++ [x]
                     Parse.Symbol _ -> pure $ acc ++ [x])
                []
