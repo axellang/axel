@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: cdd78f3acc95d09f418231b65b1d3d7caca11cfa3487fb9ec98c95bb79b97bc1
+-- hash: 41207a70e1097b934a60c70e5af56a3e4c8b0b23899001f59a66968c71555865
 
 name:           axel
 version:        0.0.4
@@ -22,6 +22,7 @@ extra-source-files:
     examples/axelTemp/Axel.hs
     examples/doNotation.axel
     examples/fnCase.axel
+    examples/fnCase.hs
     examples/if.axel
     README.org
     scripts/build.sh
@@ -34,9 +35,13 @@ data-files:
     resources/macros/MacroDefinitionAndEnvironmentHeader.hs
     resources/macros/Scaffold.hs
     resources/new-project-template/app/Main.axel
+    resources/new-project-template/app/Main.hs
     resources/new-project-template/Setup.axel
+    resources/new-project-template/Setup.hs
     resources/new-project-template/src/Lib.axel
+    resources/new-project-template/src/Lib.hs
     resources/new-project-template/test/Spec.axel
+    resources/new-project-template/test/Spec.hs
 
 source-repository head
   type: git
@@ -113,6 +118,7 @@ test-suite axel-test
   other-modules:
       Axel.Test.ASTGen
       Axel.Test.DenormalizeSpec
+      Axel.Test.File.FileSpec
       Axel.Test.Haskell.GHCSpec
       Axel.Test.Haskell.StackSpec
       Axel.Test.MockUtils
@@ -133,6 +139,7 @@ test-suite axel-test
   build-depends:
       axel
     , base >=4.11.1 && <4.12
+    , bytestring
     , filepath
     , hedgehog
     , lens
@@ -140,6 +147,7 @@ test-suite axel-test
     , split
     , tasty
     , tasty-discover
+    , tasty-golden
     , tasty-hedgehog
     , tasty-hspec
     , template-haskell

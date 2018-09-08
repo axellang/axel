@@ -1,0 +1,5 @@
+(language TypeOperators)
+
+(instance (Eq (-> a a))
+ ((= == (-> (-> (-> a a) (-> a a)) Bool)
+   ((_ _) False))))

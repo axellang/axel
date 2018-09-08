@@ -1,0 +1,8 @@
+(= foo (Int) (() 1))
+
+(= bar (-> Int Int)
+ ((1) 3)
+ ((x) (+ x 1)))
+
+(= main (IO Unit)
+ (() (putStrLn "test")))

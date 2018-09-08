@@ -8,6 +8,7 @@ data Delimiter
   = Commas
   | Newlines
   | Pipes
+  | Semicolons
   | Spaces
 
 delimit :: Delimiter -> [String] -> String
@@ -16,6 +17,7 @@ delimit delimiter = intercalate (lookupDelimiter delimiter)
     lookupDelimiter Commas = ","
     lookupDelimiter Newlines = "\n"
     lookupDelimiter Pipes = "|"
+    lookupDelimiter Semicolons = ";"
     lookupDelimiter Spaces = " "
 
 -- https://stackoverflow.com/questions/10548170/what-characters-are-permitted-for-haskell-operators
@@ -27,7 +29,7 @@ lowerFirst (x:xs) = toLower x : xs
 lowerFirst "" = ""
 
 renderBlock :: [String] -> String
-renderBlock = surround CurlyBraces . intercalate ";"
+renderBlock = surround CurlyBraces . delimit Semicolons
 
 renderPragma :: String -> String
 renderPragma x = "{-# " <> x <> " #-}"

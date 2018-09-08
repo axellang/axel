@@ -1,0 +1,3 @@
+{-# LANGUAGE TypeOperators #-}
+instance (Eq ((->) a a)) where {(==) :: ((->) ((->) ((->) a a) ((->) a a)) Bool)
+(==) _ _ = False}

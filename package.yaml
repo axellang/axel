@@ -70,12 +70,14 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - axel
+    - bytestring
     - filepath
     - hedgehog
     - lens
     - split
     - tasty
     - tasty-discover
+    - tasty-golden
     - tasty-hedgehog
     - tasty-hspec
     - template-haskell

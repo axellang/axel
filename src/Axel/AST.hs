@@ -257,13 +257,14 @@ instance ToHaskell FunctionApplication where
 functionDefinitionToHaskell ::
      Identifier -> (ArgumentList, Expression) -> String
 functionDefinitionToHaskell functionName (pattern', definitionBody) =
-  functionName <> " " <> toHaskell pattern' <> " = " <> toHaskell definitionBody
+  toHaskell (EIdentifier functionName) <> " " <> toHaskell pattern' <> " = " <>
+  toHaskell definitionBody
 
 instance ToHaskell FunctionDefinition where
   toHaskell :: FunctionDefinition -> String
   toHaskell functionDefinition =
     delimit Newlines $
-    (functionDefinition ^. name <> " :: " <>
+    (toHaskell (EIdentifier (functionDefinition ^. name)) <> " :: " <>
      toHaskell (functionDefinition ^. typeSignature)) :
     map
       (functionDefinitionToHaskell $ functionDefinition ^. name)
