@@ -1,4 +1,5 @@
-(= main (IO Unit)
-  (() (case True
-       (True ())
-       (False ()))))
+(:: main (IO Unit))
+(= main ()
+  (case True
+   (True ())
+   (False ())))

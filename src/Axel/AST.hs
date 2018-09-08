@@ -62,18 +62,10 @@ data DataDeclaration = DataDeclaration
   , _constructors :: [FunctionApplication]
   } deriving (Eq, Show)
 
-newtype ArgumentList =
-  ArgumentList [Expression]
-  deriving (Eq, Show)
-
-instance ToHaskell ArgumentList where
-  toHaskell :: ArgumentList -> String
-  toHaskell (ArgumentList arguments) = delimit Spaces $ map toHaskell arguments
-
 data FunctionDefinition = FunctionDefinition
   { _name :: Identifier
-  , _typeSignature :: FunctionApplication
-  , _definitions :: [(ArgumentList, Expression)]
+  , _arguments :: [Expression]
+  , _body :: Expression
   } deriving (Eq, Show)
 
 data Import
@@ -116,9 +108,8 @@ data LetBlock = LetBlock
   , _body :: Expression
   } deriving (Eq, Show)
 
-data MacroDefinition = MacroDefinition
-  { _name :: Identifier
-  , _definitions :: [(ArgumentList, Expression)]
+newtype MacroDefinition = MacroDefinition
+  { _functionDefinition :: FunctionDefinition
   } deriving (Eq, Show)
 
 data QualifiedImport = QualifiedImport
@@ -135,6 +126,11 @@ data RestrictedImport = RestrictedImport
 data TypeclassInstance = TypeclassInstance
   { _instanceName :: Expression
   , _definitions :: [FunctionDefinition]
+  } deriving (Eq, Show)
+
+data TypeSignature = TypeSignature
+  { _name :: Identifier
+  , _typeDefinition :: Expression
   } deriving (Eq, Show)
 
 data TypeSynonym = TypeSynonym
@@ -187,6 +183,7 @@ data Statement
   | SRestrictedImport RestrictedImport
   | STopLevel TopLevel
   | STypeclassInstance TypeclassInstance
+  | STypeSignature TypeSignature
   | STypeSynonym TypeSynonym
   | SUnrestrictedImport Identifier
   deriving (Eq, Show)
@@ -202,6 +199,7 @@ instance ToHaskell Statement where
   toHaskell (SRestrictedImport x) = toHaskell x
   toHaskell (STopLevel xs) = toHaskell xs
   toHaskell (STypeclassInstance x) = toHaskell x
+  toHaskell (STypeSignature x) = toHaskell x
   toHaskell (STypeSynonym x) = toHaskell x
   toHaskell (SUnrestrictedImport x) = "import " <> x
 
@@ -231,6 +229,8 @@ makeFieldsNoPrefix ''TopLevel
 
 makeFieldsNoPrefix ''TypeclassInstance
 
+makeFieldsNoPrefix ''TypeSignature
+
 makeFieldsNoPrefix ''TypeSynonym
 
 instance ToHaskell CaseBlock where
@@ -254,21 +254,19 @@ instance ToHaskell FunctionApplication where
         toHaskell (functionApplication ^. function) <> " " <>
         delimit Spaces (map toHaskell $ functionApplication ^. arguments)
 
-functionDefinitionToHaskell ::
-     Identifier -> (ArgumentList, Expression) -> String
-functionDefinitionToHaskell functionName (pattern', definitionBody) =
-  toHaskell (EIdentifier functionName) <> " " <> toHaskell pattern' <> " = " <>
-  toHaskell definitionBody
+instance ToHaskell TypeSignature where
+  toHaskell :: TypeSignature -> String
+  toHaskell typeSignature =
+    toHaskell (EIdentifier (typeSignature ^. name)) <> " :: " <>
+    toHaskell (typeSignature ^. typeDefinition)
 
 instance ToHaskell FunctionDefinition where
   toHaskell :: FunctionDefinition -> String
-  toHaskell functionDefinition =
-    delimit Newlines $
-    (toHaskell (EIdentifier (functionDefinition ^. name)) <> " :: " <>
-     toHaskell (functionDefinition ^. typeSignature)) :
-    map
-      (functionDefinitionToHaskell $ functionDefinition ^. name)
-      (functionDefinition ^. definitions)
+  toHaskell fnDef =
+    toHaskell (EIdentifier (fnDef ^. name)) <> " " <>
+    delimit Spaces (map toHaskell (fnDef ^. arguments)) <>
+    " = " <>
+    toHaskell (fnDef ^. body)
 
 instance ToHaskell DataDeclaration where
   toHaskell :: DataDeclaration -> String
@@ -306,12 +304,7 @@ instance ToHaskell LetBlock where
 
 instance ToHaskell MacroDefinition where
   toHaskell :: MacroDefinition -> String
-  toHaskell macroDefinition =
-    delimit Newlines $
-    (macroDefinition ^. name <> " :: [AST.Expression] -> IO [AST.Expression]") :
-    map
-      (functionDefinitionToHaskell $ macroDefinition ^. name)
-      (macroDefinition ^. definitions)
+  toHaskell macroDefinition = toHaskell (macroDefinition ^. functionDefinition)
 
 instance ToHaskell QualifiedImport where
   toHaskell :: QualifiedImport -> String

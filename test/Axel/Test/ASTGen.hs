@@ -61,21 +61,17 @@ genDataDeclaration =
   AST.DataDeclaration <$> genTypeDefinition <*>
   Gen.list (Range.linear 0 3) genFunctionApplication
 
-genArgumentList :: (MonadGen m) => m AST.ArgumentList
-genArgumentList = AST.ArgumentList <$> Gen.list (Range.linear 0 3) genExpression
-
 genFunctionDefinition :: (MonadGen m) => m AST.FunctionDefinition
 genFunctionDefinition =
-  AST.FunctionDefinition <$> genIdentifier <*> genFunctionApplication <*>
-  Gen.list (Range.linear 0 3) ((,) <$> genArgumentList <*> genExpression)
+  AST.FunctionDefinition <$> genIdentifier <*>
+  Gen.list (Range.linear 0 3) genExpression <*>
+  genExpression
 
 genLanguagePragma :: (MonadGen m) => m AST.LanguagePragma
 genLanguagePragma = AST.LanguagePragma <$> genIdentifier
 
 genMacroDefinition :: (MonadGen m) => m AST.MacroDefinition
-genMacroDefinition =
-  AST.MacroDefinition <$> genIdentifier <*>
-  Gen.list (Range.linear 0 3) ((,) <$> genArgumentList <*> genExpression)
+genMacroDefinition = AST.MacroDefinition <$> genFunctionDefinition
 
 genImport :: (MonadGen m) => m AST.Import
 genImport =
@@ -109,6 +105,9 @@ genTypeclassInstance =
   AST.TypeclassInstance <$> genExpression <*>
   Gen.list (Range.linear 0 3) genFunctionDefinition
 
+genTypeSignature :: (MonadGen m) => m AST.TypeSignature
+genTypeSignature = AST.TypeSignature <$> genIdentifier <*> genExpression
+
 genTypeSynonym :: (MonadGen m) => m AST.TypeSynonym
 genTypeSynonym = AST.TypeSynonym <$> genExpression <*> genExpression
 
@@ -124,6 +123,7 @@ genStatement =
     , AST.SQualifiedImport <$> genQualifiedImport
     , AST.SRestrictedImport <$> genRestrictedImport
     , AST.STypeclassInstance <$> genTypeclassInstance
+    , AST.STypeSignature <$> genTypeSignature
     , AST.STypeSynonym <$> genTypeSynonym
     , AST.SUnrestrictedImport <$> genIdentifier
     ]

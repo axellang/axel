@@ -1,2 +1,3 @@
-(= main (IO Unit)
-  (() ((\ (x y) (>> (print x) (print y))) True False)))
+(:: main (IO Unit))
+(= main ()
+  ((\ (x y) (>> (print x) (print y))) True False))

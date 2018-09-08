@@ -1,8 +1,6 @@
-(= foo (Int) (() 1))
+(:: foo Int)
+(= foo () 1)
 
-(= bar (-> Int Int)
- ((1) 3)
- ((x) (+ x 1)))
-
-(= main (IO Unit)
- (() (putStrLn "test")))
+(:: bar (-> Int Int))
+(= bar (1) 3)
+(= bar (x) (+ x 1))

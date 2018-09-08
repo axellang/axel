@@ -1,2 +1,2 @@
-(= main (IO Unit)
-  (() (pure unit)))
+(:: main (IO Unit))
+(= main () (pure unit))

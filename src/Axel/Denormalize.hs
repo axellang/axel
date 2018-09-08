@@ -1,16 +1,15 @@
 module Axel.Denormalize where
 
 import Axel.AST
-  ( ArgumentList(ArgumentList)
-  , Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
+  ( Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
            EIdentifier, ELambda, ELetBlock, ELiteral)
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Literal(LChar, LInt, LString)
   , Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
           SMacroDefinition, SModuleDeclaration, SQualifiedImport,
-          SRestrictedImport, STopLevel, STypeSynonym, STypeclassInstance,
-          SUnrestrictedImport)
+          SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
+          STypeclassInstance, SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , alias
@@ -22,6 +21,7 @@ import Axel.AST
   , definitions
   , expr
   , function
+  , functionDefinition
   , imports
   , instanceName
   , language
@@ -29,7 +29,6 @@ import Axel.AST
   , moduleName
   , name
   , typeDefinition
-  , typeSignature
   )
 import qualified Axel.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
@@ -46,13 +45,12 @@ denormalizeExpression (ECaseBlock caseBlock) =
              Parse.SExpression
                [denormalizeExpression pat, denormalizeExpression res])
           (caseBlock ^. matches)
-   in Parse.SExpression $
-      Parse.Symbol "case" :
-      denormalizeExpression (caseBlock ^. expr) : denormalizedCases
+   in Parse.SExpression $ Parse.Symbol "case" :
+      denormalizeExpression (caseBlock ^. expr) :
+      denormalizedCases
 denormalizeExpression EEmptySExpression = Parse.SExpression []
 denormalizeExpression (EFunctionApplication functionApplication) =
-  Parse.SExpression $
-  denormalizeExpression (functionApplication ^. function) :
+  Parse.SExpression $ denormalizeExpression (functionApplication ^. function) :
   map denormalizeExpression (functionApplication ^. arguments)
 denormalizeExpression (EIdentifier x) = Parse.Symbol x
 denormalizeExpression (ELambda lambda) =
@@ -82,13 +80,6 @@ denormalizeExpression (ELiteral x) =
     LInt int -> Parse.LiteralInt int
     LString string -> Parse.LiteralString string
 
-denormalizeBinding :: (ArgumentList, Expression) -> Parse.Expression
-denormalizeBinding (ArgumentList argumentList, expression) =
-  Parse.SExpression
-    [ Parse.SExpression $ map denormalizeExpression argumentList
-    , denormalizeExpression expression
-    ]
-
 denormalizeImportSpecification :: ImportSpecification -> Parse.Expression
 denormalizeImportSpecification ImportAll = Parse.Symbol "all"
 denormalizeImportSpecification (ImportOnly importList) =
@@ -113,21 +104,24 @@ denormalizeStatement (SDataDeclaration dataDeclaration) =
             (denormalizeExpression . EFunctionApplication)
             (dataDeclaration ^. constructors)
         ]
-denormalizeStatement (SFunctionDefinition functionDefinition) =
-  Parse.SExpression $
-  Parse.Symbol "=" :
-  Parse.Symbol (functionDefinition ^. name) :
-  denormalizeExpression
-    (EFunctionApplication (functionDefinition ^. typeSignature)) :
-  map denormalizeBinding (functionDefinition ^. definitions)
+denormalizeStatement (SFunctionDefinition fnDef) =
+  Parse.SExpression
+    [ Parse.Symbol "="
+    , Parse.Symbol (fnDef ^. name)
+    , Parse.SExpression (map denormalizeExpression (fnDef ^. arguments))
+    , denormalizeExpression (fnDef ^. body)
+    ]
 denormalizeStatement (SLanguagePragma languagePragma) =
   Parse.SExpression
     [Parse.Symbol "language", Parse.Symbol $ languagePragma ^. language]
-denormalizeStatement (SMacroDefinition macroDefinition) =
-  Parse.SExpression $
-  Parse.Symbol "defmacro" :
-  Parse.Symbol (macroDefinition ^. name) :
-  map denormalizeBinding (macroDefinition ^. definitions)
+denormalizeStatement (SMacroDefinition macroDef) =
+  Parse.SExpression
+    [ Parse.Symbol "macro"
+    , Parse.Symbol (macroDef ^. functionDefinition . name)
+    , Parse.SExpression
+        (map denormalizeExpression (macroDef ^. functionDefinition . arguments))
+    , denormalizeExpression (macroDef ^. functionDefinition . body)
+    ]
 denormalizeStatement (SModuleDeclaration identifier) =
   Parse.SExpression [Parse.Symbol "module", Parse.Symbol identifier]
 denormalizeStatement (SQualifiedImport qualifiedImport) =
@@ -147,12 +141,16 @@ denormalizeStatement (STopLevel (TopLevel statements)) =
   Parse.SExpression $ Parse.Symbol "begin" : map denormalizeStatement statements
 denormalizeStatement (STypeclassInstance typeclassInstance) =
   Parse.SExpression
-    [ Parse.Symbol "instance"
-    , denormalizeExpression (typeclassInstance ^. instanceName)
-    , Parse.SExpression $
-      map
-        (denormalizeStatement . SFunctionDefinition)
-        (typeclassInstance ^. definitions)
+    (Parse.Symbol "instance" :
+     denormalizeExpression (typeclassInstance ^. instanceName) :
+     map
+       (denormalizeStatement . SFunctionDefinition)
+       (typeclassInstance ^. definitions))
+denormalizeStatement (STypeSignature typeSig) =
+  Parse.SExpression
+    [ Parse.Symbol "::"
+    , Parse.Symbol (typeSig ^. name)
+    , denormalizeExpression (typeSig ^. typeDefinition)
     ]
 denormalizeStatement (STypeSynonym typeSynonym) =
   Parse.SExpression

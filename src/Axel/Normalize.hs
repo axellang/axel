@@ -5,13 +5,13 @@
 module Axel.Normalize where
 
 import Axel.AST
-  ( ArgumentList(ArgumentList)
-  , CaseBlock(CaseBlock)
+  ( CaseBlock(CaseBlock)
   , DataDeclaration(DataDeclaration)
   , Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
            EIdentifier, ELambda, ELetBlock, ELiteral)
   , FunctionApplication(FunctionApplication)
   , FunctionDefinition(FunctionDefinition)
+  , Identifier
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Lambda(Lambda)
@@ -23,10 +23,11 @@ import Axel.AST
   , RestrictedImport(RestrictedImport)
   , Statement(SDataDeclaration, SFunctionDefinition, SLanguagePragma,
           SMacroDefinition, SModuleDeclaration, SQualifiedImport,
-          SRestrictedImport, STopLevel, STypeSynonym, STypeclassInstance,
-          SUnrestrictedImport)
+          SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
+          STypeclassInstance, SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
+  , TypeSignature(TypeSignature)
   , TypeSynonym(TypeSynonym)
   , TypeclassInstance(TypeclassInstance)
   )
@@ -77,30 +78,23 @@ normalizeExpression expr@(Parse.SExpression items) =
     [] -> pure EEmptySExpression
 normalizeExpression (Parse.Symbol symbol) = pure $ EIdentifier symbol
 
-normalizeDefinitions ::
+normalizeFunctionDefinition ::
      (MonadError Error m)
-  => Parse.Expression
+  => Identifier
   -> [Parse.Expression]
-  -> m [(ArgumentList, Expression)]
-normalizeDefinitions ctxt =
-  traverse
-    (\case
-       Parse.SExpression [Parse.SExpression args, body] ->
-         (,) <$> (ArgumentList <$> traverse normalizeExpression args) <*>
-         normalizeExpression body
-       x -> throwError $ NormalizeError "Invalid definition!" [x, ctxt])
+  -> Parse.Expression
+  -> m FunctionDefinition
+normalizeFunctionDefinition fnName arguments body =
+  FunctionDefinition fnName <$> traverse normalizeExpression arguments <*>
+  normalizeExpression body
 
 normalizeStatement :: (MonadError Error m) => Parse.Expression -> m Statement
 normalizeStatement expr@(Parse.SExpression items) =
   case items of
-    Parse.Symbol "=":Parse.Symbol fnName:typeSig:defs ->
-      normalizeExpression typeSig >>= \case
-        EFunctionApplication normalizedTypeSig ->
-          SFunctionDefinition <$>
-          (FunctionDefinition fnName normalizedTypeSig <$>
-           normalizeDefinitions expr defs)
-        _ ->
-          throwError $ NormalizeError "Invalid type signature!" [typeSig, expr]
+    [Parse.Symbol "::", Parse.Symbol fnName, typeDef] ->
+      STypeSignature <$> (TypeSignature fnName <$> normalizeExpression typeDef)
+    [Parse.Symbol "=", Parse.Symbol fnName, Parse.SExpression arguments, body] ->
+      SFunctionDefinition <$> normalizeFunctionDefinition fnName arguments body
     Parse.Symbol "begin":stmts ->
       let normalizedStmts = traverse normalizeStatement stmts
        in STopLevel . TopLevel <$> normalizedStmts
@@ -125,9 +119,9 @@ normalizeStatement expr@(Parse.SExpression items) =
               (DataDeclaration (ProperType properType) <$>
                normalizedConstructors)
             _ -> throwError $ NormalizeError "Invalid type!" [typeDef, expr]
-    Parse.Symbol "defmacro":Parse.Symbol macroName:defs ->
-      SMacroDefinition <$>
-      (MacroDefinition macroName <$> normalizeDefinitions expr defs)
+    [Parse.Symbol "macro", Parse.Symbol macroName, Parse.SExpression arguments, body] ->
+      SMacroDefinition . MacroDefinition <$>
+      normalizeFunctionDefinition macroName arguments body
     [Parse.Symbol "import", Parse.Symbol moduleName, importSpec] ->
       SRestrictedImport <$>
       (RestrictedImport moduleName <$> normalizeImportSpec expr importSpec)
@@ -136,7 +130,7 @@ normalizeStatement expr@(Parse.SExpression items) =
       (QualifiedImport moduleName alias <$> normalizeImportSpec expr importSpec)
     [Parse.Symbol "importUnrestricted", Parse.Symbol moduleName] ->
       pure $ SUnrestrictedImport moduleName
-    [Parse.Symbol "instance", instanceName, Parse.SExpression defs] ->
+    Parse.Symbol "instance":instanceName:defs ->
       let normalizedDefs =
             traverse
               (\x ->

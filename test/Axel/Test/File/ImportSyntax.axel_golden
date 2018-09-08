@@ -3,5 +3,3 @@
 (import Bar (foo bar (Baz baz)))
 (importq Bar Baz all)
 (importq Bar Baz (foo))
-
-(= foo (Unit) (() unit))
