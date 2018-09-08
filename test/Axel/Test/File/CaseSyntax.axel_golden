@@ -1,4 +1,3 @@
-(:: main (IO Unit))
 (= main ()
   (case True
    (True ())

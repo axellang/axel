@@ -1,6 +1,3 @@
-foo :: Int
 foo = 1
-
-bar :: ((->) Int Int)
 bar 1 = 3
 bar x = ((+) x 1)

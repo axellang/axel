@@ -1,0 +1,5 @@
+(:: main (IO Unit))
+
+(:: foo Int)
+
+(:: bar (-> Int (-> Char Bool)))
