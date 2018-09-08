@@ -97,13 +97,10 @@ denormalizeStatement (SDataDeclaration dataDeclaration) =
             denormalizeExpression $ EFunctionApplication typeConstructor
           ProperType properType -> Parse.Symbol properType
    in Parse.SExpression
-        [ Parse.Symbol "data"
-        , denormalizedTypeDefinition
-        , Parse.SExpression $
-          map
-            (denormalizeExpression . EFunctionApplication)
-            (dataDeclaration ^. constructors)
-        ]
+        (Parse.Symbol "data" : denormalizedTypeDefinition :
+         map
+           (denormalizeExpression . EFunctionApplication)
+           (dataDeclaration ^. constructors))
 denormalizeStatement (SFunctionDefinition fnDef) =
   Parse.SExpression
     [ Parse.Symbol "="

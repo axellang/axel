@@ -98,7 +98,7 @@ normalizeStatement expr@(Parse.SExpression items) =
     Parse.Symbol "begin":stmts ->
       let normalizedStmts = traverse normalizeStatement stmts
        in STopLevel . TopLevel <$> normalizedStmts
-    [Parse.Symbol "data", typeDef, Parse.SExpression constructors] ->
+    Parse.Symbol "data":typeDef:constructors ->
       let normalizedConstructors =
             traverse
               (\x ->
