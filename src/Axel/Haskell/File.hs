@@ -5,14 +5,14 @@
 
 module Axel.Haskell.File where
 
-import Prelude hiding (putStr)
+import Prelude hiding (putStr, putStrLn)
 
 import Axel.AST (ToHaskell(toHaskell))
 import Axel.Error (Error(EvalError), mapError)
 import Axel.Haskell.GHC (ghcInterpret)
 import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Macros (exhaustivelyExpandMacros, stripMacroDefinitions)
-import Axel.Monad.Console (MonadConsole(putStr))
+import Axel.Monad.Console (MonadConsole(putStr), putStrLn)
 import Axel.Monad.FileSystem (MonadFileSystem)
 import qualified Axel.Monad.FileSystem as FS
   ( MonadFileSystem(readFile, writeFile)
@@ -32,7 +32,7 @@ import Data.Maybe (fromMaybe)
 import Data.Semigroup ((<>))
 import qualified Data.Text as T (isSuffixOf, pack)
 
-import System.FilePath ((</>), stripExtension)
+import System.FilePath ((</>), stripExtension, takeFileName)
 import System.FilePath.Lens (directory)
 
 convertList :: Expression -> Expression
@@ -75,7 +75,7 @@ transpileFile path newPath = do
   newContents <- transpileSource fileContents
   FS.writeFile newPath newContents
 
--- Transpile a file in place.
+-- | Transpile a file in place.
 transpileFile' ::
      (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
   => FilePath
@@ -94,11 +94,13 @@ evalFile ::
      )
   => FilePath
   -> m ()
-evalFile path =
+evalFile path = do
+  putStrLn ("Building " <> takeFileName path <> "...")
   FS.withTemporaryDirectory $ \tempDirectoryPath -> do
     let astDefinitionPath = tempDirectoryPath </> "Axel.hs"
     readResource Res.astDefinition >>= FS.writeFile astDefinitionPath
     let newPath = directory .~ tempDirectoryPath $ axelPathToHaskellPath path
     transpileFile path newPath
+    putStrLn ("Running " <> takeFileName path <> "...")
     output <- ghcInterpret newPath `mapError` EvalError
     putStr output

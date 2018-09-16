@@ -37,6 +37,8 @@ import qualified Axel.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   , parseMultiple
+  , programToTopLevelExpressions
+  , topLevelExpressionsToProgram
   )
 import Axel.Utils.Display (Delimiter(Newlines), delimit, isOperator)
 import Axel.Utils.Function (uncurry3)
@@ -104,16 +106,18 @@ expansionPass ::
   => Parse.Expression
   -> m Parse.Expression
 expansionPass programExpr =
-  stmtExprsToProgram . map denormalizeStatement <$>
-  expandMacros (programToTopLevelExprs programExpr)
-  where
-    programToTopLevelExprs :: Parse.Expression -> [Parse.Expression]
-    programToTopLevelExprs (Parse.SExpression (Parse.Symbol "begin":stmts)) =
-      stmts
-    programToTopLevelExprs _ =
-      error "programToTopLevelExprs must be passed a top-level program!"
-    stmtExprsToProgram :: [Parse.Expression] -> Parse.Expression
-    stmtExprsToProgram stmts = Parse.SExpression (Parse.Symbol "begin" : stmts)
+  Parse.topLevelExpressionsToProgram . map denormalizeStatement <$>
+  expandMacros (Parse.programToTopLevelExpressions programExpr)
+
+programToTopLevelExpressions :: Parse.Expression -> [Parse.Expression]
+programToTopLevelExpressions (Parse.SExpression (Parse.Symbol "begin":stmts)) =
+  stmts
+programToTopLevelExpressions _ =
+  error "programToTopLevelExpressions must be passed a top-level program!"
+
+topLevelExpressionsToProgram :: [Parse.Expression] -> Parse.Expression
+topLevelExpressionsToProgram stmts =
+  Parse.SExpression (Parse.Symbol "begin" : stmts)
 
 exhaustivelyExpandMacros ::
      (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
@@ -164,32 +168,33 @@ expandMacros topLevelExprs =
       -> [MacroDefinition]
       -> Parse.Expression
       -> m Parse.Expression
-    fullyExpandExpr stmts macroDefs =
-      exhaustM $
-      bottomUpTraverse
-        (\case
-           Parse.SExpression xs ->
-             Parse.SExpression <$>
-             foldM
-               (\acc x ->
-                  case x of
-                    Parse.LiteralChar _ -> pure $ acc ++ [x]
-                    Parse.LiteralInt _ -> pure $ acc ++ [x]
-                    Parse.LiteralString _ -> pure $ acc ++ [x]
-                    Parse.SExpression [] -> pure $ acc ++ [x]
-                    Parse.SExpression (function:args) ->
-                      lookupMacroDefinition macroDefs function >>= \case
-                        Just macroDefinition ->
-                          (acc ++) <$>
-                          expandMacroApplication
-                            macroDefinition
-                            (filter isStatementNonconflicting stmts)
-                            args
-                        Nothing -> pure $ acc ++ [x]
-                    Parse.Symbol _ -> pure $ acc ++ [x])
-               []
-               xs
-           expr -> pure expr)
+    fullyExpandExpr stmts macroDefs expr =
+      exhaustM
+        (bottomUpTraverse
+           (\case
+              Parse.SExpression xs ->
+                Parse.SExpression <$>
+                foldM
+                  (\acc x ->
+                     case x of
+                       Parse.LiteralChar _ -> pure $ acc ++ [x]
+                       Parse.LiteralInt _ -> pure $ acc ++ [x]
+                       Parse.LiteralString _ -> pure $ acc ++ [x]
+                       Parse.SExpression [] -> pure $ acc ++ [x]
+                       Parse.SExpression (function:args) ->
+                         lookupMacroDefinition macroDefs function >>= \case
+                           Just macroDefinition ->
+                             (acc ++) <$>
+                             expandMacroApplication
+                               macroDefinition
+                               (filter isStatementNonconflicting stmts)
+                               args
+                           Nothing -> pure $ acc ++ [x]
+                       Parse.Symbol _ -> pure $ acc ++ [x])
+                  []
+                  xs
+              x -> pure x)) $
+      Parse.topLevelExpressionsToProgram [expr]
 
 expandMacroApplication ::
      (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)

@@ -14,7 +14,7 @@ module Axel.Parse
   , module Axel.Parse.AST
   ) where
 
-import Axel.Error (Error(ParseError))
+import Axel.Error (Error(ParseError), fatal)
 
 -- Re-exporting these so that consumers of parsed ASTs do not need
 -- to know about the internal file.
@@ -185,3 +185,10 @@ parseSource :: (MonadError Error m) => String -> m Expression
 parseSource input = do
   statements <- parseMultiple $ stripComments input
   pure $ SExpression (Symbol "begin" : statements)
+
+programToTopLevelExpressions :: Expression -> [Expression]
+programToTopLevelExpressions (SExpression (Symbol "begin":stmts)) = stmts
+programToTopLevelExpressions _ = fatal "programToTopLevelExpressions" "0001"
+
+topLevelExpressionsToProgram :: [Expression] -> Expression
+topLevelExpressionsToProgram stmts = SExpression (Symbol "begin" : stmts)

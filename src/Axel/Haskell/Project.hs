@@ -56,7 +56,12 @@ transpileProject = do
   mapM transpileFile' axelFiles
 
 buildProject ::
-     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
+     ( MonadConsole m
+     , MonadError Error m
+     , MonadFileSystem m
+     , MonadProcess m
+     , MonadResource m
+     )
   => m ()
 buildProject = do
   projectPath <- getCurrentDirectory
