@@ -1,12 +1,10 @@
-(importq Axel.Parse.AST AST all)
-
 -- NOTE This will eventually be automatically defined by the Axel prelude.
 (macro quasiquote ([(AST.SExpression xs)])
        (let ((quasiquoteElem (\ (x) (case x
                                       ((AST.SExpression ['unquote x])
                                        (AST.SExpression ['list x]))
                                       ((AST.SExpression ['unquoteSplicing x])
-                                       x)
+                                       (AST.SExpression ['AST.toExpressionList x]))
                                       (atom
                                        (AST.SExpression
                                         ['list
@@ -21,25 +19,30 @@
              [`(\ (~varId) (case ~varId ~@cases))])
             AST.gensym))
 
-(:: mdo' (-> (List AST.Expression) AST.Expression))
-(= mdo' ()
-   (fnCase
-    ((: var (: '<- (: val rest)))
-     `(>>= ~val (\ (~var) ~(mdo' rest))))
-    ((: val rest)
-     (case rest
-       ([]
-        val)
-       (_
-        `(>> ~val ~(mdo' rest)))))))
+-- NOTE This will eventually be automatically defined by the Axel prelude.
+(macro def ((: name (: typeSig cases)))
+       (pure
+        (: `(:: ~name ~typeSig)
+           (map (\ (x) `(= ~name ~@x))
+                cases))))
+
+(def mdo' (-> (List AST.Expression) AST.Expression)
+  (((: var (: '<- (: val rest))))
+   `(>>= ~val (\ (~var) ~(mdo' rest))))
+  (((: val rest))
+   (case rest
+     ([]
+      val)
+     (_
+      `(>> ~val ~(mdo' rest))))))
 
 -- NOTE This will eventually be automatically defined by the Axel prelude.
 (macro mdo (input)
        (pure [(mdo' input)]))
 
-(:: main (IO Unit))
-(= main ()
+(def main (IO Unit)
+  (()
    (mdo
     line <- getLine
     (putStrLn line)
-    (pure unit)))
+    (pure unit))))

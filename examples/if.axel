@@ -1,12 +1,10 @@
-(importq Axel.Parse.AST AST all)
-
 -- NOTE This will eventually be automatically defined by the Axel prelude.
 (macro quasiquote ([(AST.SExpression xs)])
        (let ((quasiquoteElem (\ (x) (case x
                                       ((AST.SExpression ['unquote x])
                                        (AST.SExpression ['list x]))
                                       ((AST.SExpression ['unquoteSplicing x])
-                                       x)
+                                       (AST.SExpression ['AST.toExpressionList x]))
                                       (atom
                                        (AST.SExpression
                                         ['list
@@ -21,12 +19,20 @@
              [`(\ (~varId) (case ~varId ~@cases))])
             AST.gensym))
 
-(macro if' ([cond true false])
+-- NOTE This will eventually be automatically defined by the Axel prelude.
+(macro def ((: name (: typeSig cases)))
+       (pure
+        (: `(:: ~name ~typeSig)
+           (map (\ (x) `(= ~name ~@x))
+                cases))))
+
+-- NOTE This will eventually be automatically defined by the Axel prelude.
+(macro if ([cond true false])
        (pure [`(case ~cond
                  (True ~true)
                  (False ~false))]))
 
-(:: main (IO Unit)
-    (= main ()
-       (putStrLn
-        (if' (== 1 1) "Correct!" "Impossible...")))
+(def main (IO Unit)
+  (()
+   (putStrLn
+    (if (== 1 1) "Correct!" "Impossible..."))))
