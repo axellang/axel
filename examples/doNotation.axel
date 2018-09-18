@@ -1,3 +1,5 @@
+(importq Axel.Parse.AST AST all)
+
 -- NOTE This will eventually be automatically defined by the Axel prelude.
 (macro quasiquote ([(AST.SExpression xs)])
        (let ((quasiquoteElem (\ (x) (case x

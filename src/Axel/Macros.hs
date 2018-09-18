@@ -29,6 +29,7 @@ import Axel.Monad.Process (MonadProcess)
 import Axel.Monad.Resource (MonadResource, readResource)
 import qualified Axel.Monad.Resource as Res
   ( astDefinition
+  , macroDefinitionAndEnvironmentFooter
   , macroDefinitionAndEnvironmentHeader
   , macroScaffold
   )
@@ -92,7 +93,9 @@ generateMacroProgram macroDefs env applicationArgs = do
       let source =
             prettifyHaskell $ delimit Newlines $
             map toHaskell (env <> NE.toList hygenicMacroDefs)
-      pure source
+      footer <-
+        insertDefName <$> readResource Res.macroDefinitionAndEnvironmentFooter
+      pure (unlines [source, footer])
     getScaffold :: (Monad m, MonadFileSystem m, MonadResource m) => m String
     getScaffold =
       let insertApplicationArgs =
