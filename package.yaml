@@ -47,7 +47,7 @@ library:
   - transformers >=0.5.5 && <0.6
   - typed-process >=0.2.2 && <0.3
   - vector >=0.12.0 && <0.13
-  - yaml >=0.8.31 && <0.10
+  - yaml >=0.8.31 && <0.11
 executables:
   axel-exe:
     main: Main.hs

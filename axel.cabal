@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bd98666bdad98615fa9b95dbfdbcf860ae5ad9fd5595b478e5f76d1390962147
+-- hash: c364d8eeefbf554875e83030ca0bfe618d67ffee399e37b649dbbe60c06efe19
 
 name:           axel
 version:        0.0.5
@@ -94,7 +94,7 @@ library
     , transformers >=0.5.5 && <0.6
     , typed-process >=0.2.2 && <0.3
     , vector >=0.12.0 && <0.13
-    , yaml >=0.8.31 && <0.10
+    , yaml >=0.8.31 && <0.11
   default-language: Haskell2010
 
 executable axel-exe
