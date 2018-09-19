@@ -13,12 +13,13 @@ import Options.Applicative
   , subparser
   )
 
-data ModeCommand
+data Command
   = File FilePath
   | Project
+  | Version
 
-modeCommandParser :: Parser ModeCommand
-modeCommandParser = subparser $ projectCommand <> fileCommand
+commandParser :: Parser Command
+commandParser = subparser $ projectCommand <> fileCommand <> versionCommand
   where
     fileCommand =
       command
@@ -29,3 +30,8 @@ modeCommandParser = subparser $ projectCommand <> fileCommand
       command
         "project"
         (info (pure Project) $ progDesc "Build and run the project")
+    versionCommand =
+      command
+        "version"
+        (info (pure Version) $
+         progDesc "Display the version of the Axel compiler")
