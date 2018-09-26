@@ -1,8 +1,11 @@
 #+OPTIONS: num:nil toc:nil
+#+STARTUP: inlineimages
 * Axel
   Haskell + Lisp + JVM/Node/... = Profit!
 
   See [[https://axellang.github.io]].
+  #+CAPTION: Build Status
+  [[https://travis-ci.org/axellang/axel.svg?branch=master]]
 ** Code Style
    Use ~hindent~ to format code and ~hlint~ to catch errors.
 ** Running
