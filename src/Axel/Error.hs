@@ -1,13 +1,18 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Axel.Error where
 
 import Axel.Parse.AST (Expression, toAxel)
 
-import Control.Monad.Except (ExceptT, MonadError(throwError), runExceptT)
+import Control.Monad ((>=>))
+import Control.Monad.Freer (type (~>), Eff, LastMember, send)
+import Control.Monad.Freer.Error (runError)
+import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Data.Semigroup ((<>))
 
@@ -31,15 +36,8 @@ instance Show Error where
 fatal :: String -> String -> a
 fatal context message = error $ "[FATAL] " <> context <> " - " <> message
 
-toIO :: (MonadError IOError m) => ExceptT Error m a -> m a
-toIO f = do
-  result :: Either Error a <- runExceptT f
-  case result of
-    Left err -> throwError $ userError $ show err
+runEff :: (Show e, LastMember IO effs) => Eff (Effs.Error e ': effs) ~> Eff effs
+runEff =
+  runError >=> \case
+    Left err -> send $ ioError $ userError $ show err
     Right x -> pure x
-
-mapError :: (MonadError e' m) => ExceptT e m a -> (e -> e') -> m a
-x `mapError` f =
-  runExceptT x >>= \case
-    Left err -> throwError (f err)
-    Right res -> pure res

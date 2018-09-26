@@ -27,7 +27,9 @@ import Axel.Utils.Recursion
   ( Recursive(bottomUpFmap, bottomUpTraverse, topDownFmap)
   )
 
-import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Freer (Eff, Member)
+import Control.Monad.Freer.Error (throwError)
+import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
 import Text.Parsec.Char
@@ -157,7 +159,8 @@ quoteParseExpression (Symbol x) =
         '\\' -> "\\\\"
         c -> [c]
 
-parseMultiple :: (MonadError Error m) => String -> m [Expression]
+parseMultiple ::
+     (Member (Effs.Error Error) effs) => String -> Eff effs [Expression]
 parseMultiple =
   either (throwError . ParseError . show) (pure . map expandQuotes) .
   parse
@@ -170,7 +173,7 @@ parseMultiple =
            SExpression [Symbol "quote", x] -> quoteParseExpression x
            x -> x)
 
-parseSingle :: (MonadError Error m) => String -> m Expression
+parseSingle :: (Member (Effs.Error Error) effs) => String -> Eff effs Expression
 parseSingle input =
   parseMultiple input >>= \case
     [x] -> pure x
@@ -181,7 +184,7 @@ stripComments = unlines . map cleanLine . lines
   where
     cleanLine = takeUntil "--"
 
-parseSource :: (MonadError Error m) => String -> m Expression
+parseSource :: (Member (Effs.Error Error) effs) => String -> Eff effs Expression
 parseSource input = do
   statements <- parseMultiple $ stripComments input
   pure $ SExpression (Symbol "begin" : statements)

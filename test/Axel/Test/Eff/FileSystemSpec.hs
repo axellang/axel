@@ -1,9 +1,11 @@
 module Axel.Test.Monad.FileSystemSpec where
 
-import qualified Axel.Monad.FileSystem as FS
+import qualified Axel.Eff.FileSystem as FS
 import qualified Axel.Test.Monad.FileSystemMock as Mock
 
 import Control.Lens
+import Control.Monad.Freer as Eff
+import Control.Monad.Freer.Error
 
 import System.FilePath
 
@@ -17,7 +19,7 @@ spec_FileSystem = do
     it "gets the files inside a directory and all its subdirectories" $ do
       let action = FS.getDirectoryContentsRec "dir1"
       let origState =
-            Mock.mkFSState
+            Mock.mkFileSystemState
               [ Mock.Directory
                   "dir1"
                   [ Mock.File "file1" ""
@@ -27,7 +29,7 @@ spec_FileSystem = do
                   ]
               ]
       let expected = ["dir1/file1", "dir1/dir2/file2"]
-      case Mock.runFileSystem origState action of
+      case Eff.run . runError . Mock.runFileSystem origState $ action of
         Left err -> expectationFailure err
         Right result -> result `shouldBe` (expected, origState)
   describe "withCurrentDirectory" $ do
@@ -37,7 +39,7 @@ spec_FileSystem = do
               FS.writeFile "insideDir" "insideDirContents"
             FS.writeFile "outsideDir" "outsideDirContents"
       let origState =
-            Mock.mkFSState
+            Mock.mkFileSystemState
               [ Mock.Directory
                   "inside"
                   [ Mock.Directory "subdir" [Mock.File "bar" "barContents"]
@@ -50,7 +52,7 @@ spec_FileSystem = do
              Mock.File "insideDir" "insideDirContents") &
             (Mock.fsRoot . at "outsideDir" ?~
              Mock.File "outsideDir" "outsideDirContents")
-      case Mock.runFileSystem origState action of
+      case Eff.run . runError . Mock.runFileSystem origState $ action of
         Left err -> expectationFailure err
         Right result -> result `shouldBe` ((), expected)
   describe "withTemporaryDirectory" $ do
@@ -61,7 +63,7 @@ spec_FileSystem = do
               FS.writeFile (tempDir </> "insideTemp0") "insideTemp0Contents"
             FS.withTemporaryDirectory $ \tempDir ->
               FS.writeFile (tempDir </> "insideTemp1") "insideTemp1Contents"
-      let origState = Mock.mkFSState []
+      let origState = Mock.mkFileSystemState []
       let expected =
             origState & (Mock.fsRoot . at "tmp" ?~ Mock.Directory "tmp" []) &
             (Mock.fsRoot . at "tmp/0" ?~
@@ -69,6 +71,6 @@ spec_FileSystem = do
             (Mock.fsRoot . at "tmp/1" ?~
              Mock.Directory "1" [Mock.File "insideTemp1" "insideTemp1Contents"]) &
             (Mock.fsTempCounter .~ 2)
-      case Mock.runFileSystem origState action of
+      case Eff.run . runError . Mock.runFileSystem origState $ action of
         Left err -> expectationFailure err
         Right result -> result `shouldBe` ((), expected)

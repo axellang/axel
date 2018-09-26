@@ -1,3 +1,9 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 
@@ -16,18 +22,18 @@ import Axel.AST
   , statements
   )
 import Axel.Denormalize (denormalizeStatement)
-import Axel.Error (Error(MacroError))
-import Axel.Haskell.GHC (ghcInterpret)
-import Axel.Haskell.Prettify (prettifyHaskell)
-import Axel.Monad.FileSystem (MonadFileSystem)
-import qualified Axel.Monad.FileSystem as FS
-  ( MonadFileSystem(createDirectoryIfMissing, writeFile)
+import qualified Axel.Eff.FileSystem as Effs (FileSystem)
+import qualified Axel.Eff.FileSystem as FS
+  ( createDirectoryIfMissing
   , withCurrentDirectory
   , withTemporaryDirectory
+  , writeFile
   )
-import Axel.Monad.Process (MonadProcess)
-import Axel.Monad.Resource (MonadResource, readResource)
-import qualified Axel.Monad.Resource as Res
+import Axel.Eff.Process (StreamSpecification(CreateStreams))
+import qualified Axel.Eff.Process as Effs (Process)
+import Axel.Eff.Resource (readResource)
+import qualified Axel.Eff.Resource as Effs (Resource)
+import qualified Axel.Eff.Resource as Res
   ( astDefinition
   , macroDefinitionAndEnvironmentFooter
   , macroDefinitionAndEnvironmentHeader
@@ -53,7 +59,9 @@ import Control.Lens.Cons (snoc)
 import Control.Lens.Operators ((%~), (^.))
 import Control.Lens.Tuple (_1, _2)
 import Control.Monad (foldM)
-import Control.Monad.Except (MonadError, catchError, runExceptT, throwError)
+import Control.Monad.Freer (Eff, Members)
+import Control.Monad.Freer.Error (throwError)
+import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Data.Function ((&))
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
@@ -63,11 +71,11 @@ import Data.Semigroup ((<>))
 import System.FilePath ((</>))
 
 generateMacroProgram ::
-     (MonadError Error m, MonadFileSystem m, MonadResource m)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Resource] effs)
   => NonEmpty MacroDefinition
   -> [Statement]
   -> [Parse.Expression]
-  -> m (String, String, String)
+  -> Eff effs (String, String, String)
 generateMacroProgram macroDefs env applicationArgs = do
   astDef <- readResource Res.astDefinition
   scaffold <- getScaffold
@@ -105,9 +113,9 @@ generateMacroProgram macroDefs env applicationArgs = do
           readResource Res.macroScaffold
 
 expansionPass ::
-     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => Parse.Expression
-  -> m Parse.Expression
+  -> Eff effs Parse.Expression
 expansionPass programExpr =
   Parse.topLevelExpressionsToProgram . map denormalizeStatement <$>
   expandMacros (Parse.programToTopLevelExpressions programExpr)
@@ -123,9 +131,9 @@ topLevelExpressionsToProgram stmts =
   Parse.SExpression (Parse.Symbol "begin" : stmts)
 
 exhaustivelyExpandMacros ::
-     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => Parse.Expression
-  -> m Parse.Expression
+  -> Eff effs Parse.Expression
 exhaustivelyExpandMacros = exhaustM expansionPass
 
 isStatementNonconflicting :: Statement -> Bool
@@ -143,9 +151,9 @@ isStatementNonconflicting (STypeSynonym _) = True
 isStatementNonconflicting (SUnrestrictedImport _) = True
 
 expandMacros ::
-     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => [Parse.Expression]
-  -> m [Statement]
+  -> Eff effs [Statement]
 expandMacros topLevelExprs =
   fst <$>
   foldM
@@ -265,11 +273,11 @@ replaceName oldName newName =
         _ -> expr
 
 evalMacro ::
-     (MonadError Error m, MonadFileSystem m, MonadProcess m)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
   => String
   -> String
   -> String
-  -> m String
+  -> Eff effs String
 evalMacro astDefinition scaffold macroDefinitionAndEnvironment =
   FS.withTemporaryDirectory $ \directoryName ->
     FS.withCurrentDirectory directoryName $ do

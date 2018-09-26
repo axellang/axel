@@ -1,31 +1,40 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DataKinds #-}
 
 module Main where
 
 import Prelude hiding (putStrLn)
 
+import Axel.Eff.Console (putStrLn)
+import qualified Axel.Eff.Console as Effs (Console)
+import qualified Axel.Eff.Console as Console (runEff)
+import qualified Axel.Eff.FileSystem as FS (runEff)
+import qualified Axel.Eff.FileSystem as Effs (FileSystem)
+import qualified Axel.Eff.Process as Proc (runEff)
+import qualified Axel.Eff.Process as Effs (Process)
+import qualified Axel.Eff.Resource as Res (runEff)
+import qualified Axel.Eff.Resource as Effs (Resource)
 import Axel.Error (Error)
-import qualified Axel.Error as Error (toIO)
+import qualified Axel.Error as Error (runEff)
 import Axel.Haskell.File (evalFile)
 import Axel.Haskell.Project (buildProject, runProject)
 import Axel.Haskell.Stack (axelStackageVersion)
-import Axel.Monad.Console (putStrLn)
 import Axel.Parse.Args (Command(File, Project, Version), commandParser)
 
-import Control.Monad.Except (ExceptT, MonadError)
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Freer (Eff)
+import qualified Control.Monad.Freer as Effs (runM)
+import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Options.Applicative ((<**>), execParser, helper, info, progDesc)
 
-newtype AppM a = AppM
-  { runAppM :: ExceptT Error IO a
-  } deriving (Functor, Applicative, Monad, MonadError Error, MonadIO)
+type AppEffs
+   = Eff '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, IO]
 
-runAppM' :: AppM a -> IO a
-runAppM' = Error.toIO . runAppM
+runApp :: AppEffs a -> IO a
+runApp =
+  Effs.runM .
+  Res.runEff . Proc.runEff . FS.runEff . Error.runEff . Console.runEff
 
-app :: Command -> AppM ()
+app :: Command -> AppEffs ()
 app (File filePath) = evalFile filePath
 app Project = buildProject >> runProject
 app Version = putStrLn $ "Axel version " <> axelStackageVersion
@@ -35,4 +44,4 @@ main = do
   modeCommand <-
     execParser $
     info (commandParser <**> helper) (progDesc "The command to run.")
-  runAppM' $ app modeCommand
+  runApp $ app modeCommand

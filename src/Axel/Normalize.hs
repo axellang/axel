@@ -37,9 +37,12 @@ import qualified Axel.Parse as Parse
            Symbol)
   )
 
-import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Freer (Eff, Member)
+import Control.Monad.Freer.Error (throwError)
+import qualified Control.Monad.Freer.Error as Effs (Error)
 
-normalizeExpression :: (MonadError Error m) => Parse.Expression -> m Expression
+normalizeExpression ::
+     (Member (Effs.Error Error) effs) => Parse.Expression -> Eff effs Expression
 normalizeExpression (Parse.LiteralChar char) = pure $ ELiteral (LChar char)
 normalizeExpression (Parse.LiteralInt int) = pure $ ELiteral (LInt int)
 normalizeExpression (Parse.LiteralString string) =
@@ -79,16 +82,17 @@ normalizeExpression expr@(Parse.SExpression items) =
 normalizeExpression (Parse.Symbol symbol) = pure $ EIdentifier symbol
 
 normalizeFunctionDefinition ::
-     (MonadError Error m)
+     (Member (Effs.Error Error) effs)
   => Identifier
   -> [Parse.Expression]
   -> Parse.Expression
-  -> m FunctionDefinition
+  -> Eff effs FunctionDefinition
 normalizeFunctionDefinition fnName arguments body =
   FunctionDefinition fnName <$> traverse normalizeExpression arguments <*>
   normalizeExpression body
 
-normalizeStatement :: (MonadError Error m) => Parse.Expression -> m Statement
+normalizeStatement ::
+     (Member (Effs.Error Error) effs) => Parse.Expression -> Eff effs Statement
 normalizeStatement expr@(Parse.SExpression items) =
   case items of
     [Parse.Symbol "::", Parse.Symbol fnName, typeDef] ->

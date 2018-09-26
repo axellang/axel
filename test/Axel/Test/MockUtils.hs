@@ -1,21 +1,29 @@
 {-# OPTIONS_GHC "-fno-warn-incomplete-patterns" #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Axel.Test.MockUtils where
 
-import Control.Monad.Except
-import Control.Monad.State.Lazy
+import Control.Monad.Freer
+import Control.Monad.Freer.Error as Effs
+import Control.Monad.Freer.State as Effs
 
 import GHC.Exts (IsString(fromString))
 
 import Language.Haskell.TH.Quote
 
 throwInterpretError ::
-     (MonadError String m, MonadState s m, Show s) => String -> String -> m a
+     forall s effs a. (Members '[ Effs.Error String, Effs.State s] effs, Show s)
+  => String
+  -> String
+  -> Eff effs a
 throwInterpretError actionName message = do
   errorMsg <-
-    gets $ \ctxt ->
+    gets @s $ \ctxt ->
       "\n----------\nACTION\t" <> actionName <> "\n\nMESSAGE\t" <> message <>
       "\n\nSTATE\t" <>
       show ctxt <>

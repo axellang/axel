@@ -1,7 +1,9 @@
 module Axel.Test.Monad.ConsoleSpec where
 
-import qualified Axel.Monad.Console as Console
+import qualified Axel.Eff.Console as Console
 import qualified Axel.Test.Monad.ConsoleMock as Mock
+
+import Control.Monad.Freer as Eff
 
 import Test.Tasty.Hspec
 
@@ -14,6 +16,5 @@ spec_Console =
       let action = Console.putStrLn "line1\nline2"
       let origState = Mock.mkConsoleState
       let expected = Mock.ConsoleState {Mock._consoleOutput = "line1\nline2\n"}
-      case Mock.runConsoleT origState action of
-        Left err -> expectationFailure err
-        Right result -> result `shouldBe` ((), expected)
+      let result = Eff.run . Mock.runConsole origState $ action
+      result `shouldBe` ((), expected)

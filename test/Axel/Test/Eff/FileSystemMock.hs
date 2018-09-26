@@ -1,26 +1,25 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Axel.Test.Monad.FileSystemMock where
 
-import Axel.Monad.Console as Console
-import Axel.Monad.FileSystem as FS
-import Axel.Monad.Process as Proc
-import Axel.Monad.Resource as Res
+import Axel.Eff.FileSystem as Effs
 import Axel.Test.MockUtils
 
 import Control.Lens hiding (children)
-import Control.Monad.Except
-import Control.Monad.State.Lazy
+import Control.Monad.Freer
+import Control.Monad.Freer.Error as Effs
+import Control.Monad.Freer.State as Effs
 
 import Data.List.Split
 import Data.Maybe
@@ -45,17 +44,17 @@ fsPath =
          Directory _ children -> Directory newPath children
          File _ contents -> File newPath contents)
 
-data FSState = FSState
+data FileSystemState = FileSystemState
   { _fsCurrentDirectory :: FilePath
   , _fsRoot :: FSNode
   , _fsTempCounter :: Int
   } deriving (Eq, Show)
 
-makeFieldsNoPrefix ''FSState
+makeFieldsNoPrefix ''FileSystemState
 
-mkFSState :: [FSNode] -> FSState
-mkFSState rootContents =
-  FSState
+mkFileSystemState :: [FSNode] -> FileSystemState
+mkFileSystemState rootContents =
+  FileSystemState
     { _fsCurrentDirectory = "/"
     , _fsRoot = Directory "/" rootContents
     , _fsTempCounter = 0
@@ -172,43 +171,32 @@ absifyPath relativePath currentDirectory =
     dropLeadingSlash ("/":xs) = xs
     dropLeadingSlash xs = xs
 
-absify :: (MonadState FSState f) => FilePath -> f FilePath
-absify relativePath = absifyPath relativePath <$> gets (^. fsCurrentDirectory)
+absify ::
+     (Member (Effs.State FileSystemState) effs) => FilePath -> Eff effs FilePath
+absify relativePath =
+  absifyPath relativePath <$> gets @FileSystemState (^. fsCurrentDirectory)
 
-newtype FileSystemT m a =
-  FileSystemT (StateT FSState (ExceptT String m) a)
-  deriving ( Functor
-           , Applicative
-           , Monad
-           , MonadConsole
-           , MonadProcess
-           , MonadResource
-           )
-
-type FileSystem = FileSystemT Identity
-
-instance Eq (FileSystemT m a) where
-  _ == _ = False
-
-instance Show (FileSystemT m a) where
-  show _ = "<FileSystemT>"
-
-instance MonadTrans FileSystemT where
-  lift = FileSystemT . lift . lift
-
-instance (Monad m) => MonadFileSystem (FileSystemT m) where
-  copyFile src dest = do
-    contents <- FS.readFile src
-    FS.writeFile contents dest
-  createDirectoryIfMissing createParents relativePath =
-    FileSystemT $ do
+runFileSystem ::
+     forall effs a. (Member (Effs.Error String) effs)
+  => FileSystemState
+  -> Eff (Effs.FileSystem ': effs) a
+  -> Eff effs (a, FileSystemState)
+runFileSystem origState = runState origState . reinterpret go
+  where
+    go :: FileSystem ~> Eff (Effs.State FileSystemState ': effs)
+    go (CopyFile src dest) = do
+      contents <- go $ ReadFile src
+      go $ WriteFile contents dest
+    go (CreateDirectoryIfMissing createParents relativePath) = do
       path <- absify relativePath
-      parentNode <- gets (^. fsRoot . at (takeDirectory path))
+      parentNode <- gets @FileSystemState (^. fsRoot . at (takeDirectory path))
       case parentNode of
-        Just _ -> fsRoot . at path ?= Directory (takeFileName path) []
+        Just _ ->
+          modify @FileSystemState $ fsRoot . at path ?~
+          Directory (takeFileName path) []
         Nothing ->
           if createParents
-            then fsRoot %= \origRoot ->
+            then modify @FileSystemState $ fsRoot %~ \origRoot ->
                    fst
                      (foldl
                         (\(root, segments) pathSegment ->
@@ -223,56 +211,56 @@ instance (Monad m) => MonadFileSystem (FileSystemT m) where
                         (origRoot, [])
                         (splitDirectories path))
             else throwInterpretError
+                   @FileSystemState
                    "createDirectoryIfMissing"
                    ("Missing parents for directory: " <> path)
-  doesDirectoryExist relativePath =
-    FileSystemT $ do
+    go (DoesDirectoryExist relativePath) = do
       path <- absify relativePath
-      directoryNode <- gets (^. fsRoot . at path)
+      directoryNode <- gets @FileSystemState (^. fsRoot . at path)
       pure $
         case directoryNode of
           Just (Directory _ _) -> True
           _ -> False
-  getCurrentDirectory = FileSystemT $ gets (^. fsCurrentDirectory)
-  getDirectoryContents relativePath =
-    FileSystemT $ do
+    go GetCurrentDirectory = gets @FileSystemState (^. fsCurrentDirectory)
+    go (GetDirectoryContents relativePath) = do
       path <- absify relativePath
-      directoryNode <- gets (^. fsRoot . at path)
+      directoryNode <- gets @FileSystemState (^. fsRoot . at path)
       case directoryNode of
         Just (Directory _ children) -> pure $ map (^. fsPath) children
         _ ->
           throwInterpretError
+            @FileSystemState
             "getDirectoryContents"
             ("No such directory: " <> path)
-  getTemporaryDirectory = do
-    tempCounter <- FileSystemT $ fsTempCounter <<+= 1
-    let tempDirName = "/tmp" </> show tempCounter
-    FS.createDirectoryIfMissing True tempDirName
-    pure tempDirName
-  readFile relativePath =
-    FileSystemT $ do
+    go GetTemporaryDirectory = do
+      tempCounter <- gets @FileSystemState (^. fsTempCounter)
+      modify @FileSystemState $ fsTempCounter %~ (+ 1)
+      let tempDirName = "/tmp" </> show tempCounter
+      go $ CreateDirectoryIfMissing True tempDirName
+      pure tempDirName
+    go (ReadFile relativePath) = do
       path <- absify relativePath
-      fileNode <- gets (^. fsRoot . at path)
+      fileNode <- gets @FileSystemState (^. fsRoot . at path)
       case fileNode of
         Just (File _ contents) -> pure contents
-        _ -> throwInterpretError "readFile" ("No such file: " <> path)
-  removeFile relativePath =
-    FileSystemT $ do
+        _ ->
+          throwInterpretError
+            @FileSystemState
+            "readFile"
+            ("No such file: " <> path)
+    go (RemoveFile relativePath) = do
       path <- absify relativePath
-      gets (deleteNode (splitDirectories path) . (^. fsRoot)) >>= \case
-        Just newRoot -> fsRoot .= newRoot
-        Nothing -> throwInterpretError "removeFile" ("No such file: " <> path)
-  setCurrentDirectory relativePath =
-    FileSystemT $ do
+      gets @FileSystemState (deleteNode (splitDirectories path) . (^. fsRoot)) >>= \case
+        Just newRoot -> modify @FileSystemState $ fsRoot .~ newRoot
+        Nothing ->
+          throwInterpretError
+            @FileSystemState
+            "removeFile"
+            ("No such file: " <> path)
+    go (SetCurrentDirectory relativePath) = do
       path <- absify relativePath
-      fsCurrentDirectory .= path
-  writeFile relativePath contents =
-    FileSystemT $ do
+      modify @FileSystemState $ fsCurrentDirectory .~ path
+    go (WriteFile relativePath contents) = do
       path <- absify relativePath
-      fsRoot . at path ?= File (takeFileName path) contents
-
-runFileSystemT :: FSState -> FileSystemT m a -> ExceptT String m (a, FSState)
-runFileSystemT origState (FileSystemT x) = runStateT x origState
-
-runFileSystem :: FSState -> FileSystem a -> Either String (a, FSState)
-runFileSystem origState x = runExcept $ runFileSystemT origState x
+      modify @FileSystemState $ fsRoot . at path ?~
+        File (takeFileName path) contents

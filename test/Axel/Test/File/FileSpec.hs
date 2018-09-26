@@ -1,8 +1,15 @@
+{-# LANGUAGE TypeApplications #-}
+
 module Axel.Test.File.FileSpec where
 
+import Axel.Eff.Console as Console
+import Axel.Eff.FileSystem as FS
+import Axel.Eff.Process as Proc
+import Axel.Eff.Resource as Res
 import Axel.Error as Error
 import Axel.Haskell.File
-import Axel.Monad.FileSystem as FS
+
+import Control.Monad.Freer as Effs
 
 import Data.ByteString.Lazy.Char8 as C
 
@@ -22,4 +29,8 @@ test_transpileSource_golden = do
         goldenVsString
           (takeBaseName axelFile)
           hsFile
-          (C.pack <$> Error.toIO (FS.readFile axelFile >>= transpileSource))
+          (C.pack <$>
+           (Effs.runM .
+            Res.runEff .
+            Proc.runEff . FS.runEff . Error.runEff @Error . Console.runEff)
+             (FS.readFile axelFile >>= transpileSource))

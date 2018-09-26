@@ -1,32 +1,41 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Axel.Haskell.File where
 
 import Prelude hiding (putStr, putStrLn)
 
 import Axel.AST (ToHaskell(toHaskell))
-import Axel.Error (Error(EvalError), mapError)
-import Axel.Haskell.GHC (ghcInterpret)
-import Axel.Haskell.Prettify (prettifyHaskell)
-import Axel.Macros (exhaustivelyExpandMacros, stripMacroDefinitions)
-import Axel.Monad.Console (MonadConsole(putStr), putStrLn)
-import Axel.Monad.FileSystem (MonadFileSystem)
-import qualified Axel.Monad.FileSystem as FS
-  ( MonadFileSystem(readFile, writeFile)
+import Axel.Eff.Console (putStrLn)
+import qualified Axel.Eff.Console as Effs (Console)
+import qualified Axel.Eff.FileSystem as Effs (FileSystem)
+import qualified Axel.Eff.FileSystem as FS
+  ( readFile
   , withTemporaryDirectory
+  , writeFile
   )
-import Axel.Monad.Process (MonadProcess)
-import Axel.Monad.Resource (MonadResource, readResource)
-import qualified Axel.Monad.Resource as Res (astDefinition)
+import Axel.Eff.Process (StreamSpecification(InheritStreams))
+import qualified Axel.Eff.Process as Effs (Process)
+import Axel.Eff.Resource (readResource)
+import qualified Axel.Eff.Resource as Effs (Resource)
+import qualified Axel.Eff.Resource as Res (astDefinition)
+import Axel.Error (Error)
+import Axel.Haskell.Prettify (prettifyHaskell)
+import Axel.Haskell.Stack (interpretFile)
+import Axel.Macros (exhaustivelyExpandMacros)
 import Axel.Normalize (normalizeStatement)
 import Axel.Parse (Expression(Symbol), parseSource)
+import Axel.Utils.Debug (unsafeTeeS)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
 import Control.Lens.Operators ((.~))
-import Control.Monad.Except (MonadError)
+import Control.Monad (void)
+import Control.Monad.Freer (Eff, Members)
+import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Data.Maybe (fromMaybe)
 import Data.Semigroup ((<>))
@@ -49,12 +58,13 @@ convertUnit =
     x -> x
 
 transpileSource ::
-     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => String
-  -> m String
+  -> Eff effs String
 transpileSource source =
-  prettifyHaskell . toHaskell . stripMacroDefinitions <$>
-  (parseSource source >>= exhaustivelyExpandMacros . convertList . convertUnit >>=
+  prettifyHaskell . toHaskell <$>
+  (parseSource source >>=
+   fmap unsafeTeeS . exhaustivelyExpandMacros . convertList . convertUnit >>=
    normalizeStatement)
 
 axelPathToHaskellPath :: FilePath -> FilePath
@@ -66,34 +76,30 @@ axelPathToHaskellPath axelPath =
    in basePath <> ".hs"
 
 transpileFile ::
-     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => FilePath
   -> FilePath
-  -> m ()
+  -> Eff effs ()
 transpileFile path newPath = do
   fileContents <- FS.readFile path
   newContents <- transpileSource fileContents
+  putStrLn "Writing file..."
   FS.writeFile newPath newContents
 
 -- | Transpile a file in place.
 transpileFile' ::
-     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => FilePath
-  -> m FilePath
+  -> Eff effs FilePath
 transpileFile' path = do
   let newPath = axelPathToHaskellPath path
   transpileFile path newPath
   pure newPath
 
 evalFile ::
-     ( MonadConsole m
-     , MonadError Error m
-     , MonadFileSystem m
-     , MonadProcess m
-     , MonadResource m
-     )
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => FilePath
-  -> m ()
+  -> Eff effs ()
 evalFile path = do
   putStrLn ("Building " <> takeFileName path <> "...")
   FS.withTemporaryDirectory $ \tempDirectoryPath -> do

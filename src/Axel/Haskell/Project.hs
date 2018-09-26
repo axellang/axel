@@ -1,12 +1,20 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module Axel.Haskell.Project where
 
+import qualified Axel.Eff.Console as Effs (Console)
+import Axel.Eff.FileSystem
+  ( copyFile
+  , getCurrentDirectory
+  , getDirectoryContentsRec
+  , removeFile
+  )
+import qualified Axel.Eff.FileSystem as Effs (FileSystem)
+import qualified Axel.Eff.Process as Effs (Process)
+import Axel.Eff.Resource (getResourcePath, newProjectTemplate)
+import qualified Axel.Eff.Resource as Effs (Resource)
 import Axel.Error (Error)
 import Axel.Haskell.File (transpileFile')
 import Axel.Haskell.Stack
@@ -16,15 +24,9 @@ import Axel.Haskell.Stack
   , createStackProject
   , runStackProject
   )
-import Axel.Monad.Console (MonadConsole)
-import Axel.Monad.FileSystem
-  ( MonadFileSystem(copyFile, getCurrentDirectory, removeFile)
-  , getDirectoryContentsRec
-  )
-import Axel.Monad.Process (MonadProcess)
-import Axel.Monad.Resource (MonadResource(getResourcePath), newProjectTemplate)
 
-import Control.Monad.Except (MonadError)
+import Control.Monad.Freer (Eff, Members)
+import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Data.Semigroup ((<>))
 import qualified Data.Text as T (isSuffixOf, pack)
@@ -34,7 +36,9 @@ import System.FilePath ((</>))
 type ProjectPath = FilePath
 
 newProject ::
-     (MonadFileSystem m, MonadProcess m, MonadResource m) => String -> m ()
+     Members '[ Effs.FileSystem, Effs.Process, Effs.Resource] effs
+  => String
+  -> Eff effs ()
 newProject projectName = do
   createStackProject projectName
   addStackDependency axelStackageSpecifier projectName
@@ -47,8 +51,8 @@ newProject projectName = do
   mapM_ copyAxel ["Setup", "app" </> "Main", "src" </> "Lib", "test" </> "Spec"]
 
 transpileProject ::
-     (MonadError Error m, MonadFileSystem m, MonadProcess m, MonadResource m)
-  => m [FilePath]
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
+  => Eff effs [FilePath]
 transpileProject = do
   files <- getDirectoryContentsRec "."
   let axelFiles =
@@ -56,13 +60,8 @@ transpileProject = do
   mapM transpileFile' axelFiles
 
 buildProject ::
-     ( MonadConsole m
-     , MonadError Error m
-     , MonadFileSystem m
-     , MonadProcess m
-     , MonadResource m
-     )
-  => m ()
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
+  => Eff effs ()
 buildProject = do
   projectPath <- getCurrentDirectory
   hsPaths <- transpileProject
@@ -70,6 +69,6 @@ buildProject = do
   mapM_ removeFile hsPaths
 
 runProject ::
-     (MonadConsole m, MonadError Error m, MonadFileSystem m, MonadProcess m)
-  => m ()
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
+  => Eff effs ()
 runProject = getCurrentDirectory >>= runStackProject

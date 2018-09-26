@@ -1,16 +1,23 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Axel.Test.Haskell.StackSpec where
 
+import Axel.Eff.FileSystem as FS
+import Axel.Eff.Process
+import Axel.Error
 import Axel.Haskell.Stack as Stack
-import Axel.Monad.FileSystem as FS
 import Axel.Test.Monad.ConsoleMock as Mock
 import Axel.Test.Monad.FileSystemMock as Mock
 import Axel.Test.Monad.ProcessMock as Mock
 
 import Control.Lens
-import Control.Monad.Except
+import Control.Monad.Freer as Eff
+import qualified Control.Monad.Freer.Error as Effs
 
 import System.Exit
 
@@ -24,7 +31,7 @@ spec_Stack = do
     it "adds a Stackage dependency to a Stack project" $ do
       let action = Stack.addStackDependency "foo-1.2.3.4" "project/path"
       let origFSState =
-            Mock.mkFSState
+            Mock.mkFileSystemState
               [ Mock.Directory
                   "project"
                   [ Mock.Directory
@@ -37,40 +44,49 @@ spec_Stack = do
             Mock.File
               "package.yaml"
               "dependencies:\n- foo-1.2.3.4\n- asdf-5.6.7\n"
-      case Mock.runFileSystem origFSState action of
+      case Eff.run . Effs.runError . Mock.runFileSystem origFSState $ action of
         Left err -> expectationFailure err
         Right ((), result) -> result `shouldBe` expectedFSState
   describe "buildStackProject" $ do
     it "builds a Stack project" $ do
-      let action = Stack.buildStackProject "project/path"
+      let action = Stack.buildStackProject "project/foo"
+      let origConsoleState = Mock.mkConsoleState
       let origFSState =
-            Mock.mkFSState [Mock.Directory "project" [Mock.Directory "path" []]]
+            Mock.mkFileSystemState
+              [Mock.Directory "project" [Mock.Directory "foo" []]]
       let origProcState =
             Mock.mkProcessState
               []
-              [ProcessResultT ((ExitSuccess, Just ("", "")), pure ())]
-      let expectation result (procState, fsState) = do
+              [ProcessResult ((ExitSuccess, Just ("", "")), pure ())]
+      let expectation result (consoleState, fsState, procState) = do
             result `shouldBe` ()
+            consoleState ^. Mock.consoleOutput `shouldBe` "Building foo...\n"
             procState ^. Mock.procExecutionLog `shouldBe`
               [("stack", ["build"], Just "")]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
-      case Mock.runProcess (origProcState, origFSState) $ runExceptT action of
-        Left err -> expectationFailure err
-        Right (Left err, _) -> expectationFailure $ show err
-        Right (Right x, state) -> expectation x state
+      case Eff.run . Effs.runError @Error . Effs.runError @String .
+           Mock.runFileSystem origFSState .
+           Mock.runProcess origProcState .
+           Mock.runConsole origConsoleState $
+           action of
+        Left err -> expectationFailure $ show err
+        Right (Left err) -> expectationFailure err
+        Right (Right (((x, consoleState), procState), fsState)) ->
+          expectation x (consoleState, fsState, procState)
   describe "createStackProject" $ do
     it "creates a new Stack project" $ do
       let action = Stack.createStackProject "newProject"
-      let origFSState = Mock.mkFSState []
+      let origFSState = Mock.mkFileSystemState []
       let origProcState =
             Mock.mkProcessState
               []
-              [ ProcessResultT
+              [ ProcessResult
                   ( (ExitSuccess, Just ("", ""))
                   , FS.createDirectoryIfMissing False "newProject")
-              , ProcessResultT ((ExitSuccess, Just ("", "")), pure ())
+              , ProcessResult ((ExitSuccess, Just ("", "")), pure ())
               ]
-      let expectation ((), (procState, fsState)) = do
+      let expectation result (fsState, procState) = do
+            result `shouldBe` ()
             procState ^. Mock.procExecutionLog `shouldBe`
               [ ("stack", ["new", "newProject", "new-template"], Just "")
               , ( "stack"
@@ -80,25 +96,31 @@ spec_Stack = do
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
             fsState ^. Mock.fsRoot . at "newProject" . _Just . Mock.fsPath `shouldBe`
               "newProject"
-      case Mock.runProcess (origProcState, origFSState) action of
-        Left err -> expectationFailure err
-        Right result -> expectation result
+      case Eff.run . Effs.runError @Error . Effs.runError @String .
+           Mock.runFileSystem origFSState .
+           Mock.runProcess origProcState $
+           action of
+        Left err -> expectationFailure $ show err
+        Right (Left err) -> expectationFailure err
+        Right (Right ((x, procState), fsState)) ->
+          expectation x (fsState, procState)
   describe "runStackProject" $ do
     it "runs a Stack project" $ do
-      let action = Stack.runStackProject "project/path"
+      let action = Stack.runStackProject "project/foo"
       let origConsoleState = Mock.mkConsoleState
       let origFSState =
-            Mock.mkFSState [Mock.Directory "project" [Mock.Directory "path" []]]
+            Mock.mkFileSystemState
+              [Mock.Directory "project" [Mock.Directory "foo" []]]
       let origProcState =
             Mock.mkProcessState
               []
-              [ ProcessResultT
+              [ ProcessResult
                   ( ( ExitSuccess
                     , Just ("", "foo:lib\nfoo:exe:foo-exe\nfoo:test:foo-test"))
                   , pure ())
-              , ProcessResultT ((ExitSuccess, Nothing), pure ())
+              , ProcessResult ((ExitSuccess, Nothing), pure ())
               ]
-      let expectation result (consoleState, procState, fsState) = do
+      let expectation result (consoleState, fsState, procState) = do
             result `shouldBe` ()
             procState ^. Mock.procExecutionLog `shouldBe`
               [ ("stack", ["ide", "targets"], Just "")
@@ -106,10 +128,69 @@ spec_Stack = do
               ]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
             consoleState ^. Mock.consoleOutput `shouldBe` "Running foo-exe...\n"
-      case Mock.runProcess (origProcState, origFSState) $
-           Mock.runConsoleT origConsoleState $
-           runExceptT action of
+      case Eff.run . Effs.runError @Error . Effs.runError @String .
+           Mock.runFileSystem origFSState .
+           Mock.runProcess origProcState .
+           Mock.runConsole origConsoleState $
+           action of
+        Left err -> expectationFailure $ show err
+        Right (Left err) -> expectationFailure err
+        Right (Right (((x, consoleState), procState), fsState)) ->
+          expectation x (consoleState, fsState, procState)
+  describe "compileFile" $ do
+    it "compiles a file with GHC" $ do
+      let action = Stack.compileFile @'CreateStreams "projectFoo/app/Main.hs" ""
+      let origFSState = Mock.mkFileSystemState []
+      let origProcState =
+            Mock.mkProcessState
+              []
+              [ProcessResult ((ExitSuccess, Just ("testStdout", "")), pure ())]
+      let expectation stdout (procState, _) = do
+            stdout `shouldBe` "testStdout"
+            procState ^. Mock.procExecutionLog `shouldBe`
+              [ ( "stack"
+                , [ "ghc"
+                  , "--resolver"
+                  , Stack.stackageResolverWithAxel
+                  , "--package"
+                  , Stack.axelStackageId
+                  , "--"
+                  , "projectFoo/app/Main.hs"
+                  ]
+                , Just "")
+              ]
+      case Eff.run . Effs.runError @String . Mock.runFileSystem origFSState .
+           Mock.runProcess origProcState $
+           action of
         Left err -> expectationFailure err
-        Right ((Left err, _), _) -> expectationFailure $ show err
-        Right ((Right x, consoleState), (procState, fsState)) ->
-          expectation x (consoleState, procState, fsState)
+        Right (((_, stdout, _), procState), fsState) ->
+          expectation stdout (procState, fsState)
+  describe "interpretFile" $ do
+    it "interprets a file with GHC" $ do
+      let action =
+            Stack.interpretFile @'CreateStreams "projectFoo/app/Main.hs" ""
+      let origFSState = Mock.mkFileSystemState []
+      let origProcState =
+            Mock.mkProcessState
+              []
+              [ProcessResult ((ExitSuccess, Just ("testStdout", "")), pure ())]
+      let expectation stdout (procState, _) = do
+            stdout `shouldBe` "testStdout"
+            procState ^. Mock.procExecutionLog `shouldBe`
+              [ ( "stack"
+                , [ "runghc"
+                  , "--resolver"
+                  , Stack.stackageResolverWithAxel
+                  , "--package"
+                  , Stack.axelStackageId
+                  , "--"
+                  , "projectFoo/app/Main.hs"
+                  ]
+                , Just "")
+              ]
+      case Eff.run . Effs.runError @String . Mock.runFileSystem origFSState .
+           Mock.runProcess origProcState $
+           action of
+        Left err -> expectationFailure err
+        Right (((_, stdout, _), procState), fsState) ->
+          expectation stdout (procState, fsState)

@@ -1,29 +1,41 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Axel.Haskell.Stack where
 
 import Prelude hiding (putStrLn)
 
-import Axel.Error (Error(ProjectError), fatal)
-import Axel.Monad.Console (MonadConsole, putStrLn)
-import Axel.Monad.FileSystem (MonadFileSystem)
-import qualified Axel.Monad.FileSystem as FS
-  ( MonadFileSystem(readFile, writeFile)
+import Axel.Eff.Console (putStrLn)
+import qualified Axel.Eff.Console as Effs (Console)
+import qualified Axel.Eff.FileSystem as FS
+  ( readFile
   , withCurrentDirectory
+  , writeFile
   )
-import Axel.Monad.Process
-  ( MonadProcess(runProcess, runProcessInheritingStreams)
+import qualified Axel.Eff.FileSystem as Effs (FileSystem)
+import Axel.Eff.Process
+  ( ProcessRunner
+  , StreamSpecification(CreateStreams, InheritStreams)
+  , runProcess
   )
+import qualified Axel.Eff.Process as Effs (Process)
+import Axel.Error (Error(ProjectError), fatal)
 
 import Control.Lens.Operators ((%~))
 import Control.Monad (void)
-import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Freer (Eff, Member, Members)
+import Control.Monad.Freer.Error (throwError)
+import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Data.Aeson.Lens (_Array, key)
 import qualified Data.ByteString.Char8 as B (pack, unpack)
@@ -52,7 +64,7 @@ type Target = String
 type Version = String
 
 stackageResolverWithAxel :: StackageResolver
-stackageResolverWithAxel = "nightly-2018-08-20"
+stackageResolverWithAxel = "nightly"
 
 axelStackageVersion :: Version
 axelStackageVersion = showVersion version
@@ -64,13 +76,16 @@ axelStackageSpecifier :: StackageId
 axelStackageSpecifier = "axel ==" <> axelStackageVersion
 
 getStackProjectTargets ::
-     (Monad m, MonadFileSystem m, MonadProcess m) => ProjectPath -> m [Target]
+     (Members '[ Effs.FileSystem, Effs.Process] effs)
+  => ProjectPath
+  -> Eff effs [Target]
 getStackProjectTargets projectPath =
   FS.withCurrentDirectory projectPath $ do
-    (_, _, stderr) <- runProcess "stack" ["ide", "targets"] ""
+    (_, _, stderr) <- runProcess @'CreateStreams "stack" ["ide", "targets"] ""
     pure $ lines stderr
 
-addStackDependency :: (MonadFileSystem m) => StackageId -> ProjectPath -> m ()
+addStackDependency ::
+     (Member Effs.FileSystem effs) => StackageId -> ProjectPath -> Eff effs ()
 addStackDependency dependencyId projectPath =
   FS.withCurrentDirectory projectPath $ do
     let packageConfigPath = "package.yaml"
@@ -85,13 +100,14 @@ addStackDependency dependencyId projectPath =
       Left _ -> fatal "addStackDependency" "0001"
 
 buildStackProject ::
-     (MonadConsole m, MonadError Error m, MonadFileSystem m, MonadProcess m)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
   => ProjectPath
-  -> m ()
+  -> Eff effs ()
 buildStackProject projectPath = do
   putStrLn ("Building " <> takeFileName projectPath <> "...")
   result <-
-    FS.withCurrentDirectory projectPath $ runProcess "stack" ["build"] ""
+    FS.withCurrentDirectory projectPath $
+    runProcess @'CreateStreams "stack" ["build"] ""
   case result of
     (ExitSuccess, _, _) -> pure ()
     (ExitFailure _, stdout, stderr) ->
@@ -100,21 +116,25 @@ buildStackProject projectPath = do
         ("Project failed to build.\n\nStdout:\n" <> stdout <> "\n\nStderr:\n" <>
          stderr)
 
-createStackProject :: (MonadFileSystem m, MonadProcess m) => String -> m ()
+createStackProject ::
+     (Member Effs.FileSystem effs, Member Effs.Process effs)
+  => String
+  -> Eff effs ()
 createStackProject projectName = do
-  void $ runProcess "stack" ["new", projectName, "new-template"] ""
+  void $
+    runProcess @'CreateStreams "stack" ["new", projectName, "new-template"] ""
   setStackageResolver projectName stackageResolverWithAxel
 
 runStackProject ::
-     (MonadConsole m, MonadError Error m, MonadFileSystem m, MonadProcess m)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
   => ProjectPath
-  -> m ()
+  -> Eff effs ()
 runStackProject projectPath = do
   targets <- getStackProjectTargets projectPath
   case findExeTargets targets of
     [target] -> do
       putStrLn ("Running " <> target <> "...")
-      void $ runProcessInheritingStreams "stack" ["exec", target]
+      void $ runProcess @'InheritStreams "stack" ["exec", target]
     _ ->
       throwError $ ProjectError "No executable target was unambiguously found!"
   where
@@ -128,10 +148,30 @@ runStackProject projectPath = do
         []
 
 setStackageResolver ::
-     (MonadFileSystem m, MonadProcess m)
+     (Member Effs.FileSystem effs, Member Effs.Process effs)
   => ProjectPath
   -> StackageResolver
-  -> m ()
+  -> Eff effs ()
 setStackageResolver projectPath resolver =
   void $ FS.withCurrentDirectory projectPath $
-  runProcess "stack" ["config", "set", "resolver", resolver] ""
+  runProcess @'CreateStreams "stack" ["config", "set", "resolver", resolver] ""
+
+includeAxelArguments :: [String]
+includeAxelArguments =
+  ["--resolver", stackageResolverWithAxel, "--package", axelStackageId]
+
+compileFile ::
+     forall (streamSpec :: StreamSpecification) effs. (Member Effs.Process effs)
+  => FilePath
+  -> ProcessRunner streamSpec (Eff effs)
+compileFile filePath =
+  let args = [["ghc"], includeAxelArguments, ["--", filePath]]
+   in runProcess @streamSpec @effs "stack" (concat args)
+
+interpretFile ::
+     forall (streamSpec :: StreamSpecification) effs. (Member Effs.Process effs)
+  => FilePath
+  -> ProcessRunner streamSpec (Eff effs)
+interpretFile filePath =
+  let args = [["runghc"], includeAxelArguments, ["--", filePath]]
+   in runProcess @streamSpec @effs "stack" (concat args)
