@@ -1,10 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Axel.Test.Monad.ResourceSpec where
+module Axel.Test.Eff.ResourceSpec where
 
 import Axel.Eff.Resource as Res
-import Axel.Test.Monad.FileSystemMock as Mock
-import Axel.Test.Monad.ResourceMock as Mock
+import Axel.Test.Eff.FileSystemMock as Mock
+import Axel.Test.Eff.ResourceMock as Mock
 
 import Control.Monad.Freer as Eff
 import qualified Control.Monad.Freer.Error as Effs

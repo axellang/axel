@@ -11,7 +11,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Axel.Test.Monad.FileSystemMock where
+module Axel.Test.Eff.FileSystemMock where
 
 import Axel.Eff.FileSystem as Effs
 import Axel.Test.MockUtils

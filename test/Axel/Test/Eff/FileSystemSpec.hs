@@ -1,7 +1,7 @@
-module Axel.Test.Monad.FileSystemSpec where
+module Axel.Test.Eff.FileSystemSpec where
 
 import qualified Axel.Eff.FileSystem as FS
-import qualified Axel.Test.Monad.FileSystemMock as Mock
+import qualified Axel.Test.Eff.FileSystemMock as Mock
 
 import Control.Lens
 import Control.Monad.Freer as Eff

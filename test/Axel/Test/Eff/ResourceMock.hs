@@ -6,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Axel.Test.Monad.ResourceMock where
+module Axel.Test.Eff.ResourceMock where
 
 import Axel.Eff.Resource as Effs
 

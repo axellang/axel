@@ -11,9 +11,9 @@ import Axel.Eff.FileSystem as FS
 import Axel.Eff.Process
 import Axel.Error
 import Axel.Haskell.Stack as Stack
-import Axel.Test.Monad.ConsoleMock as Mock
-import Axel.Test.Monad.FileSystemMock as Mock
-import Axel.Test.Monad.ProcessMock as Mock
+import Axel.Test.Eff.ConsoleMock as Mock
+import Axel.Test.Eff.FileSystemMock as Mock
+import Axel.Test.Eff.ProcessMock as Mock
 
 import Control.Lens
 import Control.Monad.Freer as Eff

@@ -16,7 +16,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Axel.Test.Monad.ProcessMock where
+module Axel.Test.Eff.ProcessMock where
 
 import Axel.Eff.FileSystem as Effs
 import Axel.Eff.Process as Effs

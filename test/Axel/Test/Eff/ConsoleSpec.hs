@@ -1,7 +1,7 @@
-module Axel.Test.Monad.ConsoleSpec where
+module Axel.Test.Eff.ConsoleSpec where
 
 import qualified Axel.Eff.Console as Console
-import qualified Axel.Test.Monad.ConsoleMock as Mock
+import qualified Axel.Test.Eff.ConsoleMock as Mock
 
 import Control.Monad.Freer as Eff
 

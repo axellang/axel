@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Axel.Test.Monad.ConsoleMock where
+module Axel.Test.Eff.ConsoleMock where
 
 import Axel.Eff.Console as Effs
 
