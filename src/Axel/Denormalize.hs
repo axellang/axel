@@ -2,14 +2,14 @@ module Axel.Denormalize where
 
 import Axel.AST
   ( Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
-           EIdentifier, ELambda, ELetBlock, ELiteral)
+           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression)
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Literal(LChar, LInt, LString)
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
-          SModuleDeclaration, SPragma, SQualifiedImport, SRestrictedImport,
-          STopLevel, STypeSignature, STypeSynonym, STypeclassInstance,
-          SUnrestrictedImport)
+          SModuleDeclaration, SPragma, SQualifiedImport, SRawStatement,
+          SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
+          STypeclassInstance, SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , alias
@@ -79,6 +79,7 @@ denormalizeExpression (ELiteral x) =
     LChar char -> Parse.LiteralChar char
     LInt int -> Parse.LiteralInt int
     LString string -> Parse.LiteralString string
+denormalizeExpression (ERawExpression rawSource) = Parse.LiteralString rawSource
 
 denormalizeImportSpecification :: ImportSpecification -> Parse.Expression
 denormalizeImportSpecification ImportAll = Parse.Symbol "all"
@@ -108,9 +109,6 @@ denormalizeStatement (SFunctionDefinition fnDef) =
     , Parse.SExpression (map denormalizeExpression (fnDef ^. arguments))
     , denormalizeExpression (fnDef ^. body)
     ]
-denormalizeStatement (SPragma pragma) =
-  Parse.SExpression
-    [Parse.Symbol "pragma", Parse.LiteralString (pragma ^. pragmaSpecification)]
 denormalizeStatement (SMacroDefinition macroDef) =
   Parse.SExpression
     [ Parse.Symbol "macro"
@@ -121,6 +119,9 @@ denormalizeStatement (SMacroDefinition macroDef) =
     ]
 denormalizeStatement (SModuleDeclaration identifier) =
   Parse.SExpression [Parse.Symbol "module", Parse.Symbol identifier]
+denormalizeStatement (SPragma pragma) =
+  Parse.SExpression
+    [Parse.Symbol "pragma", Parse.LiteralString (pragma ^. pragmaSpecification)]
 denormalizeStatement (SQualifiedImport qualifiedImport) =
   Parse.SExpression
     [ Parse.Symbol "importq"
@@ -128,6 +129,8 @@ denormalizeStatement (SQualifiedImport qualifiedImport) =
     , Parse.Symbol $ qualifiedImport ^. alias
     , denormalizeImportSpecification (qualifiedImport ^. imports)
     ]
+denormalizeStatement (SRawStatement rawSource) =
+  Parse.SExpression [Parse.Symbol "raw", Parse.LiteralString rawSource]
 denormalizeStatement (SRestrictedImport restrictedImport) =
   Parse.SExpression
     [ Parse.Symbol "import"

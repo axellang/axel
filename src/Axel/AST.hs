@@ -146,6 +146,7 @@ data Expression
   | ELambda Lambda
   | ELetBlock LetBlock
   | ELiteral Literal
+  | ERawExpression String
   deriving (Eq, Show)
 
 instance ToHaskell Expression where
@@ -160,6 +161,7 @@ instance ToHaskell Expression where
   toHaskell (ELambda x) = toHaskell x
   toHaskell (ELetBlock x) = toHaskell x
   toHaskell (ELiteral x) = toHaskell x
+  toHaskell (ERawExpression x) = x
 
 data Literal
   = LChar Char
@@ -180,6 +182,7 @@ data Statement
   | SModuleDeclaration Identifier
   | SPragma Pragma
   | SQualifiedImport QualifiedImport
+  | SRawStatement String
   | SRestrictedImport RestrictedImport
   | STopLevel TopLevel
   | STypeclassInstance TypeclassInstance
@@ -196,6 +199,7 @@ instance ToHaskell Statement where
   toHaskell (SMacroDefinition x) = toHaskell x
   toHaskell (SModuleDeclaration x) = "module " <> x <> " where"
   toHaskell (SQualifiedImport x) = toHaskell x
+  toHaskell (SRawStatement x) = x
   toHaskell (SRestrictedImport x) = toHaskell x
   toHaskell (STopLevel xs) = toHaskell xs
   toHaskell (STypeclassInstance x) = toHaskell x
@@ -361,6 +365,7 @@ instance Recursive Expression where
           LChar _ -> x
           LInt _ -> x
           LString _ -> x
+      ERawExpression _ -> x
   topDownFmap :: (Expression -> Expression) -> Expression -> Expression
   topDownFmap f x =
     case f x of
@@ -386,6 +391,7 @@ instance Recursive Expression where
           LChar _ -> x
           LInt _ -> x
           LString _ -> x
+      ERawExpression _ -> x
   bottomUpTraverse ::
        (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
   bottomUpTraverse f x =
@@ -420,3 +426,4 @@ instance Recursive Expression where
           LChar _ -> pure x
           LInt _ -> pure x
           LString _ -> pure x
+      ERawExpression _ -> pure x

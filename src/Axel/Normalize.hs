@@ -8,7 +8,7 @@ import Axel.AST
   ( CaseBlock(CaseBlock)
   , DataDeclaration(DataDeclaration)
   , Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
-           EIdentifier, ELambda, ELetBlock, ELiteral)
+           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression)
   , FunctionApplication(FunctionApplication)
   , FunctionDefinition(FunctionDefinition)
   , Identifier
@@ -22,9 +22,9 @@ import Axel.AST
   , QualifiedImport(QualifiedImport)
   , RestrictedImport(RestrictedImport)
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
-          SModuleDeclaration, SPragma, SQualifiedImport, SRestrictedImport,
-          STopLevel, STypeSignature, STypeSynonym, STypeclassInstance,
-          SUnrestrictedImport)
+          SModuleDeclaration, SPragma, SQualifiedImport, SRawStatement,
+          SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
+          STypeclassInstance, SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , TypeSignature(TypeSignature)
@@ -74,6 +74,16 @@ normalizeExpression expr@(Parse.SExpression items) =
               bindings
        in ELetBlock <$>
           (LetBlock <$> normalizedBindings <*> normalizeExpression body)
+    [Parse.Symbol "raw", rawSource] ->
+      let normalizedRawSource =
+            case rawSource of
+              Parse.LiteralString x -> pure x
+              x ->
+                throwError $
+                NormalizeError
+                  "`raw` takes strings representing the code to inject directly."
+                  [x, expr]
+       in ERawExpression <$> normalizedRawSource
     fn:args ->
       EFunctionApplication <$>
       (FunctionApplication <$> normalizeExpression fn <*>
@@ -123,9 +133,6 @@ normalizeStatement expr@(Parse.SExpression items) =
               (DataDeclaration (ProperType properType) <$>
                normalizedConstructors)
             _ -> throwError $ NormalizeError "Invalid type!" [typeDef, expr]
-    [Parse.Symbol "macro", Parse.Symbol macroName, Parse.SExpression arguments, body] ->
-      SMacroDefinition . MacroDefinition <$>
-      normalizeFunctionDefinition macroName arguments body
     [Parse.Symbol "import", Parse.Symbol moduleName, importSpec] ->
       SRestrictedImport <$>
       (RestrictedImport moduleName <$> normalizeImportSpec expr importSpec)
@@ -148,8 +155,21 @@ normalizeStatement expr@(Parse.SExpression items) =
            normalizedDefs)
     [Parse.Symbol "pragma", Parse.LiteralString pragma] ->
       pure $ SPragma (Pragma pragma)
+    [Parse.Symbol "macro", Parse.Symbol macroName, Parse.SExpression arguments, body] ->
+      SMacroDefinition . MacroDefinition <$>
+      normalizeFunctionDefinition macroName arguments body
     [Parse.Symbol "module", Parse.Symbol moduleName] ->
       pure $ SModuleDeclaration moduleName
+    [Parse.Symbol "raw", rawSource] ->
+      let normalizedRawSource =
+            case rawSource of
+              Parse.LiteralString x -> pure x
+              x ->
+                throwError $
+                NormalizeError
+                  "`raw` takes strings representing the code to inject directly."
+                  [x, expr]
+       in SRawStatement <$> normalizedRawSource
     [Parse.Symbol "type", alias, def] ->
       let normalizedAlias = normalizeExpression alias
           normalizedDef = normalizeExpression def

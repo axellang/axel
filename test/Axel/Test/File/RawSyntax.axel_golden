@@ -1,0 +1,4 @@
+(raw "makeLenses ''Foo")
+
+(= main ()
+  (raw "putStrLn \"Hello, world!\""))
