@@ -108,5 +108,4 @@ evalFile path = do
     let newPath = directory .~ tempDirectoryPath $ axelPathToHaskellPath path
     transpileFile path newPath
     putStrLn ("Running " <> takeFileName path <> "...")
-    output <- ghcInterpret newPath `mapError` EvalError
-    putStr output
+    void $ interpretFile @'InheritStreams newPath
