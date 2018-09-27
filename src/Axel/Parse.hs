@@ -90,7 +90,7 @@ whitespace :: (Stream s m Char) => ParsecT s u m String
 whitespace = many space
 
 literalChar :: (Stream s m Char) => ParsecT s u m Expression
-literalChar = LiteralChar <$> (char '{' *> any' <* char '}')
+literalChar = LiteralChar <$> (string "#\\" *> any')
 
 literalInt :: (Stream s m Char) => ParsecT s u m Expression
 literalInt = LiteralInt . read <$> many1 digit
@@ -110,10 +110,16 @@ quasiquotedExpression = parseReadMacro "`" "quasiquote"
 quotedExpression :: (Stream s m Char) => ParsecT s u m Expression
 quotedExpression = parseReadMacro "'" "quote"
 
+sExpressionItem :: (Stream s m Char) => ParsecT s u m Expression
+sExpressionItem = try (whitespace *> expression) <|> expression
+
 sExpression :: (Stream s m Char) => ParsecT s u m Expression
-sExpression = SExpression <$> (char '(' *> many item <* char ')')
-  where
-    item = try (whitespace *> expression) <|> expression
+sExpression = SExpression <$> (char '(' *> many sExpressionItem <* char ')')
+
+infixSExpression :: (Stream s m Char) => ParsecT s u m Expression
+infixSExpression =
+  SExpression . (Symbol "applyInfix" :) <$>
+  (char '{' *> many sExpressionItem <* char '}')
 
 spliceUnquotedExpression :: (Stream s m Char) => ParsecT s u m Expression
 spliceUnquotedExpression = parseReadMacro "~@" "unquoteSplicing"
@@ -136,6 +142,7 @@ expression =
   try spliceUnquotedExpression <|>
   unquotedExpression <|>
   sExpression <|>
+  infixSExpression <|>
   symbol
 
 -- TODO Derive this with Template Haskell (it's really brittle, currently).

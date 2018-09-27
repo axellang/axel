@@ -16,20 +16,24 @@
        (pure [(AST.SExpression ['quote atom])]))
 
 -- NOTE This will eventually be automatically defined by the Axel prelude.
+(macro applyInfix ([x op y])
+       (pure [`(~op ~x ~y)]))
+
+-- NOTE This will eventually be automatically defined by the Axel prelude.
 (macro fnCase (cases)
        (<$> (\ (varId)
              [`(\ (~varId) (case ~varId ~@cases))])
             AST.gensym))
 
 -- NOTE This will eventually be automatically defined by the Axel prelude.
-(macro def ((: name (: typeSig cases)))
+(macro def ({name : {typeSig : cases}})
        (pure
         (: `(:: ~name ~typeSig)
            (map (\ (x) `(= ~name ~@x))
                 cases))))
 
-(def mdo' (-> (List AST.Expression) AST.Expression)
-  (((: var (: '<- (: val rest))))
+(def mdo' {(List AST.Expression) -> AST.Expression}
+  (({var : {'<- : {val : rest}}})
    `(>>= ~val (\ (~var) ~(mdo' rest))))
   (((: val rest))
    (case rest
