@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fc161465fdf57d528e01cec66031466b96c7fdc771481cd5bf25d29da78cd6a5
+-- hash: 716ae6ec648d90a914b50e20a88b41dd9aee9dac2b091b5447034de826522e20
 
 name:           axel
-version:        0.0.5
+version:        0.0.6
 synopsis:       The Axel programming language.
 description:    Haskell's semantics, plus Lisp's macros. Meet Axel – a purely functional, extensible, and powerful programming language.
 category:       Language, Lisp, Macros, Transpiler
