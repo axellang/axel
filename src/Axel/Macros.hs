@@ -12,7 +12,7 @@ import Axel.AST
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
           SModuleDeclaration, SPragma, SQualifiedImport, SRawStatement,
           SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
-          STypeclassInstance, SUnrestrictedImport)
+          STypeclassDefinition, STypeclassInstance, SUnrestrictedImport)
   , ToHaskell(toHaskell)
   , functionDefinition
   , name
@@ -152,6 +152,7 @@ isStatementNonconflicting (SQualifiedImport _) = True
 isStatementNonconflicting (SRawStatement _) = True
 isStatementNonconflicting (SRestrictedImport _) = True
 isStatementNonconflicting (STopLevel _) = False
+isStatementNonconflicting (STypeclassDefinition _) = True
 isStatementNonconflicting (STypeclassInstance _) = True
 isStatementNonconflicting (STypeSignature _) = True
 isStatementNonconflicting (STypeSynonym _) = True
