@@ -100,6 +100,12 @@ genRestrictedImport =
 genTopLevel :: (MonadGen m) => m AST.TopLevel
 genTopLevel = AST.TopLevel <$> Gen.list (Range.linear 0 3) genStatement
 
+genTypeclassDefinition :: (MonadGen m) => m AST.TypeclassDefinition
+genTypeclassDefinition =
+  AST.TypeclassDefinition <$> genExpression <*>
+  Gen.list (Range.linear 0 3) genExpression <*>
+  Gen.list (Range.linear 0 3) genTypeSignature
+
 genTypeclassInstance :: (MonadGen m) => m AST.TypeclassInstance
 genTypeclassInstance =
   AST.TypeclassInstance <$> genExpression <*>
@@ -122,6 +128,7 @@ genStatement =
     , AST.SModuleDeclaration <$> genIdentifier
     , AST.SQualifiedImport <$> genQualifiedImport
     , AST.SRestrictedImport <$> genRestrictedImport
+    , AST.STypeclassDefinition <$> genTypeclassDefinition
     , AST.STypeclassInstance <$> genTypeclassInstance
     , AST.STypeSignature <$> genTypeSignature
     , AST.STypeSynonym <$> genTypeSynonym

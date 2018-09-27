@@ -9,13 +9,14 @@ import Axel.AST
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
           SModuleDeclaration, SPragma, SQualifiedImport, SRawStatement,
           SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
-          STypeclassInstance, SUnrestrictedImport)
+          STypeclassDefinition, STypeclassInstance, SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , alias
   , arguments
   , bindings
   , body
+  , constraints
   , constructors
   , definition
   , definitions
@@ -28,6 +29,7 @@ import Axel.AST
   , moduleName
   , name
   , pragmaSpecification
+  , signatures
   , typeDefinition
   )
 import qualified Axel.Parse as Parse
@@ -139,6 +141,16 @@ denormalizeStatement (SRestrictedImport restrictedImport) =
     ]
 denormalizeStatement (STopLevel (TopLevel statements)) =
   Parse.SExpression $ Parse.Symbol "begin" : map denormalizeStatement statements
+denormalizeStatement (STypeclassDefinition typeclassDefinition) =
+  Parse.SExpression
+    (Parse.Symbol "class" :
+     Parse.SExpression
+       (Parse.Symbol "list" :
+        map denormalizeExpression (typeclassDefinition ^. constraints)) :
+     denormalizeExpression (typeclassDefinition ^. name) :
+     map
+       (denormalizeStatement . STypeSignature)
+       (typeclassDefinition ^. signatures))
 denormalizeStatement (STypeclassInstance typeclassInstance) =
   Parse.SExpression
     (Parse.Symbol "instance" :

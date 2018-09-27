@@ -29,7 +29,6 @@ import Axel.Haskell.Stack (interpretFile)
 import Axel.Macros (exhaustivelyExpandMacros)
 import Axel.Normalize (normalizeStatement)
 import Axel.Parse (Expression(Symbol), parseSource)
-import Axel.Utils.Debug (unsafeTeeS)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
 import Control.Lens.Operators ((.~))
@@ -63,8 +62,7 @@ transpileSource ::
   -> Eff effs String
 transpileSource source =
   prettifyHaskell . toHaskell <$>
-  (parseSource source >>=
-   fmap unsafeTeeS . exhaustivelyExpandMacros . convertList . convertUnit >>=
+  (parseSource source >>= exhaustivelyExpandMacros . convertList . convertUnit >>=
    normalizeStatement)
 
 axelPathToHaskellPath :: FilePath -> FilePath

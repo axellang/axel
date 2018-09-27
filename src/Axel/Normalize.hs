@@ -24,11 +24,12 @@ import Axel.AST
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
           SModuleDeclaration, SPragma, SQualifiedImport, SRawStatement,
           SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
-          STypeclassInstance, SUnrestrictedImport)
+          STypeclassDefinition, STypeclassInstance, SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , TypeSignature(TypeSignature)
   , TypeSynonym(TypeSynonym)
+  , TypeclassDefinition(TypeclassDefinition)
   , TypeclassInstance(TypeclassInstance)
   )
 import Axel.Error (Error(NormalizeError))
@@ -112,6 +113,27 @@ normalizeStatement expr@(Parse.SExpression items) =
     Parse.Symbol "begin":stmts ->
       let normalizedStmts = traverse normalizeStatement stmts
        in STopLevel . TopLevel <$> normalizedStmts
+    Parse.Symbol "class":classConstraints:className:sigs ->
+      let normalizedConstraints =
+            normalizeExpression classConstraints >>= \case
+              EFunctionApplication (FunctionApplication (EIdentifier "list") constraints) ->
+                pure constraints
+              _ ->
+                throwError $
+                NormalizeError "Invalid constraints!" [classConstraints, expr]
+          normalizedSigs =
+            traverse
+              (\x ->
+                 normalizeStatement x >>= \case
+                   STypeSignature tySig -> pure tySig
+                   _ ->
+                     throwError $
+                     NormalizeError "Invalid type signature!" [x, expr])
+              sigs
+       in STypeclassDefinition <$>
+          (TypeclassDefinition <$> normalizeExpression className <*>
+           normalizedConstraints <*>
+           normalizedSigs)
     Parse.Symbol "data":typeDef:constructors ->
       let normalizedConstructors =
             traverse

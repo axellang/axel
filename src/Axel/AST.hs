@@ -123,6 +123,12 @@ data RestrictedImport = RestrictedImport
   , _imports :: ImportSpecification
   } deriving (Eq, Show)
 
+data TypeclassDefinition = TypeclassDefinition
+  { _name :: Expression
+  , _constraints :: [Expression]
+  , _signatures :: [TypeSignature]
+  } deriving (Eq, Show)
+
 data TypeclassInstance = TypeclassInstance
   { _instanceName :: Expression
   , _definitions :: [FunctionDefinition]
@@ -185,6 +191,7 @@ data Statement
   | SRawStatement String
   | SRestrictedImport RestrictedImport
   | STopLevel TopLevel
+  | STypeclassDefinition TypeclassDefinition
   | STypeclassInstance TypeclassInstance
   | STypeSignature TypeSignature
   | STypeSynonym TypeSynonym
@@ -202,6 +209,7 @@ instance ToHaskell Statement where
   toHaskell (SRawStatement x) = x
   toHaskell (SRestrictedImport x) = toHaskell x
   toHaskell (STopLevel xs) = toHaskell xs
+  toHaskell (STypeclassDefinition x) = toHaskell x
   toHaskell (STypeclassInstance x) = toHaskell x
   toHaskell (STypeSignature x) = toHaskell x
   toHaskell (STypeSynonym x) = toHaskell x
@@ -230,6 +238,8 @@ makeFieldsNoPrefix ''QualifiedImport
 makeFieldsNoPrefix ''RestrictedImport
 
 makeFieldsNoPrefix ''TopLevel
+
+makeFieldsNoPrefix ''TypeclassDefinition
 
 makeFieldsNoPrefix ''TypeclassInstance
 
@@ -325,6 +335,18 @@ instance ToHaskell RestrictedImport where
 instance ToHaskell TopLevel where
   toHaskell :: TopLevel -> String
   toHaskell topLevel = delimit Newlines $ map toHaskell (topLevel ^. statements)
+
+instance ToHaskell TypeclassDefinition where
+  toHaskell :: TypeclassDefinition -> String
+  toHaskell typeclassDefinition =
+    "class " <>
+    surround
+      Parentheses
+      (delimit Commas (map toHaskell (typeclassDefinition ^. constraints))) <>
+    " => " <>
+    toHaskell (typeclassDefinition ^. name) <>
+    " where " <>
+    renderBlock (map toHaskell $ typeclassDefinition ^. signatures)
 
 instance ToHaskell TypeclassInstance where
   toHaskell :: TypeclassInstance -> String

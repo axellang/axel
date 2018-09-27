@@ -1,0 +1,1 @@
+class ((SuperFoo a),(SuperBar b)) => (Foo a b) where {foo :: ((->) a b)}
