@@ -2,7 +2,8 @@ module Axel.Denormalize where
 
 import Axel.AST
   ( Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
-           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression)
+           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression,
+           ERecordDefinition, ERecordType)
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Literal(LChar, LInt, LString)
@@ -21,6 +22,7 @@ import Axel.AST
   , definition
   , definitions
   , expr
+  , fields
   , function
   , functionDefinition
   , imports
@@ -82,6 +84,20 @@ denormalizeExpression (ELiteral x) =
     LInt int -> Parse.LiteralInt int
     LString string -> Parse.LiteralString string
 denormalizeExpression (ERawExpression rawSource) = Parse.LiteralString rawSource
+denormalizeExpression (ERecordDefinition recordDefinition) =
+  let denormalizedBindings =
+        map
+          (\(var, val) ->
+             Parse.SExpression [Parse.Symbol var, denormalizeExpression val])
+          (recordDefinition ^. bindings)
+   in Parse.SExpression (Parse.Symbol "record" : denormalizedBindings)
+denormalizeExpression (ERecordType recordType) =
+  let denormalizedFields =
+        map
+          (\(field, ty) ->
+             Parse.SExpression [Parse.Symbol field, denormalizeExpression ty])
+          (recordType ^. fields)
+   in Parse.SExpression (Parse.Symbol "recordType" : denormalizedFields)
 
 denormalizeImportSpecification :: ImportSpecification -> Parse.Expression
 denormalizeImportSpecification ImportAll = Parse.Symbol "all"

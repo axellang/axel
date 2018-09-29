@@ -11,7 +11,8 @@ module Axel.AST where
 
 import Axel.Haskell.Language (isOperator)
 import Axel.Utils.Display
-  ( Bracket(DoubleQuotes, Parentheses, SingleQuotes, SquareBrackets)
+  ( Bracket(CurlyBraces, DoubleQuotes, Parentheses, SingleQuotes,
+        SquareBrackets)
   , Delimiter(Commas, Newlines, Pipes, Spaces)
   , delimit
   , renderBlock
@@ -118,6 +119,14 @@ data QualifiedImport = QualifiedImport
   , _imports :: ImportSpecification
   } deriving (Eq, Show)
 
+newtype RecordDefinition = RecordDefinition
+  { _bindings :: [(Identifier, Expression)]
+  } deriving (Eq, Show)
+
+newtype RecordType = RecordType
+  { _fields :: [(Identifier, Expression)]
+  } deriving (Eq, Show)
+
 data RestrictedImport = RestrictedImport
   { _moduleName :: Identifier
   , _imports :: ImportSpecification
@@ -153,6 +162,8 @@ data Expression
   | ELetBlock LetBlock
   | ELiteral Literal
   | ERawExpression String
+  | ERecordDefinition RecordDefinition
+  | ERecordType RecordType
   deriving (Eq, Show)
 
 instance ToHaskell Expression where
@@ -168,6 +179,8 @@ instance ToHaskell Expression where
   toHaskell (ELetBlock x) = toHaskell x
   toHaskell (ELiteral x) = toHaskell x
   toHaskell (ERawExpression x) = x
+  toHaskell (ERecordDefinition x) = toHaskell x
+  toHaskell (ERecordType x) = toHaskell x
 
 data Literal
   = LChar Char
@@ -234,6 +247,10 @@ makeFieldsNoPrefix ''MacroDefinition
 makeFieldsNoPrefix ''Pragma
 
 makeFieldsNoPrefix ''QualifiedImport
+
+makeFieldsNoPrefix ''RecordDefinition
+
+makeFieldsNoPrefix ''RecordType
 
 makeFieldsNoPrefix ''RestrictedImport
 
@@ -326,6 +343,24 @@ instance ToHaskell QualifiedImport where
     alias <>
     toHaskell (qualifiedImport ^. imports)
 
+instance ToHaskell RecordDefinition where
+  toHaskell :: RecordDefinition -> String
+  toHaskell recordDefinition =
+    surround CurlyBraces $
+    delimit Commas $
+    map
+      (\(var, val) -> var <> " = " <> toHaskell val)
+      (recordDefinition ^. bindings)
+
+instance ToHaskell RecordType where
+  toHaskell :: RecordType -> String
+  toHaskell recordDefinition =
+    surround CurlyBraces $
+    delimit Commas $
+    map
+      (\(field, ty) -> field <> " :: " <> toHaskell ty)
+      (recordDefinition ^. fields)
+
 instance ToHaskell RestrictedImport where
   toHaskell :: RestrictedImport -> String
   toHaskell restrictedImport =
@@ -388,6 +423,8 @@ instance Recursive Expression where
           LInt _ -> x
           LString _ -> x
       ERawExpression _ -> x
+      ERecordDefinition _ -> x
+      ERecordType _ -> x
   topDownFmap :: (Expression -> Expression) -> Expression -> Expression
   topDownFmap f x =
     case f x of
@@ -414,6 +451,8 @@ instance Recursive Expression where
           LInt _ -> x
           LString _ -> x
       ERawExpression _ -> x
+      ERecordDefinition _ -> x
+      ERecordType _ -> x
   bottomUpTraverse ::
        (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
   bottomUpTraverse f x =
@@ -449,3 +488,5 @@ instance Recursive Expression where
           LInt _ -> pure x
           LString _ -> pure x
       ERawExpression _ -> pure x
+      ERecordDefinition _ -> pure x
+      ERecordType _ -> pure x

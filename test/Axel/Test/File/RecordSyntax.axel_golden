@@ -1,0 +1,6 @@
+(data Foo
+  (Foo (recordType (foo Int) (bar String))))
+
+(:: foo Foo)
+(= foo ()
+   (Foo (record (foo 1) (bar "test"))))

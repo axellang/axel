@@ -8,7 +8,8 @@ import Axel.AST
   ( CaseBlock(CaseBlock)
   , DataDeclaration(DataDeclaration)
   , Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
-           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression)
+           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression,
+           ERecordDefinition, ERecordType)
   , FunctionApplication(FunctionApplication)
   , FunctionDefinition(FunctionDefinition)
   , Identifier
@@ -20,6 +21,8 @@ import Axel.AST
   , MacroDefinition(MacroDefinition)
   , Pragma(Pragma)
   , QualifiedImport(QualifiedImport)
+  , RecordDefinition(RecordDefinition)
+  , RecordType(RecordType)
   , RestrictedImport(RestrictedImport)
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
           SModuleDeclaration, SPragma, SQualifiedImport, SRawStatement,
@@ -85,6 +88,30 @@ normalizeExpression expr@(Parse.SExpression items) =
                   "`raw` takes strings representing the code to inject directly."
                   [x, expr]
        in ERawExpression <$> normalizedRawSource
+    Parse.Symbol "record":bindings ->
+      let normalizedBindings =
+            traverse
+              (\x ->
+                 normalizeExpression x >>= \case
+                   EFunctionApplication (FunctionApplication (EIdentifier field) [val]) ->
+                     pure (field, val)
+                   _ ->
+                     throwError $
+                     NormalizeError "Invalid field binding!" [x, expr])
+              bindings
+       in ERecordDefinition <$> (RecordDefinition <$> normalizedBindings)
+    Parse.Symbol "recordType":fields ->
+      let normalizedFields =
+            traverse
+              (\x ->
+                 normalizeExpression x >>= \case
+                   EFunctionApplication (FunctionApplication (EIdentifier field) [ty]) ->
+                     pure (field, ty)
+                   _ ->
+                     throwError $
+                     NormalizeError "Invalid field definition!" [x, expr])
+              fields
+       in ERecordType <$> (RecordType <$> normalizedFields)
     fn:args ->
       EFunctionApplication <$>
       (FunctionApplication <$> normalizeExpression fn <*>
