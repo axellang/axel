@@ -11,9 +11,10 @@ module Axel.Macros where
 import Axel.AST
   ( MacroDefinition
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
-          SModuleDeclaration, SPragma, SQualifiedImport, SRawStatement,
-          SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
-          STypeclassDefinition, STypeclassInstance, SUnrestrictedImport)
+          SModuleDeclaration, SNewtypeDeclaration, SPragma, SQualifiedImport,
+          SRawStatement, SRestrictedImport, STopLevel, STypeSignature,
+          STypeSynonym, STypeclassDefinition, STypeclassInstance,
+          SUnrestrictedImport)
   , ToHaskell(toHaskell)
   , functionDefinition
   , name
@@ -164,6 +165,7 @@ isStatementNonconflicting (SFunctionDefinition _) = True
 isStatementNonconflicting (SPragma _) = True
 isStatementNonconflicting (SMacroDefinition _) = True
 isStatementNonconflicting (SModuleDeclaration _) = False
+isStatementNonconflicting (SNewtypeDeclaration _) = True
 isStatementNonconflicting (SQualifiedImport _) = True
 isStatementNonconflicting (SRawStatement _) = True
 isStatementNonconflicting (SRestrictedImport _) = True

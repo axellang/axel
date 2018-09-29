@@ -19,15 +19,17 @@ import Axel.AST
   , LetBlock(LetBlock)
   , Literal(LChar, LInt, LString)
   , MacroDefinition(MacroDefinition)
+  , NewtypeDeclaration(NewtypeDeclaration)
   , Pragma(Pragma)
   , QualifiedImport(QualifiedImport)
   , RecordDefinition(RecordDefinition)
   , RecordType(RecordType)
   , RestrictedImport(RestrictedImport)
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
-          SModuleDeclaration, SPragma, SQualifiedImport, SRawStatement,
-          SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
-          STypeclassDefinition, STypeclassInstance, SUnrestrictedImport)
+          SModuleDeclaration, SNewtypeDeclaration, SPragma, SQualifiedImport,
+          SRawStatement, SRestrictedImport, STopLevel, STypeSignature,
+          STypeSynonym, STypeclassDefinition, STypeclassInstance,
+          SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , TypeSignature(TypeSignature)
@@ -181,6 +183,23 @@ normalizeStatement expr@(Parse.SExpression items) =
               SDataDeclaration <$>
               (DataDeclaration (ProperType properType) <$>
                normalizedConstructors)
+            _ -> throwError $ NormalizeError "Invalid type!" [typeDef, expr]
+    [Parse.Symbol "newtype", typeDef, constructor] ->
+      let normalizedConstructor =
+            normalizeExpression constructor >>= \case
+              EFunctionApplication funApp -> pure funApp
+              _ ->
+                throwError $
+                NormalizeError "Invalid type constructor!" [constructor, expr]
+       in normalizeExpression typeDef >>= \case
+            EFunctionApplication typeConstructor ->
+              SNewtypeDeclaration <$>
+              (NewtypeDeclaration (TypeConstructor typeConstructor) <$>
+               normalizedConstructor)
+            EIdentifier properType ->
+              SNewtypeDeclaration <$>
+              (NewtypeDeclaration (ProperType properType) <$>
+               normalizedConstructor)
             _ -> throwError $ NormalizeError "Invalid type!" [typeDef, expr]
     [Parse.Symbol "import", Parse.Symbol moduleName, importSpec] ->
       SRestrictedImport <$>

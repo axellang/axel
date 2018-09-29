@@ -63,6 +63,11 @@ data DataDeclaration = DataDeclaration
   , _constructors :: [FunctionApplication]
   } deriving (Eq, Show)
 
+data NewtypeDeclaration = NewtypeDeclaration
+  { _typeDefinition :: TypeDefinition
+  , _constructor :: FunctionApplication
+  } deriving (Eq, Show)
+
 data FunctionDefinition = FunctionDefinition
   { _name :: Identifier
   , _arguments :: [Expression]
@@ -199,6 +204,7 @@ data Statement
   | SFunctionDefinition FunctionDefinition
   | SMacroDefinition MacroDefinition
   | SModuleDeclaration Identifier
+  | SNewtypeDeclaration NewtypeDeclaration
   | SPragma Pragma
   | SQualifiedImport QualifiedImport
   | SRawStatement String
@@ -218,6 +224,7 @@ instance ToHaskell Statement where
   toHaskell (SPragma x) = toHaskell x
   toHaskell (SMacroDefinition x) = toHaskell x
   toHaskell (SModuleDeclaration x) = "module " <> x <> " where"
+  toHaskell (SNewtypeDeclaration x) = toHaskell x
   toHaskell (SQualifiedImport x) = toHaskell x
   toHaskell (SRawStatement x) = x
   toHaskell (SRestrictedImport x) = toHaskell x
@@ -243,6 +250,8 @@ makeFieldsNoPrefix ''Lambda
 makeFieldsNoPrefix ''LetBlock
 
 makeFieldsNoPrefix ''MacroDefinition
+
+makeFieldsNoPrefix ''NewtypeDeclaration
 
 makeFieldsNoPrefix ''Pragma
 
@@ -307,6 +316,14 @@ instance ToHaskell DataDeclaration where
       Pipes
       (map (removeSurroundingParentheses . toHaskell) $
        dataDeclaration ^. constructors)
+    where
+      removeSurroundingParentheses = tail . init
+
+instance ToHaskell NewtypeDeclaration where
+  toHaskell :: NewtypeDeclaration -> String
+  toHaskell newtypeDeclaration =
+    "newtype " <> toHaskell (newtypeDeclaration ^. typeDefinition) <> " = " <>
+    removeSurroundingParentheses (toHaskell (newtypeDeclaration ^. constructor))
     where
       removeSurroundingParentheses = tail . init
 

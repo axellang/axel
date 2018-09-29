@@ -8,9 +8,10 @@ import Axel.AST
   , ImportSpecification(ImportAll, ImportOnly)
   , Literal(LChar, LInt, LString)
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
-          SModuleDeclaration, SPragma, SQualifiedImport, SRawStatement,
-          SRestrictedImport, STopLevel, STypeSignature, STypeSynonym,
-          STypeclassDefinition, STypeclassInstance, SUnrestrictedImport)
+          SModuleDeclaration, SNewtypeDeclaration, SPragma, SQualifiedImport,
+          SRawStatement, SRestrictedImport, STopLevel, STypeSignature,
+          STypeSynonym, STypeclassDefinition, STypeclassInstance,
+          SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , alias
@@ -18,6 +19,7 @@ import Axel.AST
   , bindings
   , body
   , constraints
+  , constructor
   , constructors
   , definition
   , definitions
@@ -137,6 +139,18 @@ denormalizeStatement (SMacroDefinition macroDef) =
     ]
 denormalizeStatement (SModuleDeclaration identifier) =
   Parse.SExpression [Parse.Symbol "module", Parse.Symbol identifier]
+denormalizeStatement (SNewtypeDeclaration newtypeDeclaration) =
+  let denormalizedTypeDefinition =
+        case newtypeDeclaration ^. typeDefinition of
+          TypeConstructor typeConstructor ->
+            denormalizeExpression $ EFunctionApplication typeConstructor
+          ProperType properType -> Parse.Symbol properType
+   in Parse.SExpression
+        [ Parse.Symbol "newtype"
+        , denormalizedTypeDefinition
+        , denormalizeExpression $
+          EFunctionApplication (newtypeDeclaration ^. constructor)
+        ]
 denormalizeStatement (SPragma pragma) =
   Parse.SExpression
     [Parse.Symbol "pragma", Parse.LiteralString (pragma ^. pragmaSpecification)]
