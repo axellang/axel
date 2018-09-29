@@ -1,2 +1,3 @@
 module Test.Main where
 foo = ()
+  where

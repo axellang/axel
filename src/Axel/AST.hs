@@ -72,6 +72,7 @@ data FunctionDefinition = FunctionDefinition
   { _name :: Identifier
   , _arguments :: [Expression]
   , _body :: Expression
+  , _whereBindings :: [FunctionDefinition]
   } deriving (Eq, Show)
 
 data Import
@@ -306,7 +307,9 @@ instance ToHaskell FunctionDefinition where
     toHaskell (EIdentifier (fnDef ^. name)) <> " " <>
     delimit Spaces (map toHaskell (fnDef ^. arguments)) <>
     " = " <>
-    toHaskell (fnDef ^. body)
+    toHaskell (fnDef ^. body) <>
+    " where " <>
+    renderBlock (map toHaskell (fnDef ^. whereBindings))
 
 instance ToHaskell DataDeclaration where
   toHaskell :: DataDeclaration -> String

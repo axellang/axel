@@ -2,3 +2,4 @@ main
   = (case True of
          True -> ()
          False -> ())
+  where

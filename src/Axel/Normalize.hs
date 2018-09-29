@@ -123,13 +123,21 @@ normalizeExpression (Parse.Symbol symbol) = pure $ EIdentifier symbol
 
 normalizeFunctionDefinition ::
      (Member (Effs.Error Error) effs)
-  => Identifier
+  => [Parse.Expression]
+  -> Identifier
   -> [Parse.Expression]
   -> Parse.Expression
+  -> [Parse.Expression]
   -> Eff effs FunctionDefinition
-normalizeFunctionDefinition fnName arguments body =
+normalizeFunctionDefinition ctx fnName arguments body whereDefs =
   FunctionDefinition fnName <$> traverse normalizeExpression arguments <*>
-  normalizeExpression body
+  normalizeExpression body <*>
+  traverse
+    (\x ->
+       normalizeStatement x >>= \case
+         SFunctionDefinition funDef -> pure funDef
+         _ -> throwError $ NormalizeError "Invalid where binding!" (x : ctx))
+    whereDefs
 
 normalizeStatement ::
      (Member (Effs.Error Error) effs) => Parse.Expression -> Eff effs Statement
@@ -137,8 +145,9 @@ normalizeStatement expr@(Parse.SExpression items) =
   case items of
     [Parse.Symbol "::", Parse.Symbol fnName, typeDef] ->
       STypeSignature <$> (TypeSignature fnName <$> normalizeExpression typeDef)
-    [Parse.Symbol "=", Parse.Symbol fnName, Parse.SExpression arguments, body] ->
-      SFunctionDefinition <$> normalizeFunctionDefinition fnName arguments body
+    Parse.Symbol "=":Parse.Symbol fnName:Parse.SExpression arguments:body:whereDefs ->
+      SFunctionDefinition <$>
+      normalizeFunctionDefinition [expr] fnName arguments body whereDefs
     Parse.Symbol "begin":stmts ->
       let normalizedStmts = traverse normalizeStatement stmts
        in STopLevel . TopLevel <$> normalizedStmts
@@ -223,9 +232,9 @@ normalizeStatement expr@(Parse.SExpression items) =
            normalizedDefs)
     [Parse.Symbol "pragma", Parse.LiteralString pragma] ->
       pure $ SPragma (Pragma pragma)
-    [Parse.Symbol "macro", Parse.Symbol macroName, Parse.SExpression arguments, body] ->
+    Parse.Symbol "macro":Parse.Symbol macroName:Parse.SExpression arguments:body:whereBindings ->
       SMacroDefinition . MacroDefinition <$>
-      normalizeFunctionDefinition macroName arguments body
+      normalizeFunctionDefinition [expr] macroName arguments body whereBindings
     [Parse.Symbol "module", Parse.Symbol moduleName] ->
       pure $ SModuleDeclaration moduleName
     [Parse.Symbol "raw", rawSource] ->
@@ -242,7 +251,7 @@ normalizeStatement expr@(Parse.SExpression items) =
       let normalizedAlias = normalizeExpression alias
           normalizedDef = normalizeExpression def
        in STypeSynonym <$> (TypeSynonym <$> normalizedAlias <*> normalizedDef)
-    _ -> throwError $ NormalizeError "Invalid top-level form!" [expr]
+    _ -> throwError $ NormalizeError "Invalid statement!" [expr]
   where
     normalizeImportSpec ctxt importSpec =
       case importSpec of

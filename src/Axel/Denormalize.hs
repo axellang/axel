@@ -35,6 +35,7 @@ import Axel.AST
   , pragmaSpecification
   , signatures
   , typeDefinition
+  , whereBindings
   )
 import qualified Axel.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
@@ -85,7 +86,8 @@ denormalizeExpression (ELiteral x) =
     LChar char -> Parse.LiteralChar char
     LInt int -> Parse.LiteralInt int
     LString string -> Parse.LiteralString string
-denormalizeExpression (ERawExpression rawSource) = Parse.LiteralString rawSource
+denormalizeExpression (ERawExpression rawSource) =
+  Parse.SExpression [Parse.Symbol "raw", Parse.LiteralString rawSource]
 denormalizeExpression (ERecordDefinition recordDefinition) =
   let denormalizedBindings =
         map
@@ -123,20 +125,19 @@ denormalizeStatement (SDataDeclaration dataDeclaration) =
            (denormalizeExpression . EFunctionApplication)
            (dataDeclaration ^. constructors))
 denormalizeStatement (SFunctionDefinition fnDef) =
-  Parse.SExpression
-    [ Parse.Symbol "="
-    , Parse.Symbol (fnDef ^. name)
-    , Parse.SExpression (map denormalizeExpression (fnDef ^. arguments))
-    , denormalizeExpression (fnDef ^. body)
-    ]
+  Parse.SExpression $ Parse.Symbol "=" : Parse.Symbol (fnDef ^. name) :
+  Parse.SExpression (map denormalizeExpression (fnDef ^. arguments)) :
+  denormalizeExpression (fnDef ^. body) :
+  map (denormalizeStatement . SFunctionDefinition) (fnDef ^. whereBindings)
 denormalizeStatement (SMacroDefinition macroDef) =
+  Parse.SExpression $ Parse.Symbol "macro" :
+  Parse.Symbol (macroDef ^. functionDefinition . name) :
   Parse.SExpression
-    [ Parse.Symbol "macro"
-    , Parse.Symbol (macroDef ^. functionDefinition . name)
-    , Parse.SExpression
-        (map denormalizeExpression (macroDef ^. functionDefinition . arguments))
-    , denormalizeExpression (macroDef ^. functionDefinition . body)
-    ]
+    (map denormalizeExpression (macroDef ^. functionDefinition . arguments)) :
+  denormalizeExpression (macroDef ^. functionDefinition . body) :
+  map
+    (denormalizeStatement . SFunctionDefinition)
+    (macroDef ^. functionDefinition . whereBindings)
 denormalizeStatement (SModuleDeclaration identifier) =
   Parse.SExpression [Parse.Symbol "module", Parse.Symbol identifier]
 denormalizeStatement (SNewtypeDeclaration newtypeDeclaration) =

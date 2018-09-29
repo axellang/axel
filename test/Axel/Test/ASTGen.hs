@@ -37,6 +37,19 @@ genLetBlock =
   Gen.list (Range.linear 0 3) ((,) <$> genExpression <*> genExpression) <*>
   genExpression
 
+genRawExpression :: (MonadGen m) => m String
+genRawExpression = Gen.string (Range.linear 0 10) Gen.unicode
+
+genRecordDefinition :: (MonadGen m) => m AST.RecordDefinition
+genRecordDefinition =
+  AST.RecordDefinition <$>
+  Gen.list (Range.linear 0 3) ((,) <$> genIdentifier <*> genExpression)
+
+genRecordType :: (MonadGen m) => m AST.RecordType
+genRecordType =
+  AST.RecordType <$>
+  Gen.list (Range.linear 0 3) ((,) <$> genIdentifier <*> genExpression)
+
 genExpression :: (MonadGen m) => m AST.Expression
 genExpression =
   Gen.recursive
@@ -47,6 +60,9 @@ genExpression =
     , AST.ELambda <$> genLambda
     , AST.ELetBlock <$> genLetBlock
     , AST.ELiteral <$> genLiteral
+    , AST.ERawExpression <$> genRawExpression
+    , AST.ERecordDefinition <$> genRecordDefinition
+    , AST.ERecordType <$> genRecordType
     ]
 
 genTypeDefinition :: (MonadGen m) => m AST.TypeDefinition
@@ -65,7 +81,8 @@ genFunctionDefinition :: (MonadGen m) => m AST.FunctionDefinition
 genFunctionDefinition =
   AST.FunctionDefinition <$> genIdentifier <*>
   Gen.list (Range.linear 0 3) genExpression <*>
-  genExpression
+  genExpression <*>
+  Gen.list (Range.linear 0 3) genFunctionDefinition
 
 genPragma :: (MonadGen m) => m AST.Pragma
 genPragma = AST.Pragma <$> Gen.string (Range.linear 0 10) Gen.ascii
@@ -92,6 +109,13 @@ genQualifiedImport :: (MonadGen m) => m AST.QualifiedImport
 genQualifiedImport =
   AST.QualifiedImport <$> genIdentifier <*> genIdentifier <*>
   genImportSpecification
+
+genNewtypeDeclaration :: (MonadGen m) => m AST.NewtypeDeclaration
+genNewtypeDeclaration =
+  AST.NewtypeDeclaration <$> genTypeDefinition <*> genFunctionApplication
+
+genRawStatement :: (MonadGen m) => m String
+genRawStatement = Gen.string (Range.linear 0 10) Gen.unicode
 
 genRestrictedImport :: (MonadGen m) => m AST.RestrictedImport
 genRestrictedImport =
@@ -122,11 +146,10 @@ genStatement =
   Gen.recursive
     Gen.choice
     [ AST.SDataDeclaration <$> genDataDeclaration
-    , AST.SFunctionDefinition <$> genFunctionDefinition
     , AST.SPragma <$> genPragma
-    , AST.SMacroDefinition <$> genMacroDefinition
     , AST.SModuleDeclaration <$> genIdentifier
     , AST.SQualifiedImport <$> genQualifiedImport
+    , AST.SRawStatement <$> genRawStatement
     , AST.SRestrictedImport <$> genRestrictedImport
     , AST.STypeclassDefinition <$> genTypeclassDefinition
     , AST.STypeclassInstance <$> genTypeclassInstance
@@ -134,4 +157,7 @@ genStatement =
     , AST.STypeSynonym <$> genTypeSynonym
     , AST.SUnrestrictedImport <$> genIdentifier
     ]
-    [AST.STopLevel <$> genTopLevel]
+    [ AST.STopLevel <$> genTopLevel
+    , AST.SFunctionDefinition <$> genFunctionDefinition
+    , AST.SMacroDefinition <$> genMacroDefinition
+    ]
