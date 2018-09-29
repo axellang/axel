@@ -19,7 +19,7 @@ spec_Parse = do
   describe "parseSingle" $ do
     it "can parse a character literal" $ do
       let result = LiteralChar 'a'
-      case Eff.run . Effs.runError @Error $ parseSingle "{a}" of
+      case Eff.run . Effs.runError @Error $ parseSingle "#\\a" of
         Left err -> expectationFailure $ show err
         Right x -> x `shouldBe` result
     it "can parse an integer literal" $ do
@@ -29,7 +29,7 @@ spec_Parse = do
         Right x -> x `shouldBe` result
     it "can parse a list literal" $ do
       let result = SExpression [Symbol "list", LiteralInt 1, LiteralChar 'a']
-      case Eff.run . Effs.runError @Error $ parseSingle "[1 {a}]" of
+      case Eff.run . Effs.runError @Error $ parseSingle "[1 #\\a]" of
         Left err -> expectationFailure $ show err
         Right x -> x `shouldBe` result
     it "can parse a string literal" $ do
@@ -63,6 +63,11 @@ spec_Parse = do
       case Eff.run . Effs.runError @Error $ parseSingle "abc123'''" of
         Left err -> expectationFailure $ show err
         Right x -> x `shouldBe` result
+    it "can parse a macro name" $ do
+      let result = Symbol ",;foo"
+      case Eff.run . Effs.runError @Error $ parseSingle ",;foo" of
+        Left err -> expectationFailure $ show err
+        Right x -> x `shouldBe` result
     it "can parse an unquoted expression" $ do
       let result =
             SExpression
@@ -72,7 +77,7 @@ spec_Parse = do
         Right x -> x `shouldBe` result
     it "can quote a character character" $ do
       let result = SExpression [Symbol "AST.LiteralChar", LiteralChar 'a']
-      case Eff.run . Effs.runError @Error $ parseSingle "'{a}" of
+      case Eff.run . Effs.runError @Error $ parseSingle "'#\\a" of
         Left err -> expectationFailure $ show err
         Right x -> x `shouldBe` result
     it "can quote an integer literal" $ do

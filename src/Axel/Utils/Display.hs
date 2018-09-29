@@ -1,6 +1,6 @@
 module Axel.Utils.Display where
 
-import Data.Char (isSymbol, toLower, toUpper)
+import Data.Char (toLower, toUpper)
 import Data.List (intercalate)
 import Data.Semigroup ((<>))
 
@@ -19,10 +19,6 @@ delimit delimiter = intercalate (lookupDelimiter delimiter)
     lookupDelimiter Pipes = "|"
     lookupDelimiter Semicolons = ";"
     lookupDelimiter Spaces = " "
-
--- https://stackoverflow.com/questions/10548170/what-characters-are-permitted-for-haskell-operators
-isOperator :: String -> Bool
-isOperator = all $ \x -> isSymbol x || x `elem` "!#$%&*+.,/<=>?@\\^|-~:"
 
 lowerFirst :: String -> String
 lowerFirst (x:xs) = toLower x : xs

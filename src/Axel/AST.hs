@@ -9,11 +9,11 @@
 
 module Axel.AST where
 
+import Axel.Haskell.Language (isOperator)
 import Axel.Utils.Display
   ( Bracket(DoubleQuotes, Parentheses, SingleQuotes, SquareBrackets)
   , Delimiter(Commas, Newlines, Pipes, Spaces)
   , delimit
-  , isOperator
   , renderBlock
   , renderPragma
   , surround

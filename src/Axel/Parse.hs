@@ -18,6 +18,7 @@ import Axel.Error (Error(ParseError), fatal)
 
 -- Re-exporting these so that consumers of parsed ASTs do not need
 -- to know about the internal file.
+import Axel.Haskell.Language (haskellOperatorSymbols, haskellSyntaxSymbols)
 import Axel.Parse.AST
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
@@ -31,17 +32,10 @@ import Control.Monad.Freer (Eff, Member)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 
+import Data.List ((\\))
+
 import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
-import Text.Parsec.Char
-  ( alphaNum
-  , char
-  , digit
-  , letter
-  , noneOf
-  , oneOf
-  , space
-  , string
-  )
+import Text.Parsec.Char (alphaNum, char, digit, noneOf, oneOf, space, string)
 import Text.Parsec.Combinator (many1, optional)
 import Text.Parsec.Prim (many)
 
@@ -127,9 +121,10 @@ spliceUnquotedExpression = parseReadMacro "~@" "unquoteSplicing"
 symbol :: (Stream s m Char) => ParsecT s u m Expression
 symbol =
   Symbol <$>
-  ((:) <$> (letter <|> validSymbol) <*> many (alphaNum <|> validSymbol))
-  where
-    validSymbol = oneOf "!@#$%^&*-=~_+,./<>?\\|':"
+  many1
+    (alphaNum <|> oneOf "'_" <|>
+     oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols) <|>
+     oneOf (map fst haskellOperatorSymbols))
 
 unquotedExpression :: (Stream s m Char) => ParsecT s u m Expression
 unquotedExpression = parseReadMacro "~" "unquote"
@@ -202,3 +197,6 @@ programToTopLevelExpressions _ = fatal "programToTopLevelExpressions" "0001"
 
 topLevelExpressionsToProgram :: [Expression] -> Expression
 topLevelExpressionsToProgram stmts = SExpression (Symbol "begin" : stmts)
+
+syntaxSymbols :: String
+syntaxSymbols = "()[]{}"
