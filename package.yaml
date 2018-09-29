@@ -1,5 +1,5 @@
 name: axel
-version: '0.0.6'
+version: '0.0.7'
 category: Language, Lisp, Macros, Transpiler
 author: Joshua Grosso
 maintainer: jgrosso256@gmail.com
@@ -23,7 +23,7 @@ ghc-options:
 - -Wredundant-constraints
 - -Wno-simplifiable-class-constraints
 dependencies:
-- base >=4.11.1 && <4.12
+- base >=4.12 && <4.13
 - freer-simple >=1.1.0.0 && <1.2
 data-files:
 - resources/**/*
