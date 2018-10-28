@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.Resource where
@@ -16,8 +17,8 @@ import Control.Monad.Freer
   , Member
   , Members
   , interpretM
-  , send
   )
+import Control.Monad.Freer.TH (makeEffect)
 
 import Paths_axel (getDataFileName)
 
@@ -29,8 +30,7 @@ newtype ResourceId =
 data Resource a where
   GetResourcePath :: ResourceId -> Resource FilePath
 
-getResourcePath :: (Member Resource effs) => ResourceId -> Eff effs FilePath
-getResourcePath = send . GetResourcePath
+makeEffect ''Resource
 
 runEff :: (LastMember IO effs) => Eff (Resource ': effs) ~> Eff effs
 runEff =

@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.Console where
@@ -10,20 +11,13 @@ module Axel.Eff.Console where
 import Prelude hiding (putStr)
 import qualified Prelude
 
-import Control.Monad.Freer
-  ( type (~>)
-  , Eff
-  , LastMember
-  , Member
-  , interpretM
-  , send
-  )
+import Control.Monad.Freer (type (~>), Eff, LastMember, Member, interpretM)
+import Control.Monad.Freer.TH (makeEffect)
 
 data Console r where
   PutStr :: String -> Console ()
 
-putStr :: (Member Console effs) => String -> Eff effs ()
-putStr = send . PutStr
+makeEffect ''Console
 
 runEff :: (LastMember IO effs) => Eff (Console ': effs) ~> Eff effs
 runEff =

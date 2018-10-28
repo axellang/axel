@@ -19,8 +19,8 @@ import Control.Monad.Freer
   , LastMember
   , Member
   , interpretM
-  , send
   )
+import Control.Monad.Freer.TH (makeEffect)
 
 import Data.Singletons (Sing, SingI, sing)
 import Data.Singletons.TH (singletons)
@@ -61,18 +61,7 @@ data Process r where
     :: FilePath -> [String] -> String -> Process (ExitCode, String, String)
   RunProcessInheritingStreams :: FilePath -> [String] -> Process ExitCode
 
-getArgs :: (Member Process effs) => Eff effs [String]
-getArgs = send GetArgs
-
-runProcessCreatingStreams ::
-     (Member Process effs) => ProcessRunnerPrimitive 'CreateStreams (Eff effs)
-runProcessCreatingStreams cmd args stdin =
-  send $ RunProcessCreatingStreams cmd args stdin
-
-runProcessInheritingStreams ::
-     (Member Process effs) => ProcessRunnerPrimitive 'InheritStreams (Eff effs)
-runProcessInheritingStreams cmd args =
-  send $ RunProcessInheritingStreams cmd args
+makeEffect ''Process
 
 runEff :: (LastMember IO effs) => Eff (Process ': effs) ~> Eff effs
 runEff =
