@@ -2,22 +2,17 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.FileSystem where
 
 import Prelude hiding (readFile, writeFile)
-import qualified Prelude (readFile, writeFile)
+import qualified Prelude (writeFile)
 
 import Control.Monad (forM)
-import Control.Monad.Freer
-  ( type (~>)
-  , Eff
-  , LastMember
-  , Member
-  , interpretM
-  , send
-  )
+import Control.Monad.Freer (type (~>), Eff, LastMember, Member, interpretM)
+import Control.Monad.Freer.TH (makeEffect)
 
 import qualified System.Directory
   ( copyFile
@@ -44,38 +39,7 @@ data FileSystem a where
   SetCurrentDirectory :: FilePath -> FileSystem ()
   WriteFile :: String -> FilePath -> FileSystem ()
 
-copyFile :: (Member FileSystem effs) => FilePath -> FilePath -> Eff effs ()
-copyFile src dest = send $ CopyFile src dest
-
-createDirectoryIfMissing ::
-     (Member FileSystem effs) => Bool -> FilePath -> Eff effs ()
-createDirectoryIfMissing createParentDirs path =
-  send $ CreateDirectoryIfMissing createParentDirs path
-
-doesDirectoryExist :: (Member FileSystem effs) => FilePath -> Eff effs Bool
-doesDirectoryExist = send . DoesDirectoryExist
-
-getCurrentDirectory :: (Member FileSystem effs) => Eff effs FilePath
-getCurrentDirectory = send GetCurrentDirectory
-
-getDirectoryContents ::
-     (Member FileSystem effs) => FilePath -> Eff effs [FilePath]
-getDirectoryContents = send . GetDirectoryContents
-
-getTemporaryDirectory :: (Member FileSystem effs) => Eff effs FilePath
-getTemporaryDirectory = send GetTemporaryDirectory
-
-readFile :: (Member FileSystem effs) => FilePath -> Eff effs String
-readFile = send . ReadFile
-
-removeFile :: (Member FileSystem effs) => FilePath -> Eff effs ()
-removeFile = send . RemoveFile
-
-setCurrentDirectory :: (Member FileSystem effs) => FilePath -> Eff effs ()
-setCurrentDirectory = send . SetCurrentDirectory
-
-writeFile :: (Member FileSystem effs) => String -> FilePath -> Eff effs ()
-writeFile contents path = send $ WriteFile contents path
+makeEffect ''FileSystem
 
 runEff :: (LastMember IO effs) => Eff (FileSystem ': effs) ~> Eff effs
 runEff =

@@ -70,10 +70,7 @@ axelStackageVersion :: Version
 axelStackageVersion = showVersion version
 
 axelStackageId :: StackageId
-axelStackageId = "axel-" <> showVersion version
-
-axelStackageSpecifier :: StackageId
-axelStackageSpecifier = "axel ==" <> axelStackageVersion
+axelStackageId = "axel"
 
 getStackProjectTargets ::
      (Members '[ Effs.FileSystem, Effs.Process] effs)

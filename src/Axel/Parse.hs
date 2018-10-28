@@ -32,12 +32,15 @@ import Control.Monad.Freer (Eff, Member)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 
+import Data.Functor.Identity (Identity)
 import Data.List ((\\))
 
 import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
 import Text.Parsec.Char (alphaNum, char, digit, noneOf, oneOf, space, string)
 import Text.Parsec.Combinator (many1, optional)
+import Text.Parsec.Language (haskellDef)
 import Text.Parsec.Prim (many)
+import Text.Parsec.Token (makeTokenParser, stringLiteral)
 
 -- TODO `Expression` should probably instead be an instance of `Traversable`, use recursion schemes, etc.
 --      If so, should I provide `toFix` and `fromFix` functions for macros to take advantage of?
@@ -71,8 +74,7 @@ instance Recursive Expression where
       SExpression xs -> SExpression (map (topDownFmap f) xs)
       Symbol _ -> x
 
-parseReadMacro ::
-     (Stream s m Char) => String -> String -> ParsecT s u m Expression
+parseReadMacro :: String -> String -> ParsecT String u Identity Expression
 parseReadMacro prefix wrapper = applyWrapper <$> (string prefix *> expression)
   where
     applyWrapper x = SExpression [Symbol wrapper, x]
@@ -89,36 +91,36 @@ literalChar = LiteralChar <$> (string "#\\" *> any')
 literalInt :: (Stream s m Char) => ParsecT s u m Expression
 literalInt = LiteralInt . read <$> many1 digit
 
-literalList :: (Stream s m Char) => ParsecT s u m Expression
+literalList :: ParsecT String u Identity Expression
 literalList =
   SExpression . (Symbol "list" :) <$> (char '[' *> many item <* char ']')
   where
     item = try (whitespace *> expression) <|> expression
 
-literalString :: (Stream s m Char) => ParsecT s u m Expression
-literalString = LiteralString <$> (char '"' *> many (noneOf "\"") <* char '"')
+literalString :: ParsecT String u Identity Expression
+literalString = LiteralString <$> stringLiteral (makeTokenParser haskellDef)
 
-quasiquotedExpression :: (Stream s m Char) => ParsecT s u m Expression
+quasiquotedExpression :: ParsecT String u Identity Expression
 quasiquotedExpression = parseReadMacro "`" "quasiquote"
 
-quotedExpression :: (Stream s m Char) => ParsecT s u m Expression
+quotedExpression :: ParsecT String u Identity Expression
 quotedExpression = parseReadMacro "'" "quote"
 
-sExpressionItem :: (Stream s m Char) => ParsecT s u m Expression
+sExpressionItem :: ParsecT String u Identity Expression
 sExpressionItem = try (whitespace *> expression) <|> expression
 
-sExpression :: (Stream s m Char) => ParsecT s u m Expression
+sExpression :: ParsecT String u Identity Expression
 sExpression = SExpression <$> (char '(' *> many sExpressionItem <* char ')')
 
-infixSExpression :: (Stream s m Char) => ParsecT s u m Expression
+infixSExpression :: ParsecT String u Identity Expression
 infixSExpression =
   SExpression . (Symbol "applyInfix" :) <$>
   (char '{' *> many sExpressionItem <* char '}')
 
-spliceUnquotedExpression :: (Stream s m Char) => ParsecT s u m Expression
+spliceUnquotedExpression :: ParsecT String u Identity Expression
 spliceUnquotedExpression = parseReadMacro "~@" "unquoteSplicing"
 
-symbol :: (Stream s m Char) => ParsecT s u m Expression
+symbol :: (Stream s Identity Char) => ParsecT s u Identity Expression
 symbol =
   Symbol <$>
   many1
@@ -126,10 +128,10 @@ symbol =
      oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols) <|>
      oneOf (map fst haskellOperatorSymbols))
 
-unquotedExpression :: (Stream s m Char) => ParsecT s u m Expression
+unquotedExpression :: ParsecT String u Identity Expression
 unquotedExpression = parseReadMacro "~" "unquote"
 
-expression :: (Stream s m Char) => ParsecT s u m Expression
+expression :: ParsecT String u Identity Expression
 expression =
   literalChar <|> literalInt <|> literalList <|> literalString <|>
   quotedExpression <|>

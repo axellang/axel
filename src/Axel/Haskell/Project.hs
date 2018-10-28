@@ -19,12 +19,13 @@ import Axel.Error (Error)
 import Axel.Haskell.File (transpileFile')
 import Axel.Haskell.Stack
   ( addStackDependency
-  , axelStackageSpecifier
+  , axelStackageId
   , buildStackProject
   , createStackProject
   , runStackProject
   )
 
+import Control.Monad (void)
 import Control.Monad.Freer (Eff, Members)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 
@@ -41,7 +42,7 @@ newProject ::
   -> Eff effs ()
 newProject projectName = do
   createStackProject projectName
-  addStackDependency axelStackageSpecifier projectName
+  addStackDependency axelStackageId projectName
   templatePath <- getResourcePath newProjectTemplate
   let copyAxel filePath = do
         copyFile
@@ -64,9 +65,8 @@ buildProject ::
   => Eff effs ()
 buildProject = do
   projectPath <- getCurrentDirectory
-  hsPaths <- transpileProject
+  void $ transpileProject
   buildStackProject projectPath
-  mapM_ removeFile hsPaths
 
 runProject ::
      (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)

@@ -5,7 +5,7 @@ module Axel.Test.ParseSpec where
 
 import Axel.Error
 import Axel.Parse
-import Axel.Test.MockUtils
+import Axel.Utils.String
 
 import Control.Monad.Freer as Eff
 import qualified Control.Monad.Freer.Error as Effs
@@ -33,8 +33,8 @@ spec_Parse = do
         Left err -> expectationFailure $ show err
         Right x -> x `shouldBe` result
     it "can parse a string literal" $ do
-      let result = LiteralString "a b"
-      case Eff.run . Effs.runError @Error $ parseSingle "\"a b\"" of
+      let result = LiteralString "a \"b"
+      case Eff.run . Effs.runError @Error $ parseSingle "\"a \\\"b\"" of
         Left err -> expectationFailure $ show err
         Right x -> x `shouldBe` result
     it "can parse a quasiquoted expression" $ do

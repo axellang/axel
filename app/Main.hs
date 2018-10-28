@@ -15,11 +15,12 @@ import qualified Axel.Eff.Resource as Res (runEff)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import Axel.Error (Error)
 import qualified Axel.Error as Error (runEff)
-import Axel.Haskell.File (evalFile)
+import Axel.Haskell.File (transpileFile')
 import Axel.Haskell.Project (buildProject, runProject)
 import Axel.Haskell.Stack (axelStackageVersion)
 import Axel.Parse.Args (Command(File, Project, Version), commandParser)
 
+import Control.Monad (void)
 import Control.Monad.Freer (Eff)
 import qualified Control.Monad.Freer as Effs (runM)
 import qualified Control.Monad.Freer.Error as Effs (Error)
@@ -35,7 +36,7 @@ runApp =
   Res.runEff . Proc.runEff . FS.runEff . Error.runEff . Console.runEff
 
 app :: Command -> AppEffs ()
-app (File filePath) = evalFile filePath
+app (File filePath) = void $ transpileFile' filePath
 app Project = buildProject >> runProject
 app Version = putStrLn $ "Axel version " <> axelStackageVersion
 

@@ -11,6 +11,6 @@ exhaustM f x = do
 class Recursive a where
   bottomUpFmap :: (a -> a) -> a -> a
   -- TODO Remove dependency on `Monad` in favor of `Applicative`
-  --      (which is all the standard `traverse` requires).
+  --      (which is all that the standard `traverse` requires).
   bottomUpTraverse :: (Monad m) => (a -> m a) -> a -> m a
   topDownFmap :: (a -> a) -> a -> a
