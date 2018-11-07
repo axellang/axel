@@ -10,14 +10,7 @@ module Axel.Eff.Resource where
 import Axel.Eff.FileSystem as FS (FileSystem, readFile)
 
 import Control.Monad ((>=>))
-import Control.Monad.Freer
-  ( type (~>)
-  , Eff
-  , LastMember
-  , Member
-  , Members
-  , interpretM
-  )
+import Control.Monad.Freer (type (~>), Eff, LastMember, Members, interpretM)
 import Control.Monad.Freer.TH (makeEffect)
 
 import Paths_axel (getDataFileName)
