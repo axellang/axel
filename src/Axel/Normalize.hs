@@ -38,6 +38,7 @@ import Axel.AST
   , TypeclassInstance(TypeclassInstance)
   )
 import Axel.Error (Error(NormalizeError))
+import Axel.Haskell.Macros (hygenisizeMacroName)
 import qualified Axel.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
@@ -213,6 +214,10 @@ normalizeStatement expr@(Parse.SExpression items) =
     [Parse.Symbol "import", Parse.Symbol moduleName, importSpec] ->
       SRestrictedImport <$>
       (RestrictedImport moduleName <$> normalizeImportSpec expr importSpec)
+    [Parse.Symbol "importm", Parse.Symbol moduleName, macroImportSpec] ->
+      SRestrictedImport <$>
+      (RestrictedImport moduleName <$>
+       normalizeMacroImportSpec expr macroImportSpec)
     [Parse.Symbol "importq", Parse.Symbol moduleName, Parse.Symbol alias, importSpec] ->
       SQualifiedImport <$>
       (QualifiedImport moduleName alias <$> normalizeImportSpec expr importSpec)
@@ -232,7 +237,7 @@ normalizeStatement expr@(Parse.SExpression items) =
            normalizedDefs)
     [Parse.Symbol "pragma", Parse.LiteralString pragma] ->
       pure $ SPragma (Pragma pragma)
-    Parse.Symbol "macro":Parse.Symbol macroName:Parse.SExpression arguments:body:whereBindings ->
+    Parse.Symbol "=macro":Parse.Symbol macroName:Parse.SExpression arguments:body:whereBindings ->
       SMacroDefinition . MacroDefinition <$>
       normalizeFunctionDefinition [expr] macroName arguments body whereBindings
     [Parse.Symbol "module", Parse.Symbol moduleName] ->
@@ -253,6 +258,22 @@ normalizeStatement expr@(Parse.SExpression items) =
        in STypeSynonym <$> (TypeSynonym <$> normalizedAlias <*> normalizedDef)
     _ -> throwError $ NormalizeError "Invalid statement!" [expr]
   where
+    normalizeMacroImportSpec ctxt importSpec =
+      case importSpec of
+        Parse.SExpression macroImportList ->
+          let normalizedImportList =
+                traverse
+                  (\case
+                     Parse.Symbol import' -> pure import'
+                     x ->
+                       throwError $
+                       NormalizeError "Invalid macro import!" [x, ctxt])
+                  macroImportList
+           in ImportOnly . map (ImportItem . hygenisizeMacroName) <$>
+              normalizedImportList
+        x ->
+          throwError $
+          NormalizeError "Invalid macro import specification!" [x, ctxt]
     normalizeImportSpec ctxt importSpec =
       case importSpec of
         Parse.Symbol "all" -> pure ImportAll

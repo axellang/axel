@@ -1,0 +1,64 @@
+(module Axel.Prelude)
+
+(importq Axel.Parse.AST AST all)
+
+(import Control.Lens.Cons (snoc))
+
+(=macro quasiquote ([(AST.SExpression xs)])
+        (let ((quasiquoteElem (\ (x) (case x
+                                       ((AST.SExpression ['unquote x])
+                                        (AST.SExpression ['list x]))
+                                       ((AST.SExpression ['unquoteSplicing x])
+                                        (AST.SExpression ['AST.toExpressionList x]))
+                                       (atom
+                                        (AST.SExpression
+                                         ['list
+                                          (AST.SExpression ['quasiquote atom])]))))))
+          (pure [(AST.SExpression
+                  ['AST.SExpression
+                   (AST.SExpression
+                    ['concat
+                     (AST.SExpression
+                      (: 'list
+                         (map quasiquoteElem xs)))])])])))
+(=macro quasiquote ([atom])
+        (pure [(AST.SExpression ['quote atom])]))
+
+(=macro applyInfix ([x op y])
+        (pure [`(~op ~x ~y)]))
+
+(=macro defmacro ({name : cases})
+        (pure
+         (map (\ (x) `(=macro ~name ~@x))
+              cases)))
+
+(defmacro def
+  (({name : {typeSig : cases}})
+   (pure
+    (snoc (map (\ (x) `(= ~name ~@x))
+               cases)
+          `(:: ~name ~typeSig)))))
+
+(defmacro fnCase
+  ((cases)
+   (<$> (\ (varId)
+         [`(\ (~varId) (case ~varId ~@cases))])
+        AST.gensym)))
+
+(def mdo' {[AST.Expression] -> AST.Expression}
+  (({var : {'<- : {val : rest}}})
+   `(>>= ~val (\ (~var) ~(mdo' rest))))
+  (((: val rest))
+   (case rest
+     ([]
+      val)
+     (_
+      `(>> ~val ~(mdo' rest))))))
+
+(defmacro mdo
+  ((input) (pure [(mdo' input)])))
+
+(defmacro if
+  (([cond true false]) (pure [`(case ~cond
+                                 (True ~true)
+                                 (False ~false))])))

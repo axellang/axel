@@ -130,7 +130,7 @@ denormalizeStatement (SFunctionDefinition fnDef) =
   denormalizeExpression (fnDef ^. body) :
   map (denormalizeStatement . SFunctionDefinition) (fnDef ^. whereBindings)
 denormalizeStatement (SMacroDefinition macroDef) =
-  Parse.SExpression $ Parse.Symbol "macro" :
+  Parse.SExpression $ Parse.Symbol "=macro" :
   Parse.Symbol (macroDef ^. functionDefinition . name) :
   Parse.SExpression
     (map denormalizeExpression (macroDef ^. functionDefinition . arguments)) :
