@@ -19,6 +19,7 @@ import Axel.AST
   , LetBlock(LetBlock)
   , Literal(LChar, LInt, LString)
   , MacroDefinition(MacroDefinition)
+  , MacroImport(MacroImport)
   , NewtypeDeclaration(NewtypeDeclaration)
   , Pragma(Pragma)
   , QualifiedImport(QualifiedImport)
@@ -26,10 +27,10 @@ import Axel.AST
   , RecordType(RecordType)
   , RestrictedImport(RestrictedImport)
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
-          SModuleDeclaration, SNewtypeDeclaration, SPragma, SQualifiedImport,
-          SRawStatement, SRestrictedImport, STopLevel, STypeSignature,
-          STypeSynonym, STypeclassDefinition, STypeclassInstance,
-          SUnrestrictedImport)
+          SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
+          SQualifiedImport, SRawStatement, SRestrictedImport, STopLevel,
+          STypeSignature, STypeSynonym, STypeclassDefinition,
+          STypeclassInstance, SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , TypeSignature(TypeSignature)
@@ -215,7 +216,7 @@ normalizeStatement expr@(Parse.SExpression items) =
       SRestrictedImport <$>
       (RestrictedImport moduleName <$> normalizeImportSpec expr importSpec)
     [Parse.Symbol "importm", Parse.Symbol moduleName, macroImportSpec] ->
-      SRestrictedImport <$>
+      SMacroImport . MacroImport <$>
       (RestrictedImport moduleName <$>
        normalizeMacroImportSpec expr macroImportSpec)
     [Parse.Symbol "importq", Parse.Symbol moduleName, Parse.Symbol alias, importSpec] ->

@@ -7,11 +7,13 @@ import Axel.AST
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Literal(LChar, LInt, LString)
+  , MacroImport(MacroImport)
+  , RestrictedImport
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
-          SModuleDeclaration, SNewtypeDeclaration, SPragma, SQualifiedImport,
-          SRawStatement, SRestrictedImport, STopLevel, STypeSignature,
-          STypeSynonym, STypeclassDefinition, STypeclassInstance,
-          SUnrestrictedImport)
+          SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
+          SQualifiedImport, SRawStatement, SRestrictedImport, STopLevel,
+          STypeSignature, STypeSynonym, STypeclassDefinition,
+          STypeclassInstance, SUnrestrictedImport)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , alias
@@ -112,6 +114,14 @@ denormalizeImportSpecification (ImportOnly importList) =
     denormalizeImport (ImportType type' items) =
       Parse.SExpression (Parse.Symbol type' : map Parse.Symbol items)
 
+denormalizeRestrictedImport :: RestrictedImport -> Parse.Expression
+denormalizeRestrictedImport restrictedImport =
+  Parse.SExpression
+    [ Parse.Symbol "import"
+    , Parse.Symbol $ restrictedImport ^. moduleName
+    , denormalizeImportSpecification (restrictedImport ^. imports)
+    ]
+
 denormalizeStatement :: Statement -> Parse.Expression
 denormalizeStatement (SDataDeclaration dataDeclaration) =
   let denormalizedTypeDefinition =
@@ -138,6 +148,8 @@ denormalizeStatement (SMacroDefinition macroDef) =
   map
     (denormalizeStatement . SFunctionDefinition)
     (macroDef ^. functionDefinition . whereBindings)
+denormalizeStatement (SMacroImport (MacroImport restrictedImport)) =
+  denormalizeRestrictedImport restrictedImport
 denormalizeStatement (SModuleDeclaration identifier) =
   Parse.SExpression [Parse.Symbol "module", Parse.Symbol identifier]
 denormalizeStatement (SNewtypeDeclaration newtypeDeclaration) =
@@ -165,11 +177,7 @@ denormalizeStatement (SQualifiedImport qualifiedImport) =
 denormalizeStatement (SRawStatement rawSource) =
   Parse.SExpression [Parse.Symbol "raw", Parse.LiteralString rawSource]
 denormalizeStatement (SRestrictedImport restrictedImport) =
-  Parse.SExpression
-    [ Parse.Symbol "import"
-    , Parse.Symbol $ restrictedImport ^. moduleName
-    , denormalizeImportSpecification (restrictedImport ^. imports)
-    ]
+  denormalizeRestrictedImport restrictedImport
 denormalizeStatement (STopLevel (TopLevel statements)) =
   Parse.SExpression $ Parse.Symbol "begin" : map denormalizeStatement statements
 denormalizeStatement (STypeclassDefinition typeclassDefinition) =

@@ -10,7 +10,7 @@ module Axel.Haskell.File where
 
 import Prelude hiding (putStr, putStrLn)
 
-import Axel.AST (ToHaskell(toHaskell))
+import Axel.AST (Statement(SModuleDeclaration), ToHaskell(toHaskell))
 import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
@@ -23,16 +23,20 @@ import qualified Axel.Eff.Resource as Res (astDefinition)
 import Axel.Error (Error)
 import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Haskell.Stack (interpretFile)
-import Axel.Macros (exhaustivelyExpandMacros)
+import Axel.Macros (ModuleInfo, exhaustivelyExpandMacros)
 import Axel.Normalize (normalizeStatement)
-import Axel.Parse (Expression(Symbol), parseSource)
+import Axel.Parse (Expression(Symbol), parseSource, programToTopLevelExpressions)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
-import Control.Monad (void)
+import Control.Lens.Operators ((<&>))
+import Control.Monad (forM, void)
 import Control.Monad.Freer (Eff, Members)
+import Control.Monad.Freer.Error (runError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
+import qualified Control.Monad.Freer.State as Effs (State)
 
-import Data.Maybe (fromMaybe)
+import qualified Data.Map as Map (fromList)
+import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import Data.Semigroup ((<>))
 import qualified Data.Text as T (isSuffixOf, pack)
 
@@ -51,13 +55,31 @@ convertUnit =
     Symbol "unit" -> Symbol "()"
     x -> x
 
+readModuleInfo ::
+     (Members '[ Effs.Error Error, Effs.FileSystem] effs)
+  => [FilePath]
+  -> Eff effs ModuleInfo
+readModuleInfo axelFiles = do
+  modules <-
+    forM axelFiles $ \filePath -> do
+      source <- FS.readFile filePath
+      exprs <- programToTopLevelExpressions <$> parseSource source
+      case listToMaybe exprs of
+        Just expr ->
+          runError @Error (normalizeStatement expr) <&> \case
+            Right (SModuleDeclaration moduleId) -> Just (filePath, (moduleId, False))
+            _ -> Nothing
+        Nothing -> pure Nothing
+  pure $ Map.fromList $ catMaybes modules
+
 transpileSource ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => String
   -> Eff effs String
 transpileSource source =
   prettifyHaskell . toHaskell <$>
-  (parseSource source >>= exhaustivelyExpandMacros . convertList . convertUnit >>=
+  (parseSource source >>=
+   exhaustivelyExpandMacros transpileFile' . convertList . convertUnit >>=
    normalizeStatement)
 
 axelPathToHaskellPath :: FilePath -> FilePath
@@ -69,7 +91,7 @@ axelPathToHaskellPath axelPath =
    in basePath <> ".hs"
 
 transpileFile ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => FilePath
   -> FilePath
   -> Eff effs ()
@@ -81,7 +103,7 @@ transpileFile path newPath = do
 
 -- | Transpile a file in place.
 transpileFile' ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => FilePath
   -> Eff effs FilePath
 transpileFile' path = do

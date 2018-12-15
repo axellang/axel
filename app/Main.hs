@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Main where
 
@@ -18,12 +19,16 @@ import qualified Axel.Error as Error (runEff)
 import Axel.Haskell.File (transpileFile')
 import Axel.Haskell.Project (buildProject, runProject)
 import Axel.Haskell.Stack (axelStackageVersion)
+import Axel.Macros (ModuleInfo)
 import Axel.Parse.Args (Command(File, Project, Version), commandParser)
 
 import Control.Monad (void)
 import Control.Monad.Freer (Eff)
+import Control.Monad.Freer.State (evalState)
 import qualified Control.Monad.Freer as Effs (runM)
 import qualified Control.Monad.Freer.Error as Effs (Error)
+
+import qualified Data.Map as Map (empty)
 
 import Options.Applicative ((<**>), execParser, helper, info, progDesc)
 
@@ -36,7 +41,7 @@ runApp =
   Res.runEff . Proc.runEff . FS.runEff . Error.runEff . Console.runEff
 
 app :: Command -> AppEffs ()
-app (File filePath) = void $ transpileFile' filePath
+app (File filePath) = void $ evalState @ModuleInfo Map.empty $ transpileFile' filePath
 app Project = buildProject >> runProject
 app Version = putStrLn $ "Axel version " <> axelStackageVersion
 

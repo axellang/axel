@@ -61,3 +61,13 @@ instance ToExpressionList Expression where
     error
       (show x <>
        " cannot be splice-unquoted, because it is not an s-expression!")
+
+programToTopLevelExpressions :: Expression -> [Expression]
+programToTopLevelExpressions (SExpression (Symbol "begin":stmts)) =
+  stmts
+programToTopLevelExpressions _ =
+  error "programToTopLevelExpressions must be passed a top-level program!"
+
+topLevelExpressionsToProgram :: [Expression] -> Expression
+topLevelExpressionsToProgram stmts =
+  SExpression (Symbol "begin" : stmts)

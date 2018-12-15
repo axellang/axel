@@ -115,6 +115,10 @@ newtype MacroDefinition = MacroDefinition
   { _functionDefinition :: FunctionDefinition
   } deriving (Eq, Show)
 
+newtype MacroImport = MacroImport
+  { _restrictedImport :: RestrictedImport
+  } deriving (Eq, Show)
+
 newtype Pragma = Pragma
   { _pragmaSpecification :: String
   } deriving (Eq, Show)
@@ -204,6 +208,7 @@ data Statement
   = SDataDeclaration DataDeclaration
   | SFunctionDefinition FunctionDefinition
   | SMacroDefinition MacroDefinition
+  | SMacroImport MacroImport
   | SModuleDeclaration Identifier
   | SNewtypeDeclaration NewtypeDeclaration
   | SPragma Pragma
@@ -224,6 +229,7 @@ instance ToHaskell Statement where
   toHaskell (SFunctionDefinition x) = toHaskell x
   toHaskell (SPragma x) = toHaskell x
   toHaskell (SMacroDefinition x) = toHaskell x
+  toHaskell (SMacroImport x) = toHaskell x
   toHaskell (SModuleDeclaration x) = "module " <> x <> " where"
   toHaskell (SNewtypeDeclaration x) = toHaskell x
   toHaskell (SQualifiedImport x) = toHaskell x
@@ -251,6 +257,8 @@ makeFieldsNoPrefix ''Lambda
 makeFieldsNoPrefix ''LetBlock
 
 makeFieldsNoPrefix ''MacroDefinition
+
+makeFieldsNoPrefix ''MacroImport
 
 makeFieldsNoPrefix ''NewtypeDeclaration
 
@@ -356,6 +364,10 @@ instance ToHaskell MacroDefinition where
   toHaskell :: MacroDefinition -> String
   toHaskell macroDefinition = toHaskell (macroDefinition ^. functionDefinition)
 
+instance ToHaskell MacroImport where
+  toHaskell :: MacroImport -> String
+  toHaskell macroImport = toHaskell (macroImport ^. restrictedImport)
+
 instance ToHaskell QualifiedImport where
   toHaskell :: QualifiedImport -> String
   toHaskell qualifiedImport =
@@ -383,9 +395,9 @@ instance ToHaskell RecordType where
 
 instance ToHaskell RestrictedImport where
   toHaskell :: RestrictedImport -> String
-  toHaskell restrictedImport =
-    "import " <> restrictedImport ^. moduleName <>
-    toHaskell (restrictedImport ^. imports)
+  toHaskell restrictedImport' =
+    "import " <> restrictedImport' ^. moduleName <>
+    toHaskell (restrictedImport' ^. imports)
 
 instance ToHaskell TopLevel where
   toHaskell :: TopLevel -> String

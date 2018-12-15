@@ -15,15 +15,17 @@ import Axel.AST
   , ImportSpecification(ImportOnly)
   , MacroDefinition
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
-          SModuleDeclaration, SNewtypeDeclaration, SPragma, SQualifiedImport,
-          SRawStatement, SRestrictedImport, STopLevel, STypeSignature,
-          STypeSynonym, STypeclassDefinition, STypeclassInstance,
-          SUnrestrictedImport)
+          SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
+          SQualifiedImport, SRawStatement, SRestrictedImport, STopLevel,
+          STypeSignature, STypeSynonym, STypeclassDefinition,
+          STypeclassInstance, SUnrestrictedImport)
   , ToHaskell(toHaskell)
   , TypeSignature(TypeSignature)
   , functionDefinition
   , imports
+  , moduleName
   , name
+  , restrictedImport
   )
 import Axel.Denormalize (denormalizeStatement)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
@@ -57,17 +59,23 @@ import Axel.Utils.String (replace)
 import Control.Lens.Cons (snoc)
 import Control.Lens.Operators ((%~), (^.))
 import Control.Lens.Tuple (_1, _2)
-import Control.Monad (foldM)
+import Control.Monad (foldM, unless, void)
 import Control.Monad.Freer (Eff, Members)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
+import Control.Monad.Freer.State (gets, modify)
+import qualified Control.Monad.Freer.State as Effs (State)
 
 import Data.Function ((&))
 import Data.List (nub)
+import Data.Map (Map)
+import qualified Data.Map as Map (adjust, lookup)
 import Data.Maybe (catMaybes)
 import Data.Semigroup ((<>))
 
 import System.Exit (ExitCode(ExitFailure))
+
+type ModuleInfo = Map Identifier (FilePath, Bool)
 
 hygenisizeMacroDefinition :: MacroDefinition -> MacroDefinition
 hygenisizeMacroDefinition macroDef =
@@ -103,30 +111,23 @@ generateMacroProgram oldMacroName macroDefs env args = do
           map toHaskell (env <> map SMacroDefinition hygenicMacroDefs)
 
 expansionPass ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
-  => Parse.Expression
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+  => (FilePath -> Eff effs a)
+  -> Parse.Expression
   -> Eff effs Parse.Expression
-expansionPass programExpr =
+expansionPass expandFile programExpr =
   Parse.topLevelExpressionsToProgram . map denormalizeStatement <$>
-  expandMacros (Parse.programToTopLevelExpressions programExpr)
-
-programToTopLevelExpressions :: Parse.Expression -> [Parse.Expression]
-programToTopLevelExpressions (Parse.SExpression (Parse.Symbol "begin":stmts)) =
-  stmts
-programToTopLevelExpressions _ =
-  error "programToTopLevelExpressions must be passed a top-level program!"
-
-topLevelExpressionsToProgram :: [Parse.Expression] -> Parse.Expression
-topLevelExpressionsToProgram stmts =
-  Parse.SExpression (Parse.Symbol "begin" : stmts)
+  expandMacros expandFile (Parse.programToTopLevelExpressions programExpr)
 
 exhaustivelyExpandMacros ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
-  => Parse.Expression
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+  => (FilePath -> Eff effs a)
+  -> Parse.Expression
   -> Eff effs Parse.Expression
-exhaustivelyExpandMacros program = do
+exhaustivelyExpandMacros expandFile program = do
   expandedTopLevelExprs <-
-    Parse.programToTopLevelExpressions <$> exhaustM expansionPass program
+    Parse.programToTopLevelExpressions <$>
+    exhaustM (expansionPass expandFile) program
   macroTypeSigs <-
     do normalizedStmts <- traverse normalizeStatement expandedTopLevelExprs
        let typeSigs =
@@ -144,6 +145,7 @@ isStatementNonconflicting (SDataDeclaration _) = True
 isStatementNonconflicting (SFunctionDefinition _) = True
 isStatementNonconflicting (SPragma _) = True
 isStatementNonconflicting (SMacroDefinition _) = True
+isStatementNonconflicting (SMacroImport _) = True
 isStatementNonconflicting (SModuleDeclaration _) = False
 isStatementNonconflicting (SNewtypeDeclaration _) = True
 isStatementNonconflicting (SQualifiedImport _) = True
@@ -160,8 +162,8 @@ isMacroImported :: Identifier -> [Statement] -> Bool
 isMacroImported macroName env =
   any
     (\case
-       SRestrictedImport restrictedImport ->
-         case restrictedImport ^. imports of
+       SRestrictedImport restrictedImport' ->
+         case restrictedImport' ^. imports of
            ImportOnly importList ->
              any (== ImportItem (hygenisizeMacroName macroName)) importList
            _ -> False
@@ -194,10 +196,11 @@ typeMacroDefinitions macroDefs =
     macroNames = nub $ map (^. functionDefinition . name) macroDefs
 
 expandMacros ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
-  => [Parse.Expression]
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+  => (FilePath -> Eff effs a)
+  -> [Parse.Expression]
   -> Eff effs [Statement]
-expandMacros topLevelExprs = do
+expandMacros expandFile topLevelExprs = do
   (stmts, macroDefs) <-
     foldM
       (\acc@(stmts, macroDefs) expr -> do
@@ -205,10 +208,22 @@ expandMacros topLevelExprs = do
          foldM
            (\acc' expandedExpr -> do
               stmt <- normalizeStatement expandedExpr
-              pure $ acc' &
-                case stmt of
-                  SMacroDefinition macroDef -> _2 %~ flip snoc macroDef
-                  _ -> _1 %~ flip snoc stmt)
+              case stmt of
+                SMacroDefinition macroDef ->
+                  pure $ acc' & _2 %~ flip snoc macroDef
+                _ -> do
+                  case stmt of
+                    SMacroImport macroImport -> do
+                      let moduleId =
+                            macroImport ^. restrictedImport . moduleName
+                      gets @ModuleInfo (Map.lookup moduleId) >>= \case
+                        Just (filePath, isCompiled) ->
+                          unless isCompiled $ do
+                            void $ expandFile filePath
+                            modify @ModuleInfo $ Map.adjust (_2 %~ not) moduleId
+                        Nothing -> pure ()
+                    _ -> pure ()
+                  pure $ acc' & _1 %~ flip snoc stmt)
            acc
            expandedExprs)
       ([], [])

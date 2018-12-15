@@ -13,13 +13,7 @@
 
 module Axel.Eff.Process where
 
-import Control.Monad.Freer
-  ( type (~>)
-  , Eff
-  , LastMember
-  , Member
-  , interpretM
-  )
+import Control.Monad.Freer (type (~>), Eff, LastMember, Member, interpretM)
 import Control.Monad.Freer.TH (makeEffect)
 
 import Data.Singletons (Sing, SingI, sing)
@@ -32,7 +26,7 @@ import qualified System.Process.Typed (proc, runProcess)
 
 $(singletons
     [d|
-
+  
   data StreamSpecification = CreateStreams
                            | InheritStreams
   |])

@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Axel.Haskell.Project where
@@ -16,7 +17,7 @@ import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (getResourcePath, newProjectTemplate)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import Axel.Error (Error)
-import Axel.Haskell.File (transpileFile')
+import Axel.Haskell.File (readModuleInfo, transpileFile')
 import Axel.Haskell.Stack
   ( addStackDependency
   , axelStackageId
@@ -27,6 +28,7 @@ import Axel.Haskell.Stack
 
 import Control.Monad (void)
 import Control.Monad.Freer (Eff, Members)
+import Control.Monad.Freer.State (evalState)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Data.Semigroup ((<>))
@@ -55,17 +57,18 @@ transpileProject ::
      (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => Eff effs [FilePath]
 transpileProject = do
-  files <- getDirectoryContentsRec "."
+  files <- concat <$> mapM getDirectoryContentsRec ["app", "src", "test"]
   let axelFiles =
         filter (\filePath -> ".axel" `T.isSuffixOf` T.pack filePath) files
-  mapM transpileFile' axelFiles
+  moduleInfo <- readModuleInfo axelFiles
+  evalState moduleInfo $ mapM transpileFile' axelFiles
 
 buildProject ::
      (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => Eff effs ()
 buildProject = do
   projectPath <- getCurrentDirectory
-  void $ transpileProject
+  void transpileProject
   buildStackProject projectPath
 
 runProject ::
