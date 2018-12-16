@@ -2,10 +2,13 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Axel.Macros where
+
+import Prelude hiding (putStrLn)
 
 import Axel.AST
   ( Expression(EFunctionApplication, EIdentifier)
@@ -28,9 +31,11 @@ import Axel.AST
   , restrictedImport
   )
 import Axel.Denormalize (denormalizeStatement)
+import Axel.Eff.Console (putStrLn)
+import qualified Axel.Eff.Console as Effs (Console)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (removeFile, writeFile)
-import Axel.Eff.Process (StreamSpecification(CreateStreams))
+import Axel.Eff.Process (StreamSpecification(CreateStreams), runProcess)
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (readResource)
 import qualified Axel.Eff.Resource as Effs (Resource)
@@ -43,7 +48,6 @@ import qualified Axel.Eff.Resource as Res
 import Axel.Error (Error(MacroError))
 import Axel.Haskell.Macros (hygenisizeMacroName)
 import Axel.Haskell.Prettify (prettifyHaskell)
-import Axel.Haskell.Stack (interpretFile)
 import Axel.Normalize (normalizeStatement)
 import qualified Axel.Parse as Parse
   ( Expression(SExpression, Symbol)
@@ -51,10 +55,13 @@ import qualified Axel.Parse as Parse
   , programToTopLevelExpressions
   , topLevelExpressionsToProgram
   )
+import Axel.Parse.AST (toAxel)
 import Axel.Utils.Display (Delimiter(Newlines), delimit)
 import Axel.Utils.Function (uncurry3)
 import Axel.Utils.Recursion (Recursive(bottomUpTraverse), exhaustM)
 import Axel.Utils.String (replace)
+
+import Debug.Trace (trace)
 
 import Control.Lens.Cons (snoc)
 import Control.Lens.Operators ((%~), (^.))
@@ -63,17 +70,18 @@ import Control.Monad (foldM, unless, void)
 import Control.Monad.Freer (Eff, Members)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
-import Control.Monad.Freer.State (gets, modify)
+import Control.Monad.Freer.State (gets)
 import qualified Control.Monad.Freer.State as Effs (State)
 
 import Data.Function ((&))
 import Data.List (nub)
 import Data.Map (Map)
-import qualified Data.Map as Map (adjust, lookup)
-import Data.Maybe (catMaybes)
+import qualified Data.Map as Map (filter, toList)
+import Data.Maybe (catMaybes, listToMaybe)
 import Data.Semigroup ((<>))
 
 import System.Exit (ExitCode(ExitFailure))
+import System.FilePath ((<.>))
 
 type ModuleInfo = Map Identifier (FilePath, Bool)
 
@@ -111,7 +119,7 @@ generateMacroProgram oldMacroName macroDefs env args = do
           map toHaskell (env <> map SMacroDefinition hygenicMacroDefs)
 
 expansionPass ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => (FilePath -> Eff effs a)
   -> Parse.Expression
   -> Eff effs Parse.Expression
@@ -120,7 +128,7 @@ expansionPass expandFile programExpr =
   expandMacros expandFile (Parse.programToTopLevelExpressions programExpr)
 
 exhaustivelyExpandMacros ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => (FilePath -> Eff effs a)
   -> Parse.Expression
   -> Eff effs Parse.Expression
@@ -162,8 +170,8 @@ isMacroImported :: Identifier -> [Statement] -> Bool
 isMacroImported macroName env =
   any
     (\case
-       SRestrictedImport restrictedImport' ->
-         case restrictedImport' ^. imports of
+       SMacroImport macroImport ->
+         case macroImport ^. restrictedImport . imports of
            ImportOnly importList ->
              any (== ImportItem (hygenisizeMacroName macroName)) importList
            _ -> False
@@ -196,7 +204,7 @@ typeMacroDefinitions macroDefs =
     macroNames = nub $ map (^. functionDefinition . name) macroDefs
 
 expandMacros ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => (FilePath -> Eff effs a)
   -> [Parse.Expression]
   -> Eff effs [Statement]
@@ -216,11 +224,14 @@ expandMacros expandFile topLevelExprs = do
                     SMacroImport macroImport -> do
                       let moduleId =
                             macroImport ^. restrictedImport . moduleName
-                      gets @ModuleInfo (Map.lookup moduleId) >>= \case
-                        Just (filePath, isCompiled) ->
+                      moduleInfo <-
+                        gets
+                          @ModuleInfo
+                          (Map.filter (\(moduleId', _) -> moduleId' == moduleId))
+                      case listToMaybe $ Map.toList $ moduleInfo of
+                        Just (dependencyFilePath, (_, isCompiled)) ->
                           unless isCompiled $ do
-                            void $ expandFile filePath
-                            modify @ModuleInfo $ Map.adjust (_2 %~ not) moduleId
+                            void $ expandFile dependencyFilePath
                         Nothing -> pure ()
                     _ -> pure ()
                   pure $ acc' & _1 %~ flip snoc stmt)
@@ -267,14 +278,16 @@ expandMacros expandFile topLevelExprs = do
       pure $ Parse.programToTopLevelExpressions expandedExpr
 
 expandMacroApplication ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => Identifier
   -> [MacroDefinition]
   -> [Statement]
   -> [Parse.Expression]
   -> Eff effs [Parse.Expression]
 expandMacroApplication macroName macroDefs auxEnv args = do
-  macroProgram <- generateMacroProgram macroName macroDefs auxEnv args
+  macroProgram <-
+    trace (toAxel $ Parse.SExpression (Parse.Symbol macroName : args)) $
+    generateMacroProgram macroName macroDefs auxEnv args
   newSource <- uncurry3 evalMacro macroProgram
   Parse.parseMultiple newSource
 
@@ -287,7 +300,8 @@ isMacroDefinitionStatement (SMacroDefinition _) = True
 isMacroDefinitionStatement _ = False
 
 evalMacro ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
+     forall effs.
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
   => String
   -> String
   -> String
@@ -295,17 +309,32 @@ evalMacro ::
 evalMacro astDefinition scaffold macroDefinitionAndEnvironment = do
   let macroDefinitionAndEnvironmentFileName =
         "AutogeneratedAxelMacroDefinitionAndEnvironment.hs"
-  let scaffoldFileName = "AutogeneratedAxelScaffold.hs"
+  let scaffoldModuleName = "AutogeneratedAxelScaffold"
+  let scaffoldFileName = scaffoldModuleName <.> "hs"
   let astDefinitionFileName = "AutogeneratedAxelASTDefinition.hs"
   FS.writeFile astDefinitionFileName astDefinition
   FS.writeFile
     macroDefinitionAndEnvironmentFileName
     macroDefinitionAndEnvironment
   FS.writeFile scaffoldFileName scaffold
-  interpretFile @'CreateStreams scaffoldFileName "" >>= \case
+  putStrLn "START"
+  let args =
+        [ "-main-is"
+        , scaffoldModuleName
+        , "-o"
+        , scaffoldModuleName
+        , scaffoldFileName
+        , astDefinitionFileName
+        ]
+  runProcess @'CreateStreams @effs "ghc" args "" >>= \case
     (ExitFailure _, _, stderr) -> throwError $ MacroError ("Error:\n" <> stderr)
-    (_, stdout, _) -> do
-      FS.removeFile astDefinitionFileName
-      FS.removeFile macroDefinitionAndEnvironmentFileName
-      FS.removeFile scaffoldFileName
-      pure stdout
+    _ ->
+      runProcess @'CreateStreams @effs ("./" <> scaffoldModuleName) [] "" >>= \case
+        (ExitFailure _, _, stderr) ->
+          throwError $ MacroError ("Error:\n" <> stderr)
+        (_, stdout, _) -> do
+          putStrLn "END\n\n"
+          FS.removeFile astDefinitionFileName
+          FS.removeFile macroDefinitionAndEnvironmentFileName
+          FS.removeFile scaffoldFileName
+          pure stdout

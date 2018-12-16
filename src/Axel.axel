@@ -1,4 +1,4 @@
-(module Axel.Prelude)
+(module Axel)
 
 (importq Axel.Parse.AST AST all)
 

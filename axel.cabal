@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ff1a1459e5056903f8f30e16daa9b917756f96bfd59e637caedfb65083e06971
+-- hash: cf163bcc243d4a74b3e8d42add60549a88040925f4613d8332f6d684f1342996
 
 name:           axel
 version:        0.0.9
@@ -47,6 +47,7 @@ source-repository head
 
 library
   exposed-modules:
+      Axel
       Axel.AST
       Axel.Denormalize
       Axel.Eff.Console
@@ -65,7 +66,6 @@ library
       Axel.Parse
       Axel.Parse.Args
       Axel.Parse.AST
-      Axel.Prelude
       Axel.Utils.Debug
       Axel.Utils.Display
       Axel.Utils.Function

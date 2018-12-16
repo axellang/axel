@@ -25,17 +25,23 @@ import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Haskell.Stack (interpretFile)
 import Axel.Macros (ModuleInfo, exhaustivelyExpandMacros)
 import Axel.Normalize (normalizeStatement)
-import Axel.Parse (Expression(Symbol), parseSource, programToTopLevelExpressions)
+import Axel.Parse
+  ( Expression(Symbol)
+  , parseSource
+  , programToTopLevelExpressions
+  )
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
-import Control.Lens.Operators ((<&>))
-import Control.Monad (forM, void)
+import Control.Lens.Operators ((<&>), (%~))
+import Control.Lens.Tuple (_2)
+import Control.Monad (forM, unless, void)
 import Control.Monad.Freer (Eff, Members)
 import Control.Monad.Freer.Error (runError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
+import Control.Monad.Freer.State (gets, modify)
 import qualified Control.Monad.Freer.State as Effs (State)
 
-import qualified Data.Map as Map (fromList)
+import qualified Data.Map as Map (adjust, fromList, lookup)
 import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import Data.Semigroup ((<>))
 import qualified Data.Text as T (isSuffixOf, pack)
@@ -67,7 +73,8 @@ readModuleInfo axelFiles = do
       case listToMaybe exprs of
         Just expr ->
           runError @Error (normalizeStatement expr) <&> \case
-            Right (SModuleDeclaration moduleId) -> Just (filePath, (moduleId, False))
+            Right (SModuleDeclaration moduleId) ->
+              Just (filePath, (moduleId, False))
             _ -> Nothing
         Nothing -> pure Nothing
   pure $ Map.fromList $ catMaybes modules
@@ -98,8 +105,9 @@ transpileFile ::
 transpileFile path newPath = do
   fileContents <- FS.readFile path
   newContents <- transpileSource fileContents
-  putStrLn "Writing file..."
+  putStrLn $ "Writing " <> newPath <> "..."
   FS.writeFile newPath newContents
+  modify @ModuleInfo $ Map.adjust (_2 %~ not) newPath
 
 -- | Transpile a file in place.
 transpileFile' ::
@@ -107,8 +115,13 @@ transpileFile' ::
   => FilePath
   -> Eff effs FilePath
 transpileFile' path = do
+  moduleInfo <- gets @ModuleInfo $ Map.lookup path
+  let alreadyCompiled =
+        case moduleInfo of
+          Just (_, isCompiled) -> isCompiled
+          Nothing -> False
   let newPath = axelPathToHaskellPath path
-  transpileFile path newPath
+  unless alreadyCompiled $ transpileFile path newPath
   pure newPath
 
 evalFile ::

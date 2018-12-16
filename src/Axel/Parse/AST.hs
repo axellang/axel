@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 
@@ -7,6 +8,7 @@ module Axel.Parse.AST where
 
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef)
 import Data.Semigroup ((<>))
+import Data.Typeable (Typeable)
 
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -19,7 +21,7 @@ data Expression
   | LiteralString String
   | SExpression [Expression]
   | Symbol String
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 -- ******************************
 -- Internal utilities
@@ -63,11 +65,9 @@ instance ToExpressionList Expression where
        " cannot be splice-unquoted, because it is not an s-expression!")
 
 programToTopLevelExpressions :: Expression -> [Expression]
-programToTopLevelExpressions (SExpression (Symbol "begin":stmts)) =
-  stmts
+programToTopLevelExpressions (SExpression (Symbol "begin":stmts)) = stmts
 programToTopLevelExpressions _ =
   error "programToTopLevelExpressions must be passed a top-level program!"
 
 topLevelExpressionsToProgram :: [Expression] -> Expression
-topLevelExpressionsToProgram stmts =
-  SExpression (Symbol "begin" : stmts)
+topLevelExpressionsToProgram stmts = SExpression (Symbol "begin" : stmts)

@@ -1,4 +1,4 @@
-module Axel.Prelude where
+module Axel where
 import Axel.Parse.AST as AST
 import Control.Lens.Cons (snoc)
 mdo' ((:) var ((:) (AST.Symbol "<-") ((:) val rest)))

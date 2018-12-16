@@ -28,8 +28,8 @@ import Axel.Haskell.Stack
 
 import Control.Monad (void)
 import Control.Monad.Freer (Eff, Members)
-import Control.Monad.Freer.State (evalState)
 import qualified Control.Monad.Freer.Error as Effs (Error)
+import Control.Monad.Freer.State (evalState)
 
 import Data.Semigroup ((<>))
 import qualified Data.Text as T (isSuffixOf, pack)

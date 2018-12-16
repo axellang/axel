@@ -24,9 +24,9 @@ import Axel.Parse.Args (Command(File, Project, Version), commandParser)
 
 import Control.Monad (void)
 import Control.Monad.Freer (Eff)
-import Control.Monad.Freer.State (evalState)
 import qualified Control.Monad.Freer as Effs (runM)
 import qualified Control.Monad.Freer.Error as Effs (Error)
+import Control.Monad.Freer.State (evalState)
 
 import qualified Data.Map as Map (empty)
 
@@ -41,7 +41,8 @@ runApp =
   Res.runEff . Proc.runEff . FS.runEff . Error.runEff . Console.runEff
 
 app :: Command -> AppEffs ()
-app (File filePath) = void $ evalState @ModuleInfo Map.empty $ transpileFile' filePath
+app (File filePath) =
+  void $ evalState @ModuleInfo Map.empty $ transpileFile' filePath
 app Project = buildProject >> runProject
 app Version = putStrLn $ "Axel version " <> axelStackageVersion
 

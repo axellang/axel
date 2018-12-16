@@ -1,6 +1,6 @@
 (module Axel.Parse.Args)
 
-(importm Axel.Prelude (applyInfix def))
+(importm Axel (applyInfix def))
 
 (import Data.Semigroup (<>))
 

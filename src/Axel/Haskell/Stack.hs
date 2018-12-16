@@ -46,6 +46,7 @@ import Data.Vector (cons)
 import Data.Version (showVersion)
 import qualified Data.Yaml as Yaml (Value(String), decodeEither', encode)
 
+
 import Paths_axel (version)
 
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
@@ -114,7 +115,7 @@ buildStackProject projectPath = do
          stderr)
 
 createStackProject ::
-     (Member Effs.FileSystem effs, Member Effs.Process effs)
+     (Members '[Effs.FileSystem, Effs.Process] effs)
   => String
   -> Eff effs ()
 createStackProject projectName = do
@@ -145,7 +146,7 @@ runStackProject projectPath = do
         []
 
 setStackageResolver ::
-     (Member Effs.FileSystem effs, Member Effs.Process effs)
+     (Members '[Effs.FileSystem, Effs.Process] effs)
   => ProjectPath
   -> StackageResolver
   -> Eff effs ()
@@ -162,13 +163,13 @@ compileFile ::
   => FilePath
   -> ProcessRunner streamSpec (Eff effs)
 compileFile filePath =
-  let args = [["ghc"], includeAxelArguments, ["--", filePath]]
-   in runProcess @streamSpec @effs "stack" (concat args)
+  let args = concat [["ghc"], includeAxelArguments, ["--", filePath]]
+   in runProcess @streamSpec @effs "stack" args
 
 interpretFile ::
      forall (streamSpec :: StreamSpecification) effs. (Member Effs.Process effs)
   => FilePath
   -> ProcessRunner streamSpec (Eff effs)
 interpretFile filePath =
-  let args = [["runghc"], includeAxelArguments, ["--", filePath]]
-   in runProcess @streamSpec @effs "stack" (concat args)
+  let args = concat [["runghc"], includeAxelArguments, ["--", filePath]]
+   in runProcess @streamSpec @effs "stack" args
