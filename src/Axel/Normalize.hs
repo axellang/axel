@@ -8,11 +8,12 @@ import Axel.AST
   ( CaseBlock(CaseBlock)
   , DataDeclaration(DataDeclaration)
   , Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
-           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression,
-           ERecordDefinition, ERecordType)
+           EIdentifier, EIfBlock, ELambda, ELetBlock, ELiteral,
+           ERawExpression, ERecordDefinition, ERecordType)
   , FunctionApplication(FunctionApplication)
   , FunctionDefinition(FunctionDefinition)
   , Identifier
+  , IfBlock(IfBlock)
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Lambda(Lambda)
@@ -39,7 +40,6 @@ import Axel.AST
   , TypeclassInstance(TypeclassInstance)
   )
 import Axel.Error (Error(NormalizeError))
-import Axel.Haskell.Macros (hygenisizeMacroName)
 import qualified Axel.Parse as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
@@ -71,6 +71,10 @@ normalizeExpression expr@(Parse.SExpression items) =
       let normalizedArguments = traverse normalizeExpression args
        in ELambda <$>
           (Lambda <$> normalizedArguments <*> normalizeExpression body)
+    [Parse.Symbol "if", cond, ifTrue, ifFalse] ->
+      EIfBlock <$>
+      (IfBlock <$> normalizeExpression cond <*> normalizeExpression ifTrue <*>
+       normalizeExpression ifFalse)
     [Parse.Symbol "let", Parse.SExpression bindings, body] ->
       let normalizedBindings =
             traverse
@@ -216,9 +220,8 @@ normalizeStatement expr@(Parse.SExpression items) =
       SRestrictedImport <$>
       (RestrictedImport moduleName <$> normalizeImportSpec expr importSpec)
     [Parse.Symbol "importm", Parse.Symbol moduleName, macroImportSpec] ->
-      SMacroImport . MacroImport <$>
-      (RestrictedImport moduleName <$>
-       normalizeMacroImportSpec expr macroImportSpec)
+      SMacroImport . MacroImport moduleName <$>
+      normalizeMacroImportSpec expr macroImportSpec
     [Parse.Symbol "importq", Parse.Symbol moduleName, Parse.Symbol alias, importSpec] ->
       SQualifiedImport <$>
       (QualifiedImport moduleName alias <$> normalizeImportSpec expr importSpec)
@@ -262,16 +265,12 @@ normalizeStatement expr@(Parse.SExpression items) =
     normalizeMacroImportSpec ctxt importSpec =
       case importSpec of
         Parse.SExpression macroImportList ->
-          let normalizedImportList =
-                traverse
-                  (\case
-                     Parse.Symbol import' -> pure import'
-                     x ->
-                       throwError $
-                       NormalizeError "Invalid macro import!" [x, ctxt])
-                  macroImportList
-           in ImportOnly . map (ImportItem . hygenisizeMacroName) <$>
-              normalizedImportList
+          traverse
+            (\case
+               Parse.Symbol import' -> pure import'
+               x ->
+                 throwError $ NormalizeError "Invalid macro import!" [x, ctxt])
+            macroImportList
         x ->
           throwError $
           NormalizeError "Invalid macro import specification!" [x, ctxt]

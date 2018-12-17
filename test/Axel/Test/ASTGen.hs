@@ -27,6 +27,9 @@ genFunctionApplication =
   AST.FunctionApplication <$> genExpression <*>
   Gen.list (Range.linear 0 3) genExpression
 
+genIfBlock :: (MonadGen m) => m AST.IfBlock
+genIfBlock = AST.IfBlock <$> genExpression <*> genExpression <*> genExpression
+
 genLambda :: (MonadGen m) => m AST.Lambda
 genLambda =
   AST.Lambda <$> Gen.list (Range.linear 0 3) genExpression <*> genExpression
@@ -60,6 +63,7 @@ genExpression =
     , AST.ELambda <$> genLambda
     , AST.ELetBlock <$> genLetBlock
     , AST.ELiteral <$> genLiteral
+    , AST.EIfBlock <$> genIfBlock
     , AST.ERawExpression <$> genRawExpression
     , AST.ERecordDefinition <$> genRecordDefinition
     , AST.ERecordType <$> genRecordType
@@ -98,17 +102,22 @@ genImport =
       Gen.list (Range.linear 0 3) genIdentifier
     ]
 
-genImportSpecification :: (MonadGen m) => m AST.ImportSpecification
-genImportSpecification =
-  Gen.choice
-    [ pure AST.ImportAll
-    , AST.ImportOnly <$> Gen.list (Range.linear 0 3) genImport
-    ]
+genImportSpecification :: (MonadGen m) => Bool -> m AST.ImportSpecification
+genImportSpecification importAll =
+  let options =
+        (AST.ImportOnly <$> Gen.list (Range.linear 0 3) genImport) :
+        [pure AST.ImportAll | importAll]
+   in Gen.choice options
 
 genQualifiedImport :: (MonadGen m) => m AST.QualifiedImport
 genQualifiedImport =
   AST.QualifiedImport <$> genIdentifier <*> genIdentifier <*>
-  genImportSpecification
+  genImportSpecification True
+
+genMacroImport :: (MonadGen m) => m AST.MacroImport
+genMacroImport =
+  AST.MacroImport <$> genIdentifier <*>
+  Gen.list (Range.linear 0 3) genIdentifier
 
 genNewtypeDeclaration :: (MonadGen m) => m AST.NewtypeDeclaration
 genNewtypeDeclaration =
@@ -117,9 +126,9 @@ genNewtypeDeclaration =
 genRawStatement :: (MonadGen m) => m String
 genRawStatement = Gen.string (Range.linear 0 10) Gen.unicode
 
-genRestrictedImport :: (MonadGen m) => m AST.RestrictedImport
-genRestrictedImport =
-  AST.RestrictedImport <$> genIdentifier <*> genImportSpecification
+genRestrictedImport :: (MonadGen m) => Bool -> m AST.RestrictedImport
+genRestrictedImport importAll =
+  AST.RestrictedImport <$> genIdentifier <*> genImportSpecification importAll
 
 genTopLevel :: (MonadGen m) => m AST.TopLevel
 genTopLevel = AST.TopLevel <$> Gen.list (Range.linear 0 3) genStatement
@@ -147,10 +156,11 @@ genStatement =
     Gen.choice
     [ AST.SDataDeclaration <$> genDataDeclaration
     , AST.SPragma <$> genPragma
+    , AST.SMacroImport <$> genMacroImport
     , AST.SModuleDeclaration <$> genIdentifier
     , AST.SQualifiedImport <$> genQualifiedImport
     , AST.SRawStatement <$> genRawStatement
-    , AST.SRestrictedImport <$> genRestrictedImport
+    , AST.SRestrictedImport <$> genRestrictedImport True
     , AST.STypeclassDefinition <$> genTypeclassDefinition
     , AST.STypeclassInstance <$> genTypeclassInstance
     , AST.STypeSignature <$> genTypeSignature

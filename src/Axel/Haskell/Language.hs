@@ -4,7 +4,8 @@ import Data.Char (isSymbol)
 
 -- https://stackoverflow.com/questions/10548170/what-characters-are-permitted-for-haskell-operators
 isOperator :: String -> Bool
-isOperator = all $ \x -> isSymbol x || x `elem` map fst haskellOperatorSymbols
+isOperator =
+  all $ \x -> isSymbol x || x `elem` map fst haskellOperatorSymbols || x == ','
 
 haskellOperatorSymbols :: [(Char, String)]
 haskellOperatorSymbols =

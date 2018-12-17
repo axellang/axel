@@ -23,9 +23,6 @@ makeEffect ''Ghci
 runEff :: (LastMember IO effs) => Eff (Ghci ': effs) ~> Eff effs
 runEff =
   interpretM $ \case
-      Exec ghci command ->
-        Ghci.exec ghci command
-      Start ->
-        fst <$> startGhci "ghci" Nothing mempty
-      Stop ghci ->
-        stopGhci ghci
+    Exec ghci command -> Ghci.exec ghci command
+    Start -> fst <$> startGhci "ghci" Nothing mempty
+    Stop ghci -> stopGhci ghci

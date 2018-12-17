@@ -86,7 +86,7 @@ runProcess origProcessState = runState origProcessState . reinterpret go
         Nothing ->
           throwInterpretError
             @(ProcessState effs)
-            "runProcess"
+            "RunProcess"
             "No mock result available"
     go (RunProcessInheritingStreams cmd args) = do
       modify @(ProcessState effs) $

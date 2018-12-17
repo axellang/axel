@@ -25,5 +25,6 @@ throwInterpretError actionName message = do
       "\n----------\n"
   throwError errorMsg
 
-unwrapRight :: Either b a -> a
+unwrapRight :: (Show b) => Either b a -> a
 unwrapRight (Right x) = x
+unwrapRight (Left x) = error $ show x

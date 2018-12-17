@@ -10,6 +10,7 @@
 module Axel.AST where
 
 import Axel.Haskell.Language (isOperator)
+import Axel.Haskell.Macros (hygenisizeMacroName)
 import Axel.Utils.Display
   ( Bracket(CurlyBraces, DoubleQuotes, Parentheses, SingleQuotes,
         SquareBrackets)
@@ -19,13 +20,12 @@ import Axel.Utils.Display
   , renderPragma
   , surround
   )
-import Axel.Utils.Recursion
-  ( Recursive(bottomUpFmap, bottomUpTraverse, topDownFmap)
-  )
+import Axel.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
 
 import Control.Arrow ((***))
 import Control.Lens.Operators ((%~), (^.))
 import Control.Lens.TH (makeFieldsNoPrefix, makePrisms)
+
 import Data.Function ((&))
 import Data.Semigroup ((<>))
 
@@ -42,6 +42,12 @@ data CaseBlock = CaseBlock
 data FunctionApplication = FunctionApplication
   { _function :: Expression
   , _arguments :: [Expression]
+  } deriving (Eq, Show)
+
+data IfBlock = IfBlock
+  { _cond :: Expression
+  , _ifTrue :: Expression
+  , _ifFalse :: Expression
   } deriving (Eq, Show)
 
 newtype TopLevel = TopLevel
@@ -115,8 +121,9 @@ newtype MacroDefinition = MacroDefinition
   { _functionDefinition :: FunctionDefinition
   } deriving (Eq, Show)
 
-newtype MacroImport = MacroImport
-  { _restrictedImport :: RestrictedImport
+data MacroImport = MacroImport
+  { _moduleName :: Identifier
+  , _imports :: [Identifier]
   } deriving (Eq, Show)
 
 newtype Pragma = Pragma
@@ -168,6 +175,7 @@ data Expression
   | EEmptySExpression
   | EFunctionApplication FunctionApplication
   | EIdentifier Identifier
+  | EIfBlock IfBlock
   | ELambda Lambda
   | ELetBlock LetBlock
   | ELiteral Literal
@@ -185,6 +193,7 @@ instance ToHaskell Expression where
     if isOperator x
       then surround Parentheses x
       else x
+  toHaskell (EIfBlock x) = toHaskell x
   toHaskell (ELambda x) = toHaskell x
   toHaskell (ELetBlock x) = toHaskell x
   toHaskell (ELiteral x) = toHaskell x
@@ -257,6 +266,8 @@ makeFieldsNoPrefix ''FunctionDefinition
 makeFieldsNoPrefix ''Lambda
 
 makeFieldsNoPrefix ''LetBlock
+
+makeFieldsNoPrefix ''IfBlock
 
 makeFieldsNoPrefix ''MacroDefinition
 
@@ -332,6 +343,14 @@ instance ToHaskell DataDeclaration where
     where
       removeSurroundingParentheses = tail . init
 
+instance ToHaskell IfBlock where
+  toHaskell :: IfBlock -> String
+  toHaskell ifBlock =
+    "if " <> toHaskell (ifBlock ^. cond) <> " then " <>
+    toHaskell (ifBlock ^. ifTrue) <>
+    " else " <>
+    toHaskell (ifBlock ^. ifFalse)
+
 instance ToHaskell NewtypeDeclaration where
   toHaskell :: NewtypeDeclaration -> String
   toHaskell newtypeDeclaration =
@@ -368,7 +387,7 @@ instance ToHaskell MacroDefinition where
 
 instance ToHaskell MacroImport where
   toHaskell :: MacroImport -> String
-  toHaskell macroImport = toHaskell (macroImport ^. restrictedImport)
+  toHaskell macroImport = toHaskell $ RestrictedImport (macroImport ^. moduleName) (ImportOnly $ map (ImportItem . hygenisizeMacroName) $ macroImport ^. imports)
 
 instance ToHaskell QualifiedImport where
   toHaskell :: QualifiedImport -> String
@@ -397,9 +416,9 @@ instance ToHaskell RecordType where
 
 instance ToHaskell RestrictedImport where
   toHaskell :: RestrictedImport -> String
-  toHaskell restrictedImport' =
-    "import " <> restrictedImport' ^. moduleName <>
-    toHaskell (restrictedImport' ^. imports)
+  toHaskell restrictedImport =
+    "import " <> restrictedImport ^. moduleName <>
+    toHaskell (restrictedImport ^. imports)
 
 instance ToHaskell TopLevel where
   toHaskell :: TopLevel -> String
@@ -444,34 +463,10 @@ instance Recursive Expression where
         functionApplication & function %~ bottomUpFmap f &
         arguments %~ map (bottomUpFmap f)
       EIdentifier _ -> x
-      ELambda lambda ->
-        ELambda $
-        lambda & arguments %~ map (bottomUpFmap f) & body %~ bottomUpFmap f
-      ELetBlock letBlock ->
-        ELetBlock $
-        letBlock & bindings %~ map (bottomUpFmap f *** bottomUpFmap f) &
-        body %~ bottomUpFmap f
-      ELiteral literal ->
-        case literal of
-          LChar _ -> x
-          LInt _ -> x
-          LString _ -> x
-      ERawExpression _ -> x
-      ERecordDefinition _ -> x
-      ERecordType _ -> x
-  topDownFmap :: (Expression -> Expression) -> Expression -> Expression
-  topDownFmap f x =
-    case f x of
-      ECaseBlock caseBlock ->
-        ECaseBlock $
-        caseBlock & expr %~ bottomUpFmap f &
-        matches %~ map (bottomUpFmap f *** bottomUpFmap f)
-      EEmptySExpression -> x
-      EFunctionApplication functionApplication ->
-        EFunctionApplication $
-        functionApplication & function %~ bottomUpFmap f &
-        arguments %~ map (bottomUpFmap f)
-      EIdentifier _ -> x
+      EIfBlock ifBlock ->
+        EIfBlock $
+        ifBlock & cond %~ bottomUpFmap f & ifTrue %~ bottomUpFmap f &
+        ifFalse %~ bottomUpFmap f
       ELambda lambda ->
         ELambda $
         lambda & arguments %~ map (bottomUpFmap f) & body %~ bottomUpFmap f
@@ -505,6 +500,11 @@ instance Recursive Expression where
          bottomUpTraverse f (functionApplication ^. function) <*>
          traverse (bottomUpTraverse f) (functionApplication ^. arguments))
       EIdentifier _ -> pure x
+      EIfBlock ifBlock ->
+        EIfBlock <$>
+        (IfBlock <$> bottomUpTraverse f (ifBlock ^. cond) <*>
+         bottomUpTraverse f (ifBlock ^. ifTrue) <*>
+         bottomUpTraverse f (ifBlock ^. ifFalse))
       ELambda lambda ->
         ELambda <$>
         (Lambda <$> traverse (bottomUpTraverse f) (lambda ^. arguments) <*>

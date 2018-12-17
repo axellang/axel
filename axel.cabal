@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d5df24ddad7e07ec551043fbb2ef0a74147024eca513d908d3a9a48d0117e601
+-- hash: 8d78ca6aced837fd467d8a0041a346472618ae85e95319c73b20afc710b34e96
 
 name:           axel
 version:        0.0.9
@@ -128,6 +128,7 @@ test-suite axel-test
       Axel.Test.Eff.ConsoleSpec
       Axel.Test.Eff.FileSystemMock
       Axel.Test.Eff.FileSystemSpec
+      Axel.Test.Eff.GhciMock
       Axel.Test.Eff.ProcessMock
       Axel.Test.Eff.ResourceMock
       Axel.Test.Eff.ResourceSpec
@@ -145,6 +146,7 @@ test-suite axel-test
       axel
     , base >=4.12 && <4.13
     , bytestring
+    , containers
     , filepath
     , freer-simple >=1.2.0.0
     , hedgehog

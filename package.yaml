@@ -74,6 +74,7 @@ tests:
     dependencies:
     - axel
     - bytestring
+    - containers
     - filepath
     - hedgehog
     - lens

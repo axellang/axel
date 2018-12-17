@@ -14,8 +14,6 @@ import Axel.AST
   ( Expression(EFunctionApplication, EIdentifier)
   , FunctionApplication(FunctionApplication)
   , Identifier
-  , Import(ImportItem)
-  , ImportSpecification(ImportOnly)
   , MacroDefinition
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
           SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
@@ -28,7 +26,6 @@ import Axel.AST
   , imports
   , moduleName
   , name
-  , restrictedImport
   )
 import Axel.Denormalize (denormalizeStatement)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
@@ -116,7 +113,8 @@ generateMacroProgram oldMacroName macroDefs env args = do
 
 expansionPass ::
      (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
-  => Ghci.Ghci -> (FilePath -> Eff effs a)
+  => Ghci.Ghci
+  -> (FilePath -> Eff effs a)
   -> Parse.Expression
   -> Eff effs Parse.Expression
 expansionPass ghci expandFile programExpr =
@@ -167,11 +165,7 @@ isMacroImported :: Identifier -> [Statement] -> Bool
 isMacroImported macroName =
   any
     (\case
-       SMacroImport macroImport ->
-         case macroImport ^. restrictedImport . imports of
-           ImportOnly importList ->
-             ImportItem (hygenisizeMacroName macroName) `elem` importList
-           _ -> False
+       SMacroImport macroImport -> macroName `elem` macroImport ^. imports
        _ -> False)
 
 typeMacroDefinitions :: [MacroDefinition] -> [TypeSignature]
@@ -219,12 +213,12 @@ expandMacros ghci expandFile topLevelExprs = do
                 _ -> do
                   case stmt of
                     SMacroImport macroImport -> do
-                      let moduleId =
-                            macroImport ^. restrictedImport . moduleName
                       moduleInfo <-
                         gets
                           @ModuleInfo
-                          (Map.filter (\(moduleId', _) -> moduleId' == moduleId))
+                          (Map.filter
+                             (\(moduleId', _) ->
+                                moduleId' == macroImport ^. moduleName))
                       case listToMaybe $ Map.toList moduleInfo of
                         Just (dependencyFilePath, (_, isCompiled)) ->
                           unless isCompiled $ void $
@@ -284,8 +278,7 @@ expandMacroApplication ::
   -> [Parse.Expression]
   -> Eff effs [Parse.Expression]
 expandMacroApplication ghci macroName macroDefs auxEnv args = do
-  macroProgram <-
-    generateMacroProgram macroName macroDefs auxEnv args
+  macroProgram <- generateMacroProgram macroName macroDefs auxEnv args
   newSource <- uncurry3 (evalMacro ghci) macroProgram
   Parse.parseMultiple newSource
 

@@ -9,11 +9,7 @@ module Axel.Haskell.File where
 
 import Prelude hiding (putStrLn)
 
-import Axel.AST
-  ( Statement(SModuleDeclaration)
-  , ToHaskell(toHaskell)
-  , _SModuleDeclaration
-  )
+import Axel.AST (Statement(SModuleDeclaration), ToHaskell(toHaskell))
 import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
@@ -34,12 +30,11 @@ import Axel.Parse
   , parseSource
   , programToTopLevelExpressions
   )
-import Axel.Utils.Lens (is)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
 import Control.Lens.Operators ((%~), (<&>))
 import Control.Lens.Tuple (_2)
-import Control.Monad (mapM, forM, unless, void)
+import Control.Monad (forM, mapM, unless, void)
 import Control.Monad.Freer (Eff, Members)
 import Control.Monad.Freer.Error (runError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
@@ -47,7 +42,7 @@ import Control.Monad.Freer.State (gets, modify)
 import qualified Control.Monad.Freer.State as Effs (State)
 
 import qualified Data.Map as Map (adjust, fromList, lookup)
-import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Monoid (Alt(Alt))
 import Data.Semigroup ((<>))
 import qualified Data.Text as T (isSuffixOf, pack)

@@ -2,13 +2,11 @@ module Axel.Denormalize where
 
 import Axel.AST
   ( Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
-           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression,
-           ERecordDefinition, ERecordType)
+           EIdentifier, EIfBlock, ELambda, ELetBlock, ELiteral,
+           ERawExpression, ERecordDefinition, ERecordType)
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Literal(LChar, LInt, LString)
-  , MacroImport(MacroImport)
-  , RestrictedImport
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
           SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
           SQualifiedImport, SRawStatement, SRestrictedImport, STopLevel,
@@ -20,6 +18,7 @@ import Axel.AST
   , arguments
   , bindings
   , body
+  , cond
   , constraints
   , constructor
   , constructors
@@ -29,6 +28,8 @@ import Axel.AST
   , fields
   , function
   , functionDefinition
+  , ifFalse
+  , ifTrue
   , imports
   , instanceName
   , matches
@@ -62,6 +63,13 @@ denormalizeExpression (EFunctionApplication functionApplication) =
   Parse.SExpression $ denormalizeExpression (functionApplication ^. function) :
   map denormalizeExpression (functionApplication ^. arguments)
 denormalizeExpression (EIdentifier x) = Parse.Symbol x
+denormalizeExpression (EIfBlock ifBlock) =
+  Parse.SExpression
+    [ Parse.Symbol "if"
+    , denormalizeExpression (ifBlock ^. cond)
+    , denormalizeExpression (ifBlock ^. ifTrue)
+    , denormalizeExpression (ifBlock ^. ifFalse)
+    ]
 denormalizeExpression (ELambda lambda) =
   let denormalizedArguments =
         Parse.SExpression $ map denormalizeExpression (lambda ^. arguments)
@@ -114,14 +122,6 @@ denormalizeImportSpecification (ImportOnly importList) =
     denormalizeImport (ImportType type' items) =
       Parse.SExpression (Parse.Symbol type' : map Parse.Symbol items)
 
-denormalizeRestrictedImport :: RestrictedImport -> Parse.Expression
-denormalizeRestrictedImport restrictedImport =
-  Parse.SExpression
-    [ Parse.Symbol "import"
-    , Parse.Symbol $ restrictedImport ^. moduleName
-    , denormalizeImportSpecification (restrictedImport ^. imports)
-    ]
-
 denormalizeStatement :: Statement -> Parse.Expression
 denormalizeStatement (SDataDeclaration dataDeclaration) =
   let denormalizedTypeDefinition =
@@ -148,8 +148,12 @@ denormalizeStatement (SMacroDefinition macroDef) =
   map
     (denormalizeStatement . SFunctionDefinition)
     (macroDef ^. functionDefinition . whereBindings)
-denormalizeStatement (SMacroImport (MacroImport restrictedImport)) =
-  denormalizeRestrictedImport restrictedImport
+denormalizeStatement (SMacroImport macroImport) =
+  Parse.SExpression
+    [ Parse.Symbol "importm"
+    , Parse.Symbol $ macroImport ^. moduleName
+    , Parse.SExpression $ map Parse.Symbol (macroImport ^. imports)
+    ]
 denormalizeStatement (SModuleDeclaration identifier) =
   Parse.SExpression [Parse.Symbol "module", Parse.Symbol identifier]
 denormalizeStatement (SNewtypeDeclaration newtypeDeclaration) =
@@ -177,7 +181,11 @@ denormalizeStatement (SQualifiedImport qualifiedImport) =
 denormalizeStatement (SRawStatement rawSource) =
   Parse.SExpression [Parse.Symbol "raw", Parse.LiteralString rawSource]
 denormalizeStatement (SRestrictedImport restrictedImport) =
-  denormalizeRestrictedImport restrictedImport
+  Parse.SExpression
+    [ Parse.Symbol "import"
+    , Parse.Symbol $ restrictedImport ^. moduleName
+    , denormalizeImportSpecification (restrictedImport ^. imports)
+    ]
 denormalizeStatement (STopLevel (TopLevel statements)) =
   Parse.SExpression $ Parse.Symbol "begin" : map denormalizeStatement statements
 denormalizeStatement (STypeclassDefinition typeclassDefinition) =
