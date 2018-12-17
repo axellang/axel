@@ -25,7 +25,7 @@ import Axel.Utils.Recursion
 
 import Control.Arrow ((***))
 import Control.Lens.Operators ((%~), (^.))
-import Control.Lens.TH (makeFieldsNoPrefix)
+import Control.Lens.TH (makeFieldsNoPrefix, makePrisms)
 import Data.Function ((&))
 import Data.Semigroup ((<>))
 
@@ -241,6 +241,8 @@ instance ToHaskell Statement where
   toHaskell (STypeSignature x) = toHaskell x
   toHaskell (STypeSynonym x) = toHaskell x
   toHaskell (SUnrestrictedImport x) = "import " <> x
+
+makePrisms ''Statement
 
 type Program = [Statement]
 

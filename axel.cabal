@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 01f3f6260b15a509ce615c682fac4f55c0bda115625f55265abececec05b5a91
+-- hash: d5df24ddad7e07ec551043fbb2ef0a74147024eca513d908d3a9a48d0117e601
 
 name:           axel
 version:        0.0.9
@@ -70,6 +70,7 @@ library
       Axel.Utils.Debug
       Axel.Utils.Display
       Axel.Utils.Function
+      Axel.Utils.Lens
       Axel.Utils.List
       Axel.Utils.Recursion
       Axel.Utils.String

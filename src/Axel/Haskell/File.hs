@@ -7,9 +7,13 @@
 
 module Axel.Haskell.File where
 
-import Prelude hiding (putStr, putStrLn)
+import Prelude hiding (putStrLn)
 
-import Axel.AST (Statement(SModuleDeclaration), ToHaskell(toHaskell))
+import Axel.AST
+  ( Statement(SModuleDeclaration)
+  , ToHaskell(toHaskell)
+  , _SModuleDeclaration
+  )
 import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
@@ -30,11 +34,12 @@ import Axel.Parse
   , parseSource
   , programToTopLevelExpressions
   )
+import Axel.Utils.Lens (is)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
 import Control.Lens.Operators ((%~), (<&>))
 import Control.Lens.Tuple (_2)
-import Control.Monad (forM, unless, void)
+import Control.Monad (mapM, forM, unless, void)
 import Control.Monad.Freer (Eff, Members)
 import Control.Monad.Freer.Error (runError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
@@ -43,6 +48,7 @@ import qualified Control.Monad.Freer.State as Effs (State)
 
 import qualified Data.Map as Map (adjust, fromList, lookup)
 import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
+import Data.Monoid (Alt(Alt))
 import Data.Semigroup ((<>))
 import qualified Data.Text as T (isSuffixOf, pack)
 
@@ -70,13 +76,16 @@ readModuleInfo axelFiles = do
     forM axelFiles $ \filePath -> do
       source <- FS.readFile filePath
       exprs <- programToTopLevelExpressions <$> parseSource source
-      case listToMaybe exprs of
-        Just expr ->
-          runError @Error (normalizeStatement expr) <&> \case
-            Right (SModuleDeclaration moduleId) ->
-              Just (filePath, (moduleId, False))
-            _ -> Nothing
-        Nothing -> pure Nothing
+      Alt moduleDecl <-
+        mconcat . map Alt <$>
+        mapM
+          (\expr ->
+             runError @Error (normalizeStatement expr) <&> \case
+               Right (SModuleDeclaration moduleId) ->
+                 Just (filePath, (moduleId, False))
+               _ -> Nothing)
+          exprs
+      pure moduleDecl
   pure $ Map.fromList $ catMaybes modules
 
 transpileSource ::
