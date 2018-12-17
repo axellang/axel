@@ -107,7 +107,7 @@ transpileFile path newPath = do
   newContents <- transpileSource fileContents
   putStrLn $ "Writing " <> newPath <> "..."
   FS.writeFile newPath newContents
-  modify @ModuleInfo $ Map.adjust (_2 %~ not) newPath
+  modify @ModuleInfo $ Map.adjust (_2 %~ not) path
 
 -- | Transpile a file in place.
 transpileFile' ::
