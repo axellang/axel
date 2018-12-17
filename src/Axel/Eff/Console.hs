@@ -21,9 +21,8 @@ makeEffect ''Console
 
 runEff :: (LastMember IO effs) => Eff (Console ': effs) ~> Eff effs
 runEff =
-  interpretM
-    (\case
-       PutStr str -> Prelude.putStr str)
+  interpretM $ \case
+    PutStr str -> Prelude.putStr str
 
 putStrLn :: (Member Console effs) => String -> Eff effs ()
 putStrLn str = putStr (str <> "\n")

@@ -46,7 +46,6 @@ import Data.Vector (cons)
 import Data.Version (showVersion)
 import qualified Data.Yaml as Yaml (Value(String), decodeEither', encode)
 
-
 import Paths_axel (version)
 
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
@@ -115,9 +114,7 @@ buildStackProject projectPath = do
          stderr)
 
 createStackProject ::
-     (Members '[Effs.FileSystem, Effs.Process] effs)
-  => String
-  -> Eff effs ()
+     (Members '[ Effs.FileSystem, Effs.Process] effs) => String -> Eff effs ()
 createStackProject projectName = do
   void $
     runProcess @'CreateStreams "stack" ["new", projectName, "new-template"] ""
@@ -146,7 +143,7 @@ runStackProject projectPath = do
         []
 
 setStackageResolver ::
-     (Members '[Effs.FileSystem, Effs.Process] effs)
+     (Members '[ Effs.FileSystem, Effs.Process] effs)
   => ProjectPath
   -> StackageResolver
   -> Eff effs ()

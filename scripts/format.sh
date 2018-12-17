@@ -1,4 +1,1 @@
-#!/bin/zsh
-for f in {app,src,test}/**/*.hs; do
-  hindent "$f"
-done
+find app src test -type f | grep -e '^.*\.hs$' | grep -v 'src/Axel/Parse/Args.hs' | grep -v 'src/Axel.hs' | xargs -L 1 hindent

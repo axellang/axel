@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Axel.Haskell.Project where
@@ -13,6 +12,7 @@ import Axel.Eff.FileSystem
   , removeFile
   )
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
+import qualified Axel.Eff.Ghci as Effs (Ghci)
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (getResourcePath, newProjectTemplate)
 import qualified Axel.Eff.Resource as Effs (Resource)
@@ -54,7 +54,7 @@ newProject projectName = do
   mapM_ copyAxel ["Setup", "app" </> "Main", "src" </> "Lib", "test" </> "Spec"]
 
 transpileProject ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
   => Eff effs [FilePath]
 transpileProject = do
   files <- concat <$> mapM getDirectoryContentsRec ["app", "src", "test"]
@@ -64,7 +64,7 @@ transpileProject = do
   evalState moduleInfo $ mapM transpileFile' axelFiles
 
 buildProject ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
   => Eff effs ()
 buildProject = do
   projectPath <- getCurrentDirectory

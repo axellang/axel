@@ -10,6 +10,8 @@ import qualified Axel.Eff.Console as Effs (Console)
 import qualified Axel.Eff.Console as Console (runEff)
 import qualified Axel.Eff.FileSystem as FS (runEff)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
+import qualified Axel.Eff.Ghci as Ghci (runEff)
+import qualified Axel.Eff.Ghci as Effs (Ghci)
 import qualified Axel.Eff.Process as Proc (runEff)
 import qualified Axel.Eff.Process as Effs (Process)
 import qualified Axel.Eff.Resource as Res (runEff)
@@ -33,12 +35,13 @@ import qualified Data.Map as Map (empty)
 import Options.Applicative ((<**>), execParser, helper, info, progDesc)
 
 type AppEffs
-   = Eff '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, IO]
+   = Eff '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, IO]
 
 runApp :: AppEffs a -> IO a
 runApp =
   Effs.runM .
-  Res.runEff . Proc.runEff . FS.runEff . Error.runEff . Console.runEff
+  Res.runEff .
+  Proc.runEff . Ghci.runEff . FS.runEff . Error.runEff . Console.runEff
 
 app :: Command -> AppEffs ()
 app (File filePath) =

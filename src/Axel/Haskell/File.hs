@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -15,6 +14,7 @@ import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (readFile, removeFile, writeFile)
+import qualified Axel.Eff.Ghci as Effs (Ghci)
 import Axel.Eff.Process (StreamSpecification(InheritStreams))
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (readResource)
@@ -32,7 +32,7 @@ import Axel.Parse
   )
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
-import Control.Lens.Operators ((<&>), (%~))
+import Control.Lens.Operators ((%~), (<&>))
 import Control.Lens.Tuple (_2)
 import Control.Monad (forM, unless, void)
 import Control.Monad.Freer (Eff, Members)
@@ -80,7 +80,7 @@ readModuleInfo axelFiles = do
   pure $ Map.fromList $ catMaybes modules
 
 transpileSource ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => String
   -> Eff effs String
 transpileSource source =
@@ -98,7 +98,7 @@ axelPathToHaskellPath axelPath =
    in basePath <> ".hs"
 
 transpileFile ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => FilePath
   -> FilePath
   -> Eff effs ()
@@ -111,7 +111,7 @@ transpileFile path newPath = do
 
 -- | Transpile a file in place.
 transpileFile' ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => FilePath
   -> Eff effs FilePath
 transpileFile' path = do
