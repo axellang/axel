@@ -387,12 +387,18 @@ instance ToHaskell MacroDefinition where
 
 instance ToHaskell MacroImport where
   toHaskell :: MacroImport -> String
-  toHaskell macroImport = toHaskell $ RestrictedImport (macroImport ^. moduleName) (ImportOnly $ map (ImportItem . hygenisizeMacroName) $ macroImport ^. imports)
+  toHaskell macroImport =
+    toHaskell $
+    RestrictedImport
+      (macroImport ^. moduleName)
+      (ImportOnly $
+       map (ImportItem . hygenisizeMacroName) $ macroImport ^. imports)
 
 instance ToHaskell QualifiedImport where
   toHaskell :: QualifiedImport -> String
   toHaskell qualifiedImport =
-    "import " <> qualifiedImport ^. moduleName <> " as " <> qualifiedImport ^.
+    "import qualified " <> qualifiedImport ^. moduleName <> " as " <>
+    qualifiedImport ^.
     alias <>
     toHaskell (qualifiedImport ^. imports)
 

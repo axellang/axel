@@ -7,12 +7,17 @@
 (import Options.Applicative (Parser argument command info metavar progDesc str subparser))
 
 (data Command
+  (Convert FilePath)
   (File FilePath)
   (Project)
   (Version))
 
 (def commandParser (Parser Command)
-  (() (subparser {projectCommand <> {fileCommand <> versionCommand}})
+  (() (subparser {projectCommand <> {fileCommand <> {convertCommand <> versionCommand}}})
+   (= convertCommand ()
+     (command "convert"
+              (info {Convert <$> (argument str (metavar "FILE"))}
+                    (progDesc "(EXPERIMENTAL) Convert a Haskell file to Axel"))))
    (= fileCommand ()
      (command "file"
                (info {File <$> (argument str (metavar "FILE"))}

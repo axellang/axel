@@ -18,11 +18,11 @@ import qualified Axel.Eff.Resource as Res (runEff)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import Axel.Error (Error)
 import qualified Axel.Error as Error (runEff)
-import Axel.Haskell.File (transpileFile')
+import Axel.Haskell.File (convertFile', transpileFile')
 import Axel.Haskell.Project (buildProject, runProject)
 import Axel.Haskell.Stack (axelStackageVersion)
 import Axel.Macros (ModuleInfo)
-import Axel.Parse.Args (Command(File, Project, Version), commandParser)
+import Axel.Parse.Args (Command(Convert, File, Project, Version), commandParser)
 
 import Control.Monad (void)
 import Control.Monad.Freer (Eff)
@@ -44,6 +44,7 @@ runApp =
   Proc.runEff . Ghci.runEff . FS.runEff . Error.runEff . Console.runEff
 
 app :: Command -> AppEffs ()
+app (Convert filePath) = void $ convertFile' filePath
 app (File filePath) =
   void $ evalState @ModuleInfo Map.empty $ transpileFile' filePath
 app Project = buildProject >> runProject

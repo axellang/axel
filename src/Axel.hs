@@ -1,5 +1,5 @@
 module Axel where
-import Axel.Parse.AST as AST
+import qualified Axel.Parse.AST as AST
 import Control.Lens.Cons (snoc)
 mdo' ((:) var ((:) (AST.Symbol "<-") ((:) val rest)))
   = (AST.SExpression

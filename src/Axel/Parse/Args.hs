@@ -7,13 +7,20 @@ import Options.Applicative
        (Parser, argument, command, info, metavar, progDesc, str,
         subparser)
 
-data Command = File FilePath
+data Command = Convert FilePath
+             | File FilePath
              | Project
              | Version
 commandParser
   = (subparser
-       ((<>) projectCommand ((<>) fileCommand versionCommand)))
-  where fileCommand
+       ((<>) projectCommand
+          ((<>) fileCommand ((<>) convertCommand versionCommand))))
+  where convertCommand
+          = (command "convert"
+               (info ((<$>) Convert (argument str (metavar "FILE")))
+                  (progDesc "(EXPERIMENTAL) Convert a Haskell file to Axel")))
+          where
+        fileCommand
           = (command "file"
                (info ((<$>) File (argument str (metavar "FILE")))
                   (progDesc "Build and run a single file")))

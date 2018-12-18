@@ -7,10 +7,10 @@
 
 module Axel.Haskell.File where
 
-import Prelude hiding (putStrLn)
+import Prelude hiding (putStr, putStrLn)
 
 import Axel.AST (Statement(SModuleDeclaration), ToHaskell(toHaskell))
-import Axel.Eff.Console (putStrLn)
+import Axel.Eff.Console (putStr, putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (readFile, removeFile, writeFile)
@@ -21,6 +21,7 @@ import Axel.Eff.Resource (readResource)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import qualified Axel.Eff.Resource as Res (astDefinition)
 import Axel.Error (Error)
+import Axel.Haskell.Converter (convertFile)
 import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Haskell.Stack (interpretFile)
 import Axel.Macros (ModuleInfo, exhaustivelyExpandMacros)
@@ -35,7 +36,7 @@ import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 import Control.Lens.Operators ((%~), (<&>))
 import Control.Lens.Tuple (_2)
 import Control.Monad (forM, mapM, unless, void)
-import Control.Monad.Freer (Eff, Members)
+import Control.Monad.Freer (Eff, LastMember, Members)
 import Control.Monad.Freer.Error (runError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 import Control.Monad.Freer.State (gets, modify)
@@ -93,13 +94,29 @@ transpileSource source =
    exhaustivelyExpandMacros transpileFile' . convertList . convertUnit >>=
    normalizeStatement)
 
-axelPathToHaskellPath :: FilePath -> FilePath
-axelPathToHaskellPath axelPath =
+convertExtension :: String -> String -> FilePath -> FilePath
+convertExtension oldExt newExt axelPath =
   let basePath =
-        if ".axel" `T.isSuffixOf` T.pack axelPath
-          then fromMaybe axelPath $ stripExtension ".axel" axelPath
+        if T.pack newExt `T.isSuffixOf` T.pack axelPath
+          then fromMaybe axelPath $ stripExtension newExt axelPath
           else axelPath
-   in basePath <> ".hs"
+   in basePath <> oldExt
+
+axelPathToHaskellPath :: FilePath -> FilePath
+axelPathToHaskellPath = convertExtension ".hs" ".axel"
+
+haskellPathToAxelPath :: FilePath -> FilePath
+haskellPathToAxelPath = convertExtension ".axel" ".hs"
+
+-- | Convert a file in place.
+convertFile' ::
+     (LastMember IO effs, Members '[ Effs.Console, Effs.FileSystem] effs)
+  => FilePath
+  -> Eff effs FilePath
+convertFile' path = do
+  let newPath = haskellPathToAxelPath path
+  void $ convertFile path newPath
+  pure newPath
 
 transpileFile ::
      (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
@@ -107,9 +124,10 @@ transpileFile ::
   -> FilePath
   -> Eff effs ()
 transpileFile path newPath = do
+  putStr $ "Transpiling " <> path <> "..."
   fileContents <- FS.readFile path
   newContents <- transpileSource fileContents
-  putStrLn $ "Writing " <> newPath <> "..."
+  putStrLn $ " Transpiled to " <> newPath <> "!"
   FS.writeFile newPath newContents
   modify @ModuleInfo $ Map.adjust (_2 %~ not) path
 
