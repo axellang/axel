@@ -28,12 +28,12 @@ haskellOperatorSymbols =
   , ('-', "axelSymbolDash")
   , ('|', "axelSymbolPipe")
   , ('~', "axelSymbolTilde")
+  , ('.', "axelSymbolDot")
   ]
 
 haskellSyntaxSymbols :: [(Char, String)]
 haskellSyntaxSymbols =
-  [ ('.', "axelSymbolDot")
-  , (',', "axelSymbolComma")
+  [ (',', "axelSymbolComma")
   , (';', "axelSymbolSemicolon")
   , ('[', "axelSymbolLeftBracket")
   , (']', "axelSymbolRightBracket")
