@@ -92,7 +92,8 @@ instance ToExpr HSE.Promoted where
 instance ToExpr HSE.Type where
   toExpr expr@HSE.TyForall {} = unsupportedExpr expr
   toExpr (HSE.TyFun _ tyA tyB) =
-    AST.EFunctionApplication $ AST.FunctionApplication (toExpr tyA) [toExpr tyB]
+    AST.EFunctionApplication $
+    AST.FunctionApplication (AST.EIdentifier "->") [toExpr tyA, toExpr tyB]
   toExpr (HSE.TyTuple _ _ tys) =
     AST.EFunctionApplication $
     AST.FunctionApplication (AST.EIdentifier ",") (map toExpr tys)
@@ -172,7 +173,11 @@ instance ToStmts HSE.Module where
       , case moduleHead of
           Just moduleId -> [AST.SModuleDeclaration (toId moduleId)]
           Nothing -> []
-      , concatMap toStmts imports
+      , AST.SMacroImport
+          (AST.MacroImport
+             "Axel"
+             ["applyInfix", "def", "defmacro", "fnCase", "mdo", "quasiquote"]) :
+        concatMap toStmts imports
       , concatMap toStmts decls
       ]
 
@@ -285,8 +290,16 @@ instance ToExpr HSE.Exp where
   toExpr (HSE.Con _ name) = toExpr name
   toExpr (HSE.Lit _ lit) = toExpr lit
   toExpr (HSE.InfixApp _ a op b) =
+    if toId op == "$"
+      then AST.EFunctionApplication $
+           AST.FunctionApplication (toExpr a) [toExpr b]
+      else AST.EFunctionApplication $
+           AST.FunctionApplication
+             (AST.EIdentifier "applyInfix")
+             [toExpr a, toExpr op, toExpr b]
+  toExpr (HSE.App _ (HSE.App _ f a) b) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (toExpr op) [toExpr a, toExpr b]
+    AST.FunctionApplication (toExpr f) [toExpr a, toExpr b]
   toExpr (HSE.App _ f x) =
     AST.EFunctionApplication $ AST.FunctionApplication (toExpr f) [toExpr x]
   toExpr expr@HSE.NegApp {} = unsupportedExpr expr

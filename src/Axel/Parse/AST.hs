@@ -30,6 +30,13 @@ toAxel :: Expression -> String
 toAxel (LiteralChar x) = ['{', x, '}']
 toAxel (LiteralInt x) = show x
 toAxel (LiteralString xs) = "\"" <> xs <> "\""
+toAxel (SExpression (Symbol "applyInfix":xs)) =
+  "{" <> unwords (map toAxel xs) <> "}"
+toAxel (SExpression (Symbol "list":xs)) = "[" <> unwords (map toAxel xs) <> "]"
+toAxel (SExpression [Symbol "quote", x]) = '\'' : toAxel x
+toAxel (SExpression [Symbol "quasiquote", x]) = '`' : toAxel x
+toAxel (SExpression [Symbol "unquote", x]) = '~' : toAxel x
+toAxel (SExpression [Symbol "unquoteSplicing", x]) = "~@" <> toAxel x
 toAxel (SExpression xs) = "(" <> unwords (map toAxel xs) <> ")"
 toAxel (Symbol x) = x
 

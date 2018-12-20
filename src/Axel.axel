@@ -57,8 +57,3 @@
 
 (defmacro mdo
   ((input) (pure [(mdo' input)])))
-
-(defmacro if
-  (([cond true false]) (pure [`(case ~cond
-                                 (True ~true)
-                                 (False ~false))])))
