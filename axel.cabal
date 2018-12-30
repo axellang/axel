@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.0.
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1a1b9e269848a5390e4269df0118c7451807f8c073435b803ba49dea56a7fa28
+-- hash: 8a3e2e4596a7ae0ea8202805421dbfc797a159626845f3c181170987bfe79ae2
 
 name:           axel
 version:        0.0.9
@@ -154,7 +154,6 @@ test-suite axel-test
     , lens
     , split
     , tasty
-    , tasty-discover
     , tasty-golden
     , tasty-hedgehog
     , tasty-hspec

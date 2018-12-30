@@ -80,7 +80,6 @@ tests:
     - lens
     - split
     - tasty
-    - tasty-discover
     - tasty-golden
     - tasty-hedgehog
     - tasty-hspec
