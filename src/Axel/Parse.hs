@@ -177,12 +177,6 @@ parseMultiple =
            SExpression [Symbol "quote", x] -> quoteParseExpression x
            x -> x)
 
-parseSingle :: (Member (Effs.Error Error) effs) => String -> Eff effs Expression
-parseSingle input =
-  parseMultiple input >>= \case
-    [x] -> pure x
-    _ -> throwError $ ParseError "Only one expression was expected"
-
 stripComments :: String -> String
 stripComments = unlines . map cleanLine . lines
   where
