@@ -1,5 +1,5 @@
 name: axel
-version: '0.0.9'
+version: '0.0.10'
 category: Language, Lisp, Macros, Transpiler
 author: Joshua Grosso
 maintainer: jgrosso256@gmail.com
@@ -21,9 +21,18 @@ ghc-options:
 - -Wpartial-fields
 - -Wredundant-constraints
 - -Wno-simplifiable-class-constraints
+- -optP-Wno-nonportable-include-path # https://github.com/haskell/cabal/issues/4739
+# - -F -pgmF debug-pp
+build-tools:
+- debug:debug
+- hpack:hpack
+- tasty-discover:tasty-discover
 dependencies:
 - base >=4.12 && <4.13
+- debug >=0.1.1
 - freer-simple >=1.2.0.0
+- hpack >= 0.31.0
+- tasty-discover >=4.2.1
 data-files:
 - resources/**/*
 library:
@@ -44,6 +53,7 @@ library:
   - process >=1.6.1
   - regex-pcre >=0.94.4
   - singletons >=2.4
+  - split >=0.2.3
   - strict >=0.3.2
   - template-haskell >=2.14
   - text >=1.2.2
@@ -51,7 +61,7 @@ library:
   - vector >=0.12.0
   - yaml >=0.8.31
 executables:
-  axel-exe:
+  axel:
     main: Main.hs
     source-dirs: app
     ghc-options:
