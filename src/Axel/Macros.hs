@@ -15,13 +15,10 @@ import Axel.AST
   , FunctionApplication(FunctionApplication)
   , Identifier
   , MacroDefinition
-  , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
-          SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
-          SQualifiedImport, SRawStatement, SRestrictedImport, STopLevel,
-          STypeSignature, STypeSynonym, STypeclassDefinition,
-          STypeclassInstance, SUnrestrictedImport)
+  , Statement(SMacroDefinition, SMacroImport, STypeSignature)
   , ToHaskell(toHaskell)
   , TypeSignature(TypeSignature)
+  , _SModuleDeclaration
   , functionDefinition
   , imports
   , moduleName
@@ -41,7 +38,7 @@ import qualified Axel.Eff.Resource as Res
   , macroDefinitionAndEnvironmentHeader
   , macroScaffold
   )
-import Axel.Error (Error)
+import Axel.Error (Error(MacroError), fatal)
 import Axel.Haskell.Macros (hygenisizeMacroName)
 import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Normalize (normalizeStatement)
@@ -53,23 +50,27 @@ import qualified Axel.Parse as Parse
   )
 import Axel.Utils.Display (Delimiter(Newlines), delimit)
 import Axel.Utils.Function (uncurry3)
+import Axel.Utils.List (head')
 import Axel.Utils.Recursion (Recursive(bottomUpTraverse), exhaustM)
 import Axel.Utils.String (replace)
 
 import Control.Lens.Cons (snoc)
+import Control.Lens.Extras (is)
 import Control.Lens.Operators ((%~), (^.))
 import Control.Lens.Tuple (_1, _2)
 import Control.Monad (foldM, unless, void)
 import Control.Monad.Freer (Eff, Members)
+import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 import Control.Monad.Freer.State (gets)
 import qualified Control.Monad.Freer.State as Effs (State)
 
 import Data.Function ((&))
 import Data.List (nub)
+import Data.List.Split (splitWhen)
 import Data.Map (Map)
 import qualified Data.Map as Map (filter, toList)
-import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Semigroup ((<>))
 
 import qualified Language.Haskell.Ghcid as Ghci (Ghci)
@@ -89,27 +90,37 @@ generateMacroProgram ::
   -> [Statement]
   -> [Parse.Expression]
   -> Eff effs (String, String, String)
-generateMacroProgram oldMacroName macroDefs env args = do
+generateMacroProgram oldMacroName macroDefs allEnv args = do
+  let newMacroName = hygenisizeMacroName oldMacroName
+  let insertDefName =
+        let defNamePlaceholder = "%%%MACRO_NAME%%%"
+         in replace defNamePlaceholder newMacroName
+  let insertArgs =
+        let argsPlaceholder = "%%%ARGUMENTS%%%"
+         in replace argsPlaceholder (show args)
+  let (preModuleEnv, postModuleEnv) =
+        if any (is _SModuleDeclaration) allEnv
+          then case splitWhen (is _SModuleDeclaration) allEnv of
+                 preEnv:postEnv:_ -> (preEnv, postEnv)
+                 _ -> fatal "generateMacroProgram" "0001"
+          else ([], allEnv)
   astDef <- readResource Res.astDefinition
   scaffold <- insertArgs <$> readResource Res.macroScaffold
+  let hygenicMacroDefs = map hygenisizeMacroDefinition macroDefs
+  let renderStmts = prettifyHaskell . delimit Newlines . map toHaskell
   macroDefAndEnv <-
     do header <- readResource Res.macroDefinitionAndEnvironmentHeader
        footer <-
          insertDefName <$> readResource Res.macroDefinitionAndEnvironmentFooter
-       pure $ unlines [header, macroDefAndEnvBody, footer]
+       pure $
+         unlines
+           [ renderStmts preModuleEnv
+           , header
+           , renderStmts postModuleEnv
+           , renderStmts $ map SMacroDefinition hygenicMacroDefs
+           , footer
+           ]
   pure (astDef, scaffold, macroDefAndEnv)
-  where
-    insertDefName =
-      let defNamePlaceholder = "%%%MACRO_NAME%%%"
-       in replace defNamePlaceholder newMacroName
-    insertArgs =
-      let argsPlaceholder = "%%%ARGUMENTS%%%"
-       in replace argsPlaceholder (show args)
-    newMacroName = hygenisizeMacroName oldMacroName
-    macroDefAndEnvBody =
-      let hygenicMacroDefs = map hygenisizeMacroDefinition macroDefs
-       in prettifyHaskell $ delimit Newlines $
-          map toHaskell (env <> map SMacroDefinition hygenicMacroDefs)
 
 expansionPass ::
      (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
@@ -142,24 +153,6 @@ exhaustivelyExpandMacros expandFile program = do
   where
     isMacroDefinition (SMacroDefinition x) = Just x
     isMacroDefinition _ = Nothing
-
-isStatementNonconflicting :: Statement -> Bool
-isStatementNonconflicting (SDataDeclaration _) = True
-isStatementNonconflicting (SFunctionDefinition _) = True
-isStatementNonconflicting (SPragma _) = True
-isStatementNonconflicting (SMacroDefinition _) = True
-isStatementNonconflicting (SMacroImport _) = True
-isStatementNonconflicting (SModuleDeclaration _) = False
-isStatementNonconflicting (SNewtypeDeclaration _) = True
-isStatementNonconflicting (SQualifiedImport _) = True
-isStatementNonconflicting (SRawStatement _) = True
-isStatementNonconflicting (SRestrictedImport _) = True
-isStatementNonconflicting (STopLevel _) = False
-isStatementNonconflicting (STypeclassDefinition _) = True
-isStatementNonconflicting (STypeclassInstance _) = True
-isStatementNonconflicting (STypeSignature _) = True
-isStatementNonconflicting (STypeSynonym _) = True
-isStatementNonconflicting (SUnrestrictedImport _) = True
 
 isMacroImported :: Identifier -> [Statement] -> Bool
 isMacroImported macroName =
@@ -219,7 +212,7 @@ expandMacros ghci expandFile topLevelExprs = do
                           (Map.filter
                              (\(moduleId', _) ->
                                 moduleId' == macroImport ^. moduleName))
-                      case listToMaybe $ Map.toList moduleInfo of
+                      case head' $ Map.toList moduleInfo of
                         Just (dependencyFilePath, (_, isCompiled)) ->
                           unless isCompiled $ void $
                           expandFile dependencyFilePath
@@ -259,7 +252,7 @@ expandMacros ghci expandFile topLevelExprs = do
                                      ghci
                                      function
                                      macroDefs
-                                     (filter isStatementNonconflicting stmts)
+                                     stmts
                                      args
                                  Nothing -> pure $ snoc acc x
                          _ -> pure $ snoc acc x)
@@ -299,25 +292,34 @@ evalMacro ::
   -> String
   -> Eff effs String
 evalMacro ghci astDefinition scaffold macroDefinitionAndEnvironment = do
-  let macroDefinitionAndEnvironmentFileName =
-        "AutogeneratedAxelMacroDefinitionAndEnvironment.hs"
-  let scaffoldModuleName = "AutogeneratedAxelScaffold"
-  let scaffoldFileName = scaffoldModuleName <.> "hs"
-  let astDefinitionFileName = "AutogeneratedAxelASTDefinition.hs"
-  FS.writeFile scaffoldFileName scaffold
-  FS.writeFile astDefinitionFileName astDefinition
-  FS.writeFile
-    macroDefinitionAndEnvironmentFileName
-    macroDefinitionAndEnvironment
-  void $ Ghci.exec ghci $
+  setup
+  loadResult <-
+    Ghci.exec ghci $
     unwords
       [ ":l"
       , scaffoldFileName
       , astDefinitionFileName
       , macroDefinitionAndEnvironmentFileName
       ]
-  result <- unlines <$> Ghci.exec ghci ":main"
-  FS.removeFile astDefinitionFileName
-  FS.removeFile macroDefinitionAndEnvironmentFileName
-  FS.removeFile scaffoldFileName
-  pure result
+  if "Ok, three modules loaded." `elem` loadResult
+    then do
+      result <- unlines <$> Ghci.exec ghci ":main"
+      cleanup
+      pure result
+    else throwError $ MacroError (unlines loadResult)
+  where
+    macroDefinitionAndEnvironmentFileName =
+      "AutogeneratedAxelMacroDefinitionAndEnvironment.hs"
+    scaffoldModuleName = "AutogeneratedAxelScaffold"
+    scaffoldFileName = scaffoldModuleName <.> "hs"
+    astDefinitionFileName = "AutogeneratedAxelASTDefinition.hs"
+    setup = do
+      FS.writeFile scaffoldFileName scaffold
+      FS.writeFile astDefinitionFileName astDefinition
+      FS.writeFile
+        macroDefinitionAndEnvironmentFileName
+        macroDefinitionAndEnvironment
+    cleanup = do
+      FS.removeFile astDefinitionFileName
+      FS.removeFile macroDefinitionAndEnvironmentFileName
+      FS.removeFile scaffoldFileName

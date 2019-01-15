@@ -17,7 +17,8 @@ import qualified Control.Monad.Freer.Error as Effs (Error)
 import Data.Semigroup ((<>))
 
 data Error
-  = EvalError String
+  = ConvertError String
+  | EvalError String
   | MacroError String
   | NormalizeError String
                    [Expression]
@@ -26,6 +27,7 @@ data Error
 
 instance Show Error where
   show :: Error -> String
+  show (ConvertError err) = err
   show (EvalError err) = err
   show (MacroError err) = err
   show (NormalizeError err context) =

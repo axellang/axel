@@ -45,15 +45,15 @@
          [`(\ (~varId) (case ~varId ~@cases))])
         AST.gensym)))
 
-(def mdo' {[AST.Expression] -> AST.Expression}
+(def expandDo' {[AST.Expression] -> AST.Expression}
   (({var : {'<- : {val : rest}}})
-   `(>>= ~val (\ (~var) ~(mdo' rest))))
+   `(>>= ~val (\ (~var) ~(expandDo' rest))))
   (((: val rest))
    (case rest
      ([]
       val)
      (_
-      `(>> ~val ~(mdo' rest))))))
+      `(>> ~val ~(expandDo' rest))))))
 
-(defmacro mdo
-  ((input) (pure [(mdo' input)])))
+(defmacro do'
+  ((input) (pure [(expandDo' input)])))

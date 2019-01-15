@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 
@@ -8,7 +7,6 @@ module Axel.Parse.AST where
 
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef)
 import Data.Semigroup ((<>))
-import Data.Typeable (Typeable)
 
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -21,7 +19,7 @@ data Expression
   | LiteralString String
   | SExpression [Expression]
   | Symbol String
-  deriving (Eq, Show, Typeable)
+  deriving (Eq, Show)
 
 -- ******************************
 -- Internal utilities

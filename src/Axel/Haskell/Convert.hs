@@ -1,23 +1,32 @@
+-- TODO Use `throwError` instead of `error`
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Axel.Haskell.Converter where
+module Axel.Haskell.Convert where
 
 import Prelude hiding (putStrLn)
 
 import qualified Axel.AST as AST
-import Axel.Denormalize (denormalizeStatement)
+import Axel.Denormalize (denormalizeExpression, denormalizeStatement)
 import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (writeFile)
+import Axel.Error (Error(ConvertError), fatal)
+import qualified Axel.Parse as Parse
 import Axel.Parse.AST (toAxel)
+import Axel.Utils.List (remove, stablyGroupAllWith)
 import Axel.Utils.String (replace)
+import Axel.Utils.Tuple (flattenAnnotations, unannotated)
 
-import Control.Lens.Operators ((<&>))
+import Control.Category ((>>>))
+import Control.Lens.Extras (is)
+import Control.Lens.Operators ((%~), (^.))
 import Control.Monad.Freer (Eff, LastMember, Members, sendM)
+import Control.Monad.Freer.Error (throwError)
+import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import qualified Language.Haskell.Exts as HSE
 
@@ -25,7 +34,7 @@ renderRaw :: (HSE.Pretty a) => a -> String
 renderRaw = escapeNewlines . escapeQuotes . HSE.prettyPrintWithMode ppMode
   where
     ppMode = HSE.defaultMode {HSE.layout = HSE.PPNoLayout}
-    escapeQuotes = replace "\"" "\\\""
+    escapeQuotes = replace "\"" "\\\\\\\""
     escapeNewlines = replace "\n" "\\n"
 
 unsupportedExpr :: (HSE.Pretty a) => a -> AST.Expression
@@ -83,9 +92,7 @@ instance ToExpr HSE.Promoted where
   toExpr expr@HSE.PromotedInteger {} = unsupportedExpr expr
   toExpr expr@HSE.PromotedString {} = unsupportedExpr expr
   toExpr (HSE.PromotedCon _ _ con) = AST.EIdentifier $ '\'' : toId con
-  toExpr (HSE.PromotedList _ _ list) =
-    AST.EFunctionApplication $
-    AST.FunctionApplication (AST.EIdentifier "list") (map toExpr list)
+  toExpr expr@HSE.PromotedList {} = unsupportedExpr expr
   toExpr expr@HSE.PromotedTuple {} = unsupportedExpr expr
   toExpr expr@HSE.PromotedUnit {} = unsupportedExpr expr
 
@@ -499,17 +506,62 @@ contextToExprs (Just (HSE.CxTuple _ assts)) = map toExpr assts
 contextToExprs (Just (HSE.CxEmpty _)) = []
 
 convertFile ::
-     (LastMember IO effs, Members '[ Effs.Console, Effs.FileSystem] effs)
+     ( LastMember IO effs
+     , Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem] effs
+     )
   => FilePath
   -> FilePath
   -> Eff effs String
 convertFile path newPath = do
-  newContents <-
-    sendM (HSE.parseFile path) <&>
+  parsedModule <-
+    sendM (HSE.parseFile path) >>=
     (\case
-       HSE.ParseOk parsedModule ->
-         unlines $ map (toAxel . denormalizeStatement) $ toStmts parsedModule
-       HSE.ParseFailed _ err -> error err)
+       HSE.ParseOk parsedModule -> pure parsedModule
+       HSE.ParseFailed _ err -> throwError $ ConvertError err)
   putStrLn $ "Writing " <> newPath <> "..."
+  let newContents =
+        unlines $ map toAxel $ groupFunctionDefinitions $ toStmts parsedModule
   FS.writeFile newPath newContents
   pure newPath
+
+groupFunctionDefinitions :: [AST.Statement] -> [Parse.Expression]
+groupFunctionDefinitions =
+  let findFnName (AST.SFunctionDefinition fnDef) = Just $ fnDef ^. AST.name
+      findFnName (AST.STypeSignature tySig) = Just $ tySig ^. AST.name
+      findFnName _ = Nothing
+      extractTySig ::
+           ([AST.Statement], Maybe String)
+        -> (([AST.Statement], [AST.Statement]), Maybe String)
+      extractTySig = unannotated %~ remove (is AST._STypeSignature)
+      transformFnDef (AST.SFunctionDefinition fnDef) =
+        let whereBindings =
+              case map
+                     (denormalizeStatement . AST.SFunctionDefinition)
+                     (fnDef ^. AST.whereBindings) of
+                [] -> []
+                xs -> [Parse.SExpression xs]
+         in Parse.SExpression $
+            [ Parse.SExpression $
+              map denormalizeExpression (fnDef ^. AST.arguments)
+            , denormalizeExpression (fnDef ^. AST.body)
+            ] <>
+            whereBindings
+      transformFnDef _ = fatal "groupFunctionDefinitions" "0001"
+   in stablyGroupAllWith findFnName >>>
+      map (flattenAnnotations . extractTySig) >>>
+      concatMap
+        (\(stmts, (tySigs, maybeFnName)) ->
+           case maybeFnName of
+             Nothing -> map denormalizeStatement stmts
+             Just fnName ->
+               case tySigs of
+                 [AST.STypeSignature tySig] ->
+                   [ Parse.SExpression $
+                     Parse.Symbol "def" :
+                     Parse.Symbol fnName :
+                     denormalizeExpression (tySig ^. AST.typeDefinition) :
+                     map transformFnDef stmts
+                   ]
+                 _ ->
+                   error $
+                   "Multiple type signatures found for: `" <> fnName <> "`!")

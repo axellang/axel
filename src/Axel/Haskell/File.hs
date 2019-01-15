@@ -21,7 +21,7 @@ import Axel.Eff.Resource (readResource)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import qualified Axel.Eff.Resource as Res (astDefinition)
 import Axel.Error (Error)
-import Axel.Haskell.Converter (convertFile)
+import Axel.Haskell.Convert (convertFile)
 import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Haskell.Stack (interpretFile)
 import Axel.Macros (ModuleInfo, exhaustivelyExpandMacros)
@@ -110,7 +110,9 @@ haskellPathToAxelPath = convertExtension ".axel" ".hs"
 
 -- | Convert a file in place.
 convertFile' ::
-     (LastMember IO effs, Members '[ Effs.Console, Effs.FileSystem] effs)
+     ( LastMember IO effs
+     , Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem] effs
+     )
   => FilePath
   -> Eff effs FilePath
 convertFile' path = do
