@@ -5,10 +5,9 @@ import Axel.Utils.Tuple (annotate, annotateWith, annotation, unannotate)
 import Control.Lens ((^.))
 
 import Data.Function (on)
-import Data.List (findIndex, isPrefixOf, sortBy)
+import Data.List (elemIndex, isPrefixOf, sortOn)
 import qualified Data.List.NonEmpty as NE (groupBy, head, toList)
 import Data.Maybe (listToMaybe)
-import Data.Ord (comparing)
 
 head' :: [a] -> Maybe a
 head' = listToMaybe
@@ -25,10 +24,10 @@ groupAllWith f =
 stablyGroupAllWith :: (Eq a, Ord b) => (a -> b) -> [a] -> [([a], b)]
 stablyGroupAllWith f xs =
   map unannotate $
-  sortBy (comparing (^. annotation)) $
+  sortOn (^. annotation) $
   map
     (annotateWith $ \(groupRepresentative:_, _) ->
-       findIndex (== groupRepresentative) xs) $
+       elemIndex groupRepresentative xs) $
   groupAllWith f xs
 
 remove :: (Eq a) => (a -> Bool) -> [a] -> ([a], [a])

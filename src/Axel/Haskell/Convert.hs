@@ -2,7 +2,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns -Wno-incomplete-uni-patterns #-}
 
 module Axel.Haskell.Convert where
 
@@ -17,6 +19,7 @@ import qualified Axel.Eff.FileSystem as FS (writeFile)
 import Axel.Error (Error(ConvertError), fatal)
 import qualified Axel.Parse as Parse
 import Axel.Parse.AST (toAxel)
+import qualified Axel.Sourcemap as SM (Error, Expression)
 import Axel.Utils.List (remove, stablyGroupAllWith)
 import Axel.Utils.String (replace)
 import Axel.Utils.Tuple (flattenAnnotations, unannotated)
@@ -37,46 +40,46 @@ renderRaw = escapeNewlines . escapeQuotes . HSE.prettyPrintWithMode ppMode
     escapeQuotes = replace "\"" "\\\\\\\""
     escapeNewlines = replace "\n" "\\n"
 
-unsupportedExpr :: (HSE.Pretty a) => a -> AST.Expression
-unsupportedExpr = AST.ERawExpression . renderRaw
+unsupportedExpr :: (HSE.Pretty a) => a -> AST.Expression ()
+unsupportedExpr = AST.ERawExpression () . renderRaw
 
-unsupportedStmt :: (HSE.Pretty a) => a -> AST.Statement
-unsupportedStmt = AST.SRawStatement . renderRaw
+unsupportedStmt :: (HSE.Pretty a) => a -> AST.Statement ()
+unsupportedStmt = AST.SRawStatement () . renderRaw
 
 class ToExpr a where
-  toExpr :: a b -> AST.Expression
+  toExpr :: a b -> AST.Expression ()
 
 class ToStmts a where
-  toStmts :: a b -> [AST.Statement]
+  toStmts :: a b -> [AST.Statement ()]
 
 toId :: (ToExpr a) => a b -> String
 toId x =
-  let AST.EIdentifier sym = toExpr x
+  let AST.EIdentifier _ sym = toExpr x
    in sym
 
 instance ToExpr HSE.Name where
-  toExpr (HSE.Ident _ name) = AST.EIdentifier name
-  toExpr (HSE.Symbol _ name) = AST.EIdentifier name
+  toExpr (HSE.Ident _ name) = AST.EIdentifier () name
+  toExpr (HSE.Symbol _ name) = AST.EIdentifier () name
 
 instance ToExpr HSE.ModuleName where
-  toExpr (HSE.ModuleName _ name) = AST.EIdentifier name
+  toExpr (HSE.ModuleName _ name) = AST.EIdentifier () name
 
 instance ToExpr HSE.CName where
   toExpr (HSE.VarName _ name) = toExpr name
   toExpr (HSE.ConName _ name) = toExpr name
 
 instance ToExpr HSE.SpecialCon where
-  toExpr HSE.UnitCon {} = AST.EIdentifier "Unit"
-  toExpr HSE.ListCon {} = AST.EIdentifier "List"
-  toExpr HSE.FunCon {} = AST.EIdentifier "->"
-  toExpr (HSE.TupleCon _ _ arity) = AST.EIdentifier $ replicate arity ','
-  toExpr HSE.Cons {} = AST.EIdentifier ":"
+  toExpr HSE.UnitCon {} = AST.EIdentifier () "Unit"
+  toExpr HSE.ListCon {} = AST.EIdentifier () "List"
+  toExpr HSE.FunCon {} = AST.EIdentifier () "->"
+  toExpr (HSE.TupleCon _ _ arity) = AST.EIdentifier () $ replicate arity ','
+  toExpr HSE.Cons {} = AST.EIdentifier () ":"
   toExpr expr@HSE.UnboxedSingleCon {} = unsupportedExpr expr
-  toExpr HSE.ExprHole {} = AST.EIdentifier "_"
+  toExpr HSE.ExprHole {} = AST.EIdentifier () "_"
 
 instance ToExpr HSE.QName where
   toExpr (HSE.Qual _ moduleName name) =
-    AST.EIdentifier $ toId moduleName <> "." <> toId name
+    AST.EIdentifier () $ toId moduleName <> "." <> toId name
   toExpr (HSE.UnQual _ name) = toExpr name
   toExpr (HSE.Special _ specialCon) = toExpr specialCon
 
@@ -91,7 +94,7 @@ instance ToExpr HSE.MaybePromotedName where
 instance ToExpr HSE.Promoted where
   toExpr expr@HSE.PromotedInteger {} = unsupportedExpr expr
   toExpr expr@HSE.PromotedString {} = unsupportedExpr expr
-  toExpr (HSE.PromotedCon _ _ con) = AST.EIdentifier $ '\'' : toId con
+  toExpr (HSE.PromotedCon _ _ con) = AST.EIdentifier () $ '\'' : toId con
   toExpr expr@HSE.PromotedList {} = unsupportedExpr expr
   toExpr expr@HSE.PromotedTuple {} = unsupportedExpr expr
   toExpr expr@HSE.PromotedUnit {} = unsupportedExpr expr
@@ -100,30 +103,34 @@ instance ToExpr HSE.Type where
   toExpr expr@HSE.TyForall {} = unsupportedExpr expr
   toExpr (HSE.TyFun _ tyA tyB) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (AST.EIdentifier "->") [toExpr tyA, toExpr tyB]
+    AST.FunctionApplication
+      ()
+      (AST.EIdentifier () "->")
+      [toExpr tyA, toExpr tyB]
   toExpr (HSE.TyTuple _ _ tys) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (AST.EIdentifier ",") (map toExpr tys)
+    AST.FunctionApplication () (AST.EIdentifier () ",") (map toExpr tys)
   toExpr expr@HSE.TyUnboxedSum {} = unsupportedExpr expr
   toExpr (HSE.TyList _ ty) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (AST.EIdentifier "[]") [toExpr ty]
+    AST.FunctionApplication () (AST.EIdentifier () "[]") [toExpr ty]
   toExpr expr@HSE.TyParArray {} = unsupportedExpr expr
   toExpr (HSE.TyApp _ tyA tyB) =
-    AST.EFunctionApplication $ AST.FunctionApplication (toExpr tyA) [toExpr tyB]
+    AST.EFunctionApplication $
+    AST.FunctionApplication () (toExpr tyA) [toExpr tyB]
   toExpr (HSE.TyVar _ x) = toExpr x
   toExpr (HSE.TyCon _ x) = toExpr x
   toExpr (HSE.TyParen _ x) = toExpr x
   toExpr (HSE.TyInfix _ tyA mpn tyB) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (toExpr mpn) [toExpr tyA, toExpr tyB]
+    AST.FunctionApplication () (toExpr mpn) [toExpr tyA, toExpr tyB]
   toExpr expr@HSE.TyKind {} = unsupportedExpr expr
   toExpr (HSE.TyPromoted _ promoted) = toExpr promoted
   toExpr expr@HSE.TyEquals {} = unsupportedExpr expr
   toExpr expr@HSE.TySplice {} = unsupportedExpr expr
   toExpr expr@HSE.TyBang {} = unsupportedExpr expr
   toExpr (HSE.TyWildCard _ name) =
-    AST.EIdentifier $ "_" <> maybe mempty toId name
+    AST.EIdentifier () $ "_" <> maybe mempty toId name
   toExpr expr@HSE.TyQuasiQuote {} = unsupportedExpr expr
 
 instance ToExpr HSE.ModuleHead where
@@ -132,7 +139,7 @@ instance ToExpr HSE.ModuleHead where
 instance ToStmts HSE.ModulePragma where
   toStmts (HSE.LanguagePragma _ pragmas) =
     map
-      (\pragma -> AST.SPragma . AST.Pragma $ "LANGUAGE " <> toId pragma)
+      (\pragma -> AST.SPragma . AST.Pragma () $ "LANGUAGE " <> toId pragma)
       pragmas
   toStmts stmt@HSE.OptionsPragma {} = [unsupportedStmt stmt]
   toStmts stmt@HSE.AnnModulePragma {} = [unsupportedStmt stmt]
@@ -147,6 +154,7 @@ instance ToStmts HSE.ImportDecl where
                    Just aliasName ->
                      AST.SQualifiedImport $
                      AST.QualifiedImport
+                       ()
                        moduleId
                        (toId aliasName)
                        (importSpecListToExpr spec)
@@ -154,23 +162,26 @@ instance ToStmts HSE.ImportDecl where
             else case alias of
                    Nothing ->
                      case importSpecListToExpr spec of
-                       AST.ImportAll -> AST.SUnrestrictedImport moduleId
-                       AST.ImportOnly imports ->
+                       AST.ImportAll _ -> AST.SUnrestrictedImport () moduleId
+                       AST.ImportOnly _ imports ->
                          AST.SRestrictedImport $
-                         AST.RestrictedImport moduleId (AST.ImportOnly imports)
+                         AST.RestrictedImport
+                           ()
+                           moduleId
+                           (AST.ImportOnly () imports)
                    Just _ -> unsupportedStmt stmt
     ]
     where
-      importSpecListToExpr Nothing = AST.ImportAll
+      importSpecListToExpr Nothing = AST.ImportAll ()
       importSpecListToExpr (Just (HSE.ImportSpecList _ False importSpecs)) =
-        AST.ImportOnly $
+        AST.ImportOnly () $
         map
           (\case
-             HSE.IVar _ name -> AST.ImportItem (toId name)
-             HSE.IAbs _ _ name -> AST.ImportItem (toId name)
-             HSE.IThingAll _ name -> AST.ImportType (toId name) [".."]
+             HSE.IVar _ name -> AST.ImportItem () (toId name)
+             HSE.IAbs _ _ name -> AST.ImportItem () (toId name)
+             HSE.IThingAll _ name -> AST.ImportType () (toId name) [".."]
              HSE.IThingWith _ name items ->
-               AST.ImportType (toId name) (map toId items))
+               AST.ImportType () (toId name) (map toId items))
           importSpecs
 
 instance ToStmts HSE.Module where
@@ -178,10 +189,11 @@ instance ToStmts HSE.Module where
     concat
       [ concatMap toStmts pragmas
       , case moduleHead of
-          Just moduleId -> [AST.SModuleDeclaration (toId moduleId)]
+          Just moduleId -> [AST.SModuleDeclaration () (toId moduleId)]
           Nothing -> []
       , AST.SMacroImport
           (AST.MacroImport
+             ()
              "Axel"
              ["applyInfix", "def", "defmacro", "fnCase", "mdo", "quasiquote"]) :
         concatMap toStmts imports
@@ -193,18 +205,22 @@ instance ToExpr HSE.QualConDecl where
     case conDecl of
       HSE.ConDecl _ name args ->
         AST.EFunctionApplication $
-        AST.FunctionApplication (AST.EIdentifier $ toId name) (map toExpr args)
+        AST.FunctionApplication
+          ()
+          (AST.EIdentifier () $ toId name)
+          (map toExpr args)
       HSE.InfixConDecl _ argA name argB ->
         AST.EFunctionApplication $
         AST.FunctionApplication
-          (AST.EIdentifier $ toId name)
+          ()
+          (AST.EIdentifier () $ toId name)
           [toExpr argA, toExpr argB]
       HSE.RecDecl {} -> unsupportedExpr conDecl
 
 instance ToExpr HSE.Literal where
-  toExpr (HSE.Char _ char _) = AST.ELiteral $ AST.LChar char
-  toExpr (HSE.String _ string _) = AST.ELiteral $ AST.LString string
-  toExpr (HSE.Int _ int _) = AST.ELiteral $ AST.LInt (fromInteger int)
+  toExpr (HSE.Char _ char _) = AST.ELiteral $ AST.LChar () char
+  toExpr (HSE.String _ string _) = AST.ELiteral $ AST.LString () string
+  toExpr (HSE.Int _ int _) = AST.ELiteral $ AST.LInt () (fromInteger int)
   toExpr expr@HSE.Frac {} = unsupportedExpr expr
   toExpr expr@HSE.PrimInt {} = unsupportedExpr expr
   toExpr expr@HSE.PrimWord {} = unsupportedExpr expr
@@ -219,21 +235,21 @@ instance ToExpr HSE.Pat where
   toExpr expr@HSE.PNPlusK {} = unsupportedExpr expr
   toExpr (HSE.PInfixApp _ patA name patB) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (toExpr name) [toExpr patA, toExpr patB]
+    AST.FunctionApplication () (toExpr name) [toExpr patA, toExpr patB]
   toExpr (HSE.PApp _ name pats) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (toExpr name) (map toExpr pats)
+    AST.FunctionApplication () (toExpr name) (map toExpr pats)
   toExpr (HSE.PTuple _ _ pats) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (AST.EIdentifier ",") (map toExpr pats)
+    AST.FunctionApplication () (AST.EIdentifier () ",") (map toExpr pats)
   toExpr expr@HSE.PUnboxedSum {} = unsupportedExpr expr
   toExpr (HSE.PList _ pats) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (AST.EIdentifier "list") (map toExpr pats)
+    AST.FunctionApplication () (AST.EIdentifier () "list") (map toExpr pats)
   toExpr (HSE.PParen _ pat) = toExpr pat
   toExpr expr@HSE.PRec {} = unsupportedExpr expr
   toExpr expr@HSE.PAsPat {} = unsupportedExpr expr
-  toExpr HSE.PWildCard {} = AST.EIdentifier "_"
+  toExpr HSE.PWildCard {} = AST.EIdentifier () "_"
   toExpr expr@HSE.PIrrPat {} = unsupportedExpr expr
   toExpr expr@HSE.PatTypeSig {} = unsupportedExpr expr
   toExpr expr@HSE.PViewPat {} = unsupportedExpr expr
@@ -247,32 +263,33 @@ instance ToExpr HSE.Pat where
   toExpr expr@HSE.PQuasiQuote {} = unsupportedExpr expr
   toExpr expr@HSE.PBangPat {} = unsupportedExpr expr
 
-declHeadToTyDef :: HSE.DeclHead a -> AST.TypeDefinition
-declHeadToTyDef (HSE.DHead _ name) = AST.ProperType $ toId name
+declHeadToTyDef :: HSE.DeclHead a -> AST.TypeDefinition ()
+declHeadToTyDef (HSE.DHead _ name) = AST.ProperType () $ toId name
 declHeadToTyDef HSE.DHInfix {} =
   error "Postfix type declarations not supported!"
 declHeadToTyDef (HSE.DHParen _ dh) = declHeadToTyDef dh
 declHeadToTyDef (HSE.DHApp _ dh tvb) =
-  AST.TypeConstructor $
+  AST.TypeConstructor () $
   case dh of
     HSE.DHInfix _ tvb' name ->
-      AST.FunctionApplication (toExpr name) [toExpr tvb', toExpr tvb]
-    _ -> AST.FunctionApplication (tyDefToExpr $ declHeadToTyDef dh) [toExpr tvb]
+      AST.FunctionApplication () (toExpr name) [toExpr tvb', toExpr tvb]
+    _ ->
+      AST.FunctionApplication () (tyDefToExpr $ declHeadToTyDef dh) [toExpr tvb]
 
-tyDefToExpr :: AST.TypeDefinition -> AST.Expression
-tyDefToExpr (AST.TypeConstructor tyCon) = AST.EFunctionApplication tyCon
-tyDefToExpr (AST.ProperType ty) = AST.EIdentifier ty
+tyDefToExpr :: AST.TypeDefinition () -> AST.Expression ()
+tyDefToExpr (AST.TypeConstructor _ tyCon) = AST.EFunctionApplication tyCon
+tyDefToExpr (AST.ProperType _ ty) = AST.EIdentifier () ty
 
-exprToTyDef :: AST.Expression -> AST.TypeDefinition
-exprToTyDef (AST.EIdentifier identifier) = AST.ProperType identifier
-exprToTyDef (AST.EFunctionApplication funApp) = AST.TypeConstructor funApp
+exprToTyDef :: AST.Expression () -> AST.TypeDefinition ()
+exprToTyDef (AST.EIdentifier _ identifier) = AST.ProperType () identifier
+exprToTyDef (AST.EFunctionApplication funApp) = AST.TypeConstructor () funApp
 
-toFunApp :: AST.Expression -> AST.FunctionApplication
+toFunApp :: AST.Expression () -> AST.FunctionApplication ()
 toFunApp (AST.EFunctionApplication funApp) = funApp
-toFunApp (AST.EIdentifier sym) =
-  AST.FunctionApplication (AST.EIdentifier sym) []
+toFunApp (AST.EIdentifier _ sym) =
+  AST.FunctionApplication () (AST.EIdentifier () sym) []
 
-bindsToFunDefs :: Maybe (HSE.Binds a) -> [AST.FunctionDefinition]
+bindsToFunDefs :: Maybe (HSE.Binds a) -> [AST.FunctionDefinition ()]
 bindsToFunDefs Nothing = []
 bindsToFunDefs (Just (HSE.BDecls _ decls)) =
   map
@@ -283,7 +300,7 @@ bindsToFunDefs (Just (HSE.BDecls _ decls)) =
 bindsToFunDefs (Just HSE.IPBinds {}) =
   error "Implicit parameters not supported!"
 
-altToClause :: HSE.Alt a -> (AST.Expression, AST.Expression)
+altToClause :: HSE.Alt a -> (AST.Expression (), AST.Expression ())
 altToClause (HSE.Alt _ pat rhs _) = (toExpr pat, toExpr rhs)
 
 instance ToExpr HSE.QOp where
@@ -299,38 +316,40 @@ instance ToExpr HSE.Exp where
   toExpr (HSE.InfixApp _ a op b) =
     if toId op == "$"
       then AST.EFunctionApplication $
-           AST.FunctionApplication (toExpr a) [toExpr b]
+           AST.FunctionApplication () (toExpr a) [toExpr b]
       else AST.EFunctionApplication $
            AST.FunctionApplication
-             (AST.EIdentifier "applyInfix")
+             ()
+             (AST.EIdentifier () "applyInfix")
              [toExpr a, toExpr op, toExpr b]
   toExpr (HSE.App _ (HSE.App _ f a) b) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (toExpr f) [toExpr a, toExpr b]
+    AST.FunctionApplication () (toExpr f) [toExpr a, toExpr b]
   toExpr (HSE.App _ f x) =
-    AST.EFunctionApplication $ AST.FunctionApplication (toExpr f) [toExpr x]
+    AST.EFunctionApplication $ AST.FunctionApplication () (toExpr f) [toExpr x]
   toExpr expr@HSE.NegApp {} = unsupportedExpr expr
   toExpr (HSE.Lambda _ args body) =
-    AST.ELambda $ AST.Lambda (map toExpr args) (toExpr body)
+    AST.ELambda $ AST.Lambda () (map toExpr args) (toExpr body)
   toExpr (HSE.Let _ binds body) =
-    AST.ELetBlock $ AST.LetBlock (bindsToClauses binds) (toExpr body)
+    AST.ELetBlock $ AST.LetBlock () (bindsToClauses binds) (toExpr body)
   toExpr (HSE.If _ cond ifTrue ifFalse) =
-    AST.EIfBlock $ AST.IfBlock (toExpr cond) (toExpr ifTrue) (toExpr ifFalse)
+    AST.EIfBlock $ AST.IfBlock () (toExpr cond) (toExpr ifTrue) (toExpr ifFalse)
   toExpr expr@HSE.MultiIf {} = unsupportedExpr expr
   toExpr (HSE.Case _ expr matches) =
-    AST.ECaseBlock $ AST.CaseBlock (toExpr expr) (map altToClause matches)
+    AST.ECaseBlock $ AST.CaseBlock () (toExpr expr) (map altToClause matches)
   toExpr expr@HSE.Do {} = unsupportedExpr expr
   toExpr expr@HSE.MDo {} = unsupportedExpr expr
   toExpr (HSE.Tuple _ _ exps) =
     AST.EFunctionApplication $
     AST.FunctionApplication
-      (AST.EIdentifier $ replicate (length exps) ',')
+      ()
+      (AST.EIdentifier () $ replicate (length exps) ',')
       (map toExpr exps)
   toExpr expr@HSE.UnboxedSum {} = unsupportedExpr expr
   toExpr expr@HSE.TupleSection {} = unsupportedExpr expr
   toExpr (HSE.List _ items) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (AST.EIdentifier "list") (map toExpr items)
+    AST.FunctionApplication () (AST.EIdentifier () "list") (map toExpr items)
   toExpr expr@HSE.ParArray {} = unsupportedExpr expr
   toExpr (HSE.Paren _ expr) = toExpr expr
   toExpr expr@HSE.LeftSection {} = unsupportedExpr expr
@@ -372,7 +391,7 @@ instance ToExpr HSE.Rhs where
   toExpr (HSE.UnGuardedRhs _ expr) = toExpr expr
   toExpr expr@HSE.GuardedRhss {} = unsupportedExpr expr
 
-bindsToClauses :: HSE.Binds a -> [(AST.Expression, AST.Expression)]
+bindsToClauses :: HSE.Binds a -> [(AST.Expression (), AST.Expression ())]
 bindsToClauses (HSE.BDecls _ decls) =
   map (\(HSE.PatBind _ pat body _) -> (toExpr pat, toExpr body)) decls
 
@@ -380,6 +399,7 @@ instance ToStmts HSE.Match where
   toStmts (HSE.Match _ fn pats body whereBinds) =
     [ AST.SFunctionDefinition $
       AST.FunctionDefinition
+        ()
         (toId fn)
         (map toExpr pats)
         (toExpr body)
@@ -388,6 +408,7 @@ instance ToStmts HSE.Match where
   toStmts (HSE.InfixMatch _ pat fn pats body whereBinds) =
     [ AST.SFunctionDefinition $
       AST.FunctionDefinition
+        ()
         (toId fn)
         (toExpr pat : map toExpr pats)
         (toExpr body)
@@ -397,11 +418,12 @@ instance ToStmts HSE.Match where
 instance ToExpr HSE.InstHead where
   toExpr (HSE.IHCon _ name) = toExpr name
   toExpr (HSE.IHInfix _ ty name) =
-    AST.EFunctionApplication $ AST.FunctionApplication (toExpr ty) [toExpr name]
+    AST.EFunctionApplication $
+    AST.FunctionApplication () (toExpr ty) [toExpr name]
   toExpr (HSE.IHParen _ instHead) = toExpr instHead
   toExpr (HSE.IHApp _ instHead ty) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (toExpr instHead) [toExpr ty]
+    AST.FunctionApplication () (toExpr instHead) [toExpr ty]
 
 instance ToExpr HSE.InstRule where
   toExpr (HSE.IRule _ _ Nothing instHead) = toExpr instHead
@@ -410,7 +432,7 @@ instance ToExpr HSE.InstRule where
 instance ToStmts HSE.Decl where
   toStmts (HSE.TypeDecl _ declHead ty) =
     [ AST.STypeSynonym $
-      AST.TypeSynonym (tyDefToExpr $ declHeadToTyDef declHead) (toExpr ty)
+      AST.TypeSynonym () (tyDefToExpr $ declHeadToTyDef declHead) (toExpr ty)
     ]
   toStmts stmt@HSE.TypeFamDecl {} = [unsupportedStmt stmt]
   toStmts stmt@HSE.ClosedTypeFamDecl {} = [unsupportedStmt stmt]
@@ -419,11 +441,13 @@ instance ToStmts HSE.Decl where
         HSE.NewType _ ->
           AST.SNewtypeDeclaration $
           AST.NewtypeDeclaration
+            ()
             (declHeadToTyDef declHead)
             (toFunApp $ toExpr $ head cases)
         HSE.DataType _ ->
           AST.SDataDeclaration $
           AST.DataDeclaration
+            ()
             (declHeadToTyDef declHead)
             (map (toFunApp . toExpr) cases)
     ]
@@ -435,6 +459,7 @@ instance ToStmts HSE.Decl where
   toStmts (HSE.ClassDecl _ ctxt declHead _ decls) =
     [ AST.STypeclassDefinition $
       AST.TypeclassDefinition
+        ()
         (tyDefToExpr $ declHeadToTyDef declHead)
         (contextToExprs ctxt)
         (maybe [] (map classDeclToTySig) decls)
@@ -442,6 +467,7 @@ instance ToStmts HSE.Decl where
   toStmts (HSE.InstDecl _ _ rule decls) =
     [ AST.STypeclassInstance $
       AST.TypeclassInstance
+        ()
         (toExpr rule)
         (maybe [] (map instDeclToFunDef) decls)
     ]
@@ -449,13 +475,15 @@ instance ToStmts HSE.Decl where
   toStmts stmt@HSE.InfixDecl {} = [unsupportedStmt stmt]
   toStmts (HSE.TypeSig _ names ty) =
     map
-      (\name -> AST.STypeSignature $ AST.TypeSignature (toId name) (toExpr ty))
+      (\name ->
+         AST.STypeSignature $ AST.TypeSignature () (toId name) (toExpr ty))
       names
   toStmts stmt@HSE.PatSynSig {} = [unsupportedStmt stmt]
   toStmts (HSE.FunBind _ cases) = concatMap toStmts cases
   toStmts (HSE.PatBind _ fn body whereBinds) =
     [ AST.SFunctionDefinition $
       AST.FunctionDefinition
+        ()
         (toId fn)
         []
         (toExpr body)
@@ -476,7 +504,7 @@ instance ToStmts HSE.Decl where
   toStmts stmt@HSE.RoleAnnotDecl {} = [unsupportedStmt stmt]
   toStmts stmt@HSE.CompletePragma {} = [unsupportedStmt stmt]
 
-instDeclToFunDef :: HSE.InstDecl a -> AST.FunctionDefinition
+instDeclToFunDef :: HSE.InstDecl a -> AST.FunctionDefinition ()
 instDeclToFunDef (HSE.InsDecl _ decl) =
   case head $ toStmts decl of
     AST.SFunctionDefinition funDef -> funDef
@@ -484,7 +512,7 @@ instDeclToFunDef HSE.InsType {} = error "Type families not supported!"
 instDeclToFunDef HSE.InsData {} = error "Type families not supported!"
 instDeclToFunDef HSE.InsGData {} = error "Type families not supported!"
 
-classDeclToTySig :: HSE.ClassDecl a -> AST.TypeSignature
+classDeclToTySig :: HSE.ClassDecl a -> AST.TypeSignature ()
 classDeclToTySig (HSE.ClsDecl _ decl) =
   case toStmts decl of
     [AST.STypeSignature tySig] -> tySig
@@ -496,10 +524,10 @@ classDeclToTySig HSE.ClsDefSig {} = error "Default signatures not supported!"
 instance ToExpr HSE.Asst where
   toExpr (HSE.ClassA _ name tys) =
     AST.EFunctionApplication $
-    AST.FunctionApplication (toExpr name) (map toExpr tys)
-  toExpr (HSE.WildCardA _ _) = AST.EIdentifier "_"
+    AST.FunctionApplication () (toExpr name) (map toExpr tys)
+  toExpr (HSE.WildCardA _ _) = AST.EIdentifier () "_"
 
-contextToExprs :: Maybe (HSE.Context a) -> [AST.Expression]
+contextToExprs :: Maybe (HSE.Context a) -> [AST.Expression ()]
 contextToExprs Nothing = []
 contextToExprs (Just (HSE.CxSingle _ asst)) = [toExpr asst]
 contextToExprs (Just (HSE.CxTuple _ assts)) = map toExpr assts
@@ -507,7 +535,7 @@ contextToExprs (Just (HSE.CxEmpty _)) = []
 
 convertFile ::
      ( LastMember IO effs
-     , Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem] effs
+     , Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem] effs
      )
   => FilePath
   -> FilePath
@@ -517,21 +545,21 @@ convertFile path newPath = do
     sendM (HSE.parseFile path) >>=
     (\case
        HSE.ParseOk parsedModule -> pure parsedModule
-       HSE.ParseFailed _ err -> throwError $ ConvertError err)
+       HSE.ParseFailed _ err -> throwError @SM.Error $ ConvertError err)
   putStrLn $ "Writing " <> newPath <> "..."
   let newContents =
         unlines $ map toAxel $ groupFunctionDefinitions $ toStmts parsedModule
   FS.writeFile newPath newContents
   pure newPath
 
-groupFunctionDefinitions :: [AST.Statement] -> [Parse.Expression]
+groupFunctionDefinitions :: [AST.Statement ()] -> [SM.Expression]
 groupFunctionDefinitions =
   let findFnName (AST.SFunctionDefinition fnDef) = Just $ fnDef ^. AST.name
       findFnName (AST.STypeSignature tySig) = Just $ tySig ^. AST.name
       findFnName _ = Nothing
       extractTySig ::
-           ([AST.Statement], Maybe String)
-        -> (([AST.Statement], [AST.Statement]), Maybe String)
+           ([AST.Statement ()], Maybe String)
+        -> (([AST.Statement ()], [AST.Statement ()]), Maybe String)
       extractTySig = unannotated %~ remove (is AST._STypeSignature)
       transformFnDef (AST.SFunctionDefinition fnDef) =
         let whereBindings =
@@ -539,9 +567,9 @@ groupFunctionDefinitions =
                      (denormalizeStatement . AST.SFunctionDefinition)
                      (fnDef ^. AST.whereBindings) of
                 [] -> []
-                xs -> [Parse.SExpression xs]
-         in Parse.SExpression $
-            [ Parse.SExpression $
+                xs -> [Parse.SExpression Parse.AutoGenerated xs]
+         in Parse.SExpression Parse.AutoGenerated $
+            [ Parse.SExpression Parse.AutoGenerated $
               map denormalizeExpression (fnDef ^. AST.arguments)
             , denormalizeExpression (fnDef ^. AST.body)
             ] <>
@@ -556,9 +584,9 @@ groupFunctionDefinitions =
              Just fnName ->
                case tySigs of
                  [AST.STypeSignature tySig] ->
-                   [ Parse.SExpression $
-                     Parse.Symbol "def" :
-                     Parse.Symbol fnName :
+                   [ Parse.SExpression Parse.AutoGenerated $
+                     Parse.Symbol Parse.AutoGenerated "def" :
+                     Parse.Symbol Parse.AutoGenerated fnName :
                      denormalizeExpression (tySig ^. AST.typeDefinition) :
                      map transformFnDef stmts
                    ]

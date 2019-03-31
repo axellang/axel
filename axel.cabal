@@ -1,13 +1,13 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.0.
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7c4052a5482394650675a99c21d862fb414c7866f7b05e8aa6e0247b9dcbd859
+-- hash: f94ada64b24f879820590c172f90bd9922bfd6738ed79d0984e4bfc2dedb9c5f
 
 name:           axel
-version:        0.0.10
+version:        0.0.11
 synopsis:       The Axel programming language.
 description:    Haskell's semantics, plus Lisp's macros. Meet Axel – a purely functional, extensible, and powerful programming language.
 category:       Language, Lisp, Macros, Transpiler
@@ -69,8 +69,10 @@ library
       Axel.Parse
       Axel.Parse.Args
       Axel.Parse.AST
+      Axel.Sourcemap
       Axel.Utils.Debug
       Axel.Utils.Display
+      Axel.Utils.Foldable
       Axel.Utils.Function
       Axel.Utils.List
       Axel.Utils.Recursion

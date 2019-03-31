@@ -20,6 +20,7 @@ import Axel.AST
   , TypeSignature(TypeSignature)
   , _SModuleDeclaration
   , functionDefinition
+  , getAnn
   , imports
   , moduleName
   , name
@@ -44,11 +45,15 @@ import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Normalize (normalizeStatement)
 import qualified Axel.Parse as Parse
   ( Expression(SExpression, Symbol)
+  , SourceMetadata
   , parseMultiple
   , programToTopLevelExpressions
   , topLevelExpressionsToProgram
   )
-import Axel.Utils.Display (Delimiter(Newlines), delimit)
+import Axel.Sourcemap (Delimiter(Newlines))
+import qualified Axel.Sourcemap as SM (Error, Expression, raw)
+import Axel.Utils.Debug (unsafeTeeS)
+import Axel.Utils.Display (delimit)
 import Axel.Utils.Function (uncurry3)
 import Axel.Utils.List (head')
 import Axel.Utils.Recursion (Recursive(bottomUpTraverse), exhaustM)
@@ -79,16 +84,16 @@ import System.FilePath ((<.>))
 
 type ModuleInfo = Map Identifier (FilePath, Bool)
 
-hygenisizeMacroDefinition :: MacroDefinition -> MacroDefinition
+hygenisizeMacroDefinition :: MacroDefinition ann -> MacroDefinition ann
 hygenisizeMacroDefinition macroDef =
   macroDef & functionDefinition . name %~ hygenisizeMacroName
 
 generateMacroProgram ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Resource] effs)
+     (Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Resource] effs)
   => Identifier
-  -> [MacroDefinition]
-  -> [Statement]
-  -> [Parse.Expression]
+  -> [MacroDefinition SM.Expression]
+  -> [Statement SM.Expression]
+  -> [SM.Expression]
   -> Eff effs (String, String, String)
 generateMacroProgram oldMacroName macroDefs allEnv args = do
   let newMacroName = hygenisizeMacroName oldMacroName
@@ -107,7 +112,8 @@ generateMacroProgram oldMacroName macroDefs allEnv args = do
   astDef <- readResource Res.astDefinition
   scaffold <- insertArgs <$> readResource Res.macroScaffold
   let hygenicMacroDefs = map hygenisizeMacroDefinition macroDefs
-  let renderStmts = prettifyHaskell . delimit Newlines . map toHaskell
+  let renderStmts =
+        prettifyHaskell . delimit Newlines . map (SM.raw . toHaskell)
   macroDefAndEnv <-
     do header <- readResource Res.macroDefinitionAndEnvironmentHeader
        footer <-
@@ -123,20 +129,20 @@ generateMacroProgram oldMacroName macroDefs allEnv args = do
   pure (astDef, scaffold, macroDefAndEnv)
 
 expansionPass ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => Ghci.Ghci
   -> (FilePath -> Eff effs a)
-  -> Parse.Expression
-  -> Eff effs Parse.Expression
+  -> SM.Expression
+  -> Eff effs SM.Expression
 expansionPass ghci expandFile programExpr =
-  Parse.topLevelExpressionsToProgram . map denormalizeStatement <$>
+  Parse.topLevelExpressionsToProgram . map getAnn <$>
   expandMacros ghci expandFile (Parse.programToTopLevelExpressions programExpr)
 
 exhaustivelyExpandMacros ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => (FilePath -> Eff effs a)
-  -> Parse.Expression
-  -> Eff effs Parse.Expression
+  -> SM.Expression
+  -> Eff effs SM.Expression
 exhaustivelyExpandMacros expandFile program = do
   ghci <- Ghci.start
   expandedTopLevelExprs <-
@@ -154,32 +160,36 @@ exhaustivelyExpandMacros expandFile program = do
     isMacroDefinition (SMacroDefinition x) = Just x
     isMacroDefinition _ = Nothing
 
-isMacroImported :: Identifier -> [Statement] -> Bool
+isMacroImported :: Identifier -> [Statement ann] -> Bool
 isMacroImported macroName =
   any
     (\case
        SMacroImport macroImport -> macroName `elem` macroImport ^. imports
        _ -> False)
 
-typeMacroDefinitions :: [MacroDefinition] -> [TypeSignature]
+typeMacroDefinitions :: [MacroDefinition ann] -> [TypeSignature ()]
 typeMacroDefinitions macroDefs =
   map
     (flip
-       TypeSignature
+       (TypeSignature ())
        (EFunctionApplication $
         FunctionApplication
-          (EIdentifier "->")
+          ()
+          (EIdentifier () "->")
           [ EFunctionApplication $
             FunctionApplication
-              (EIdentifier "[]")
-              [EIdentifier "AST.Expression"]
+              ()
+              (EIdentifier () "[]")
+              [EIdentifier () "AST.Expression"]
           , EFunctionApplication $
             FunctionApplication
-              (EIdentifier "IO")
+              ()
+              (EIdentifier () "IO")
               [ EFunctionApplication $
                 FunctionApplication
-                  (EIdentifier "[]")
-                  [EIdentifier "AST.Expression"]
+                  ()
+                  (EIdentifier () "[]")
+                  [EIdentifier () "AST.Expression"]
               ]
           ]))
     macroNames
@@ -187,11 +197,11 @@ typeMacroDefinitions macroDefs =
     macroNames = nub $ map (^. functionDefinition . name) macroDefs
 
 expandMacros ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => Ghci.Ghci
   -> (FilePath -> Eff effs a)
-  -> [Parse.Expression]
-  -> Eff effs [Statement]
+  -> [SM.Expression]
+  -> Eff effs [Statement SM.Expression]
 expandMacros ghci expandFile topLevelExprs = do
   (stmts, macroDefs) <-
     foldM
@@ -231,12 +241,12 @@ expandMacros ghci expandFile topLevelExprs = do
         exhaustM
           (bottomUpTraverse
              (\case
-                Parse.SExpression xs ->
-                  Parse.SExpression <$>
+                Parse.SExpression ann' xs ->
+                  Parse.SExpression ann' <$>
                   foldM
                     (\acc x ->
                        case x of
-                         Parse.SExpression (Parse.Symbol function:args) ->
+                         Parse.SExpression _ (Parse.Symbol _ function:args) ->
                            let maybeMacroDefs =
                                  if isMacroImported function stmts
                                    then Just []
@@ -263,29 +273,30 @@ expandMacros ghci expandFile topLevelExprs = do
       pure $ Parse.programToTopLevelExpressions expandedExpr
 
 expandMacroApplication ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
   => Ghci.Ghci
   -> Identifier
-  -> [MacroDefinition]
-  -> [Statement]
-  -> [Parse.Expression]
-  -> Eff effs [Parse.Expression]
+  -> [MacroDefinition SM.Expression]
+  -> [Statement SM.Expression]
+  -> [SM.Expression]
+  -> Eff effs [SM.Expression]
 expandMacroApplication ghci macroName macroDefs auxEnv args = do
   macroProgram <- generateMacroProgram macroName macroDefs auxEnv args
-  newSource <- uncurry3 (evalMacro ghci) macroProgram
+  newSource <- uncurry3 (evalMacro @Parse.SourceMetadata ghci) macroProgram
   Parse.parseMultiple newSource
 
-lookupMacroDefinitions :: Identifier -> [MacroDefinition] -> [MacroDefinition]
+lookupMacroDefinitions ::
+     Identifier -> [MacroDefinition ann] -> [MacroDefinition ann]
 lookupMacroDefinitions identifier =
   filter (\macroDef -> macroDef ^. functionDefinition . name == identifier)
 
-isMacroDefinitionStatement :: Statement -> Bool
+isMacroDefinitionStatement :: Statement ann -> Bool
 isMacroDefinitionStatement (SMacroDefinition _) = True
 isMacroDefinitionStatement _ = False
 
 evalMacro ::
-     forall effs.
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process] effs)
+     forall ann effs.
+     (Members '[ Effs.Error (Error ann), Effs.FileSystem, Effs.Ghci, Effs.Process] effs)
   => Ghci.Ghci
   -> String
   -> String
@@ -306,7 +317,7 @@ evalMacro ghci astDefinition scaffold macroDefinitionAndEnvironment = do
       result <- unlines <$> Ghci.exec ghci ":main"
       cleanup
       pure result
-    else throwError $ MacroError (unlines loadResult)
+    else throwError @(Error ann) $ MacroError (unlines loadResult)
   where
     macroDefinitionAndEnvironmentFileName =
       "AutogeneratedAxelMacroDefinitionAndEnvironment.hs"

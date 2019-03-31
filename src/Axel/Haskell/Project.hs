@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Axel.Haskell.Project where
 
@@ -16,7 +17,6 @@ import qualified Axel.Eff.Ghci as Effs (Ghci)
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (getResourcePath, newProjectTemplate)
 import qualified Axel.Eff.Resource as Effs (Resource)
-import Axel.Error (Error)
 import Axel.Haskell.File (readModuleInfo, transpileFile')
 import Axel.Haskell.Stack
   ( addStackDependency
@@ -25,6 +25,8 @@ import Axel.Haskell.Stack
   , createStackProject
   , runStackProject
   )
+import qualified Axel.Parse.AST as Parse (SourceMetadata)
+import qualified Axel.Sourcemap as SM (Error)
 
 import Control.Monad (void)
 import Control.Monad.Freer (Eff, Members)
@@ -54,7 +56,7 @@ newProject projectName = do
   mapM_ copyAxel ["Setup", "app" </> "Main", "src" </> "Lib", "test" </> "Spec"]
 
 transpileProject ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
   => Eff effs [FilePath]
 transpileProject = do
   files <- concat <$> mapM getDirectoryContentsRec ["app", "src", "test"]
@@ -64,14 +66,14 @@ transpileProject = do
   evalState moduleInfo $ mapM transpileFile' axelFiles
 
 buildProject ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
   => Eff effs ()
 buildProject = do
   projectPath <- getCurrentDirectory
   void transpileProject
-  buildStackProject projectPath
+  buildStackProject @Parse.SourceMetadata projectPath
 
 runProject ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
+     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Process] effs)
   => Eff effs ()
-runProject = getCurrentDirectory >>= runStackProject
+runProject = getCurrentDirectory >>= runStackProject @Parse.SourceMetadata

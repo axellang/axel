@@ -3,257 +3,243 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Axel.AST where
 
 import Axel.Haskell.Language (isOperator)
 import Axel.Haskell.Macros (hygenisizeMacroName)
-import Axel.Utils.Display
+import qualified Axel.Parse.AST as Parse
+  ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
+           Symbol)
+  , SourceMetadata
+  )
+import Axel.Sourcemap
   ( Bracket(CurlyBraces, DoubleQuotes, Parentheses, SingleQuotes,
         SquareBrackets)
   , Delimiter(Commas, Newlines, Pipes, Spaces)
+  )
+import qualified Axel.Sourcemap as SM
+  ( Expression
+  , Output(Output)
   , delimit
   , renderBlock
-  , renderPragma
   , surround
   )
+import qualified Axel.Utils.Display as Display (delimit, renderPragma, surround)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
 
 import Control.Arrow ((***))
+import Control.Lens.Combinators (_head, _last)
 import Control.Lens.Operators ((%~), (^.))
 import Control.Lens.TH (makeFieldsNoPrefix, makePrisms)
+import Control.Lens.Tuple (_2)
+import Control.Lens.Wrapped (_Wrapped)
 
 import Data.Function ((&))
 import Data.Semigroup ((<>))
 
 class ToHaskell a where
-  toHaskell :: a -> String
+  toHaskell :: a -> SM.Output
 
 type Identifier = String
 
-data CaseBlock = CaseBlock
-  { _expr :: Expression
-  , _matches :: [(Expression, Expression)]
+data CaseBlock ann = CaseBlock
+  { _ann :: ann
+  , _expr :: Expression ann
+  , _matches :: [(Expression ann, Expression ann)]
   } deriving (Eq, Show)
 
-data FunctionApplication = FunctionApplication
-  { _function :: Expression
-  , _arguments :: [Expression]
+data FunctionApplication ann = FunctionApplication
+  { _ann :: ann
+  , _function :: Expression ann
+  , _arguments :: [Expression ann]
   } deriving (Eq, Show)
 
-data IfBlock = IfBlock
-  { _cond :: Expression
-  , _ifTrue :: Expression
-  , _ifFalse :: Expression
+data IfBlock ann = IfBlock
+  { _ann :: ann
+  , _cond :: Expression ann
+  , _ifTrue :: Expression ann
+  , _ifFalse :: Expression ann
   } deriving (Eq, Show)
 
-newtype TopLevel = TopLevel
-  { _statements :: [Statement]
+data TopLevel ann = TopLevel
+  { _ann :: ann
+  , _statements :: [Statement ann]
   } deriving (Eq, Show)
 
-data TypeDefinition
-  = ProperType Identifier
-  | TypeConstructor FunctionApplication
+data TypeDefinition ann
+  = ProperType ann
+               Identifier
+  | TypeConstructor ann
+                    (FunctionApplication ann)
   deriving (Eq, Show)
 
-instance ToHaskell TypeDefinition where
-  toHaskell :: TypeDefinition -> String
-  toHaskell (ProperType x) = x
-  toHaskell (TypeConstructor x) = toHaskell x
-
-data DataDeclaration = DataDeclaration
-  { _typeDefinition :: TypeDefinition
-  , _constructors :: [FunctionApplication]
+data DataDeclaration ann = DataDeclaration
+  { _ann :: ann
+  , _typeDefinition :: TypeDefinition ann
+  , _constructors :: [FunctionApplication ann]
   } deriving (Eq, Show)
 
-data NewtypeDeclaration = NewtypeDeclaration
-  { _typeDefinition :: TypeDefinition
-  , _constructor :: FunctionApplication
+data NewtypeDeclaration ann = NewtypeDeclaration
+  { _ann :: ann
+  , _typeDefinition :: TypeDefinition ann
+  , _constructor :: FunctionApplication ann
   } deriving (Eq, Show)
 
-data FunctionDefinition = FunctionDefinition
-  { _name :: Identifier
-  , _arguments :: [Expression]
-  , _body :: Expression
-  , _whereBindings :: [FunctionDefinition]
+data FunctionDefinition ann = FunctionDefinition
+  { _ann :: ann
+  , _name :: Identifier
+  , _arguments :: [Expression ann]
+  , _body :: Expression ann
+  , _whereBindings :: [FunctionDefinition ann]
   } deriving (Eq, Show)
 
-data Import
-  = ImportItem Identifier
-  | ImportType Identifier
+data Import ann
+  = ImportItem ann
+               Identifier
+  | ImportType ann
+               Identifier
                [Identifier]
   deriving (Eq, Show)
 
-instance ToHaskell Import where
-  toHaskell :: Import -> String
-  toHaskell (ImportItem x) =
-    if isOperator x
-      then surround Parentheses x
-      else x
-  toHaskell (ImportType typeName imports) =
-    typeName <> surround Parentheses (delimit Commas imports)
-
-data ImportSpecification
-  = ImportAll
-  | ImportOnly [Import]
+data ImportSpecification ann
+  = ImportAll ann
+  | ImportOnly ann
+               [Import ann]
   deriving (Eq, Show)
 
-instance ToHaskell ImportSpecification where
-  toHaskell :: ImportSpecification -> String
-  toHaskell ImportAll = ""
-  toHaskell (ImportOnly importList) =
-    surround Parentheses $ delimit Commas $ map toHaskell importList
-
-data Lambda = Lambda
-  { _arguments :: [Expression]
-  , _body :: Expression
+data Lambda ann = Lambda
+  { _ann :: ann
+  , _arguments :: [Expression ann]
+  , _body :: Expression ann
   } deriving (Eq, Show)
 
-data LetBlock = LetBlock
-  { _bindings :: [(Expression, Expression)]
-  , _body :: Expression
+data LetBlock ann = LetBlock
+  { _ann :: ann
+  , _bindings :: [(Expression ann, Expression ann)]
+  , _body :: Expression ann
   } deriving (Eq, Show)
 
-newtype MacroDefinition = MacroDefinition
-  { _functionDefinition :: FunctionDefinition
+data MacroDefinition ann = MacroDefinition
+  { _ann :: ann
+  , _functionDefinition :: FunctionDefinition ann
   } deriving (Eq, Show)
 
-data MacroImport = MacroImport
-  { _moduleName :: Identifier
+data MacroImport ann = MacroImport
+  { _ann :: ann
+  , _moduleName :: Identifier
   , _imports :: [Identifier]
   } deriving (Eq, Show)
 
-newtype Pragma = Pragma
-  { _pragmaSpecification :: String
+data Pragma ann = Pragma
+  { _ann :: ann
+  , _pragmaSpecification :: String
   } deriving (Eq, Show)
 
-data QualifiedImport = QualifiedImport
-  { _moduleName :: Identifier
+data QualifiedImport ann = QualifiedImport
+  { _ann :: ann
+  , _moduleName :: Identifier
   , _alias :: Identifier
-  , _imports :: ImportSpecification
+  , _imports :: ImportSpecification ann
   } deriving (Eq, Show)
 
-newtype RecordDefinition = RecordDefinition
-  { _bindings :: [(Identifier, Expression)]
+data RecordDefinition ann = RecordDefinition
+  { _ann :: ann
+  , _bindings :: [(Identifier, Expression ann)]
   } deriving (Eq, Show)
 
-newtype RecordType = RecordType
-  { _fields :: [(Identifier, Expression)]
+data RecordType ann = RecordType
+  { _ann :: ann
+  , _fields :: [(Identifier, Expression ann)]
   } deriving (Eq, Show)
 
-data RestrictedImport = RestrictedImport
-  { _moduleName :: Identifier
-  , _imports :: ImportSpecification
+data RestrictedImport ann = RestrictedImport
+  { _ann :: ann
+  , _moduleName :: Identifier
+  , _imports :: ImportSpecification ann
   } deriving (Eq, Show)
 
-data TypeclassDefinition = TypeclassDefinition
-  { _name :: Expression
-  , _constraints :: [Expression]
-  , _signatures :: [TypeSignature]
+data TypeclassDefinition ann = TypeclassDefinition
+  { _ann :: ann
+  , _name :: Expression ann
+  , _constraints :: [Expression ann]
+  , _signatures :: [TypeSignature ann]
   } deriving (Eq, Show)
 
-data TypeclassInstance = TypeclassInstance
-  { _instanceName :: Expression
-  , _definitions :: [FunctionDefinition]
+data TypeclassInstance ann = TypeclassInstance
+  { _ann :: ann
+  , _instanceName :: Expression ann
+  , _definitions :: [FunctionDefinition ann]
   } deriving (Eq, Show)
 
-data TypeSignature = TypeSignature
-  { _name :: Identifier
-  , _typeDefinition :: Expression
+data TypeSignature ann = TypeSignature
+  { _ann :: ann
+  , _name :: Identifier
+  , _typeDefinition :: Expression ann
   } deriving (Eq, Show)
 
-data TypeSynonym = TypeSynonym
-  { _alias :: Expression
-  , _definition :: Expression
+data TypeSynonym ann = TypeSynonym
+  { _ann :: ann
+  , _alias :: Expression ann
+  , _definition :: Expression ann
   } deriving (Eq, Show)
 
-data Expression
-  = ECaseBlock CaseBlock
-  | EEmptySExpression
-  | EFunctionApplication FunctionApplication
-  | EIdentifier Identifier
-  | EIfBlock IfBlock
-  | ELambda Lambda
-  | ELetBlock LetBlock
-  | ELiteral Literal
-  | ERawExpression String
-  | ERecordDefinition RecordDefinition
-  | ERecordType RecordType
+data Expression ann
+  = ECaseBlock (CaseBlock ann)
+  | EEmptySExpression ann
+  | EFunctionApplication (FunctionApplication ann)
+  | EIdentifier ann
+                Identifier
+  | EIfBlock (IfBlock ann)
+  | ELambda (Lambda ann)
+  | ELetBlock (LetBlock ann)
+  | ELiteral (Literal ann)
+  | ERawExpression ann
+                   String
+  | ERecordDefinition (RecordDefinition ann)
+  | ERecordType (RecordType ann)
   deriving (Eq, Show)
 
-instance ToHaskell Expression where
-  toHaskell :: Expression -> String
-  toHaskell (ECaseBlock x) = toHaskell x
-  toHaskell EEmptySExpression = "()"
-  toHaskell (EFunctionApplication x) = toHaskell x
-  toHaskell (EIdentifier x) =
-    if isOperator x
-      then surround Parentheses x
-      else x
-  toHaskell (EIfBlock x) = toHaskell x
-  toHaskell (ELambda x) = toHaskell x
-  toHaskell (ELetBlock x) = toHaskell x
-  toHaskell (ELiteral x) = toHaskell x
-  toHaskell (ERawExpression x) = x
-  toHaskell (ERecordDefinition x) = toHaskell x
-  toHaskell (ERecordType x) = toHaskell x
-
-data Literal
-  = LChar Char
-  | LInt Int
-  | LString String
+data Literal ann
+  = LChar ann
+          Char
+  | LInt ann
+         Int
+  | LString ann
+            String
   deriving (Eq, Show)
 
-instance ToHaskell Literal where
-  toHaskell :: Literal -> String
-  toHaskell (LChar x) = surround SingleQuotes [x]
-  toHaskell (LInt x) = show x
-  toHaskell (LString x) = surround DoubleQuotes x
-
-data Statement
-  = SDataDeclaration DataDeclaration
-  | SFunctionDefinition FunctionDefinition
-  | SMacroDefinition MacroDefinition
-  | SMacroImport MacroImport
-  | SModuleDeclaration Identifier
-  | SNewtypeDeclaration NewtypeDeclaration
-  | SPragma Pragma
-  | SQualifiedImport QualifiedImport
-  | SRawStatement String
-  | SRestrictedImport RestrictedImport
-  | STopLevel TopLevel
-  | STypeclassDefinition TypeclassDefinition
-  | STypeclassInstance TypeclassInstance
-  | STypeSignature TypeSignature
-  | STypeSynonym TypeSynonym
-  | SUnrestrictedImport Identifier
+data Statement ann
+  = SDataDeclaration (DataDeclaration ann)
+  | SFunctionDefinition (FunctionDefinition ann)
+  | SMacroDefinition (MacroDefinition ann)
+  | SMacroImport (MacroImport ann)
+  | SModuleDeclaration ann
+                       Identifier
+  | SNewtypeDeclaration (NewtypeDeclaration ann)
+  | SPragma (Pragma ann)
+  | SQualifiedImport (QualifiedImport ann)
+  | SRawStatement ann
+                  String
+  | SRestrictedImport (RestrictedImport ann)
+  | STopLevel (TopLevel ann)
+  | STypeclassDefinition (TypeclassDefinition ann)
+  | STypeclassInstance (TypeclassInstance ann)
+  | STypeSignature (TypeSignature ann)
+  | STypeSynonym (TypeSynonym ann)
+  | SUnrestrictedImport ann
+                        Identifier
   deriving (Eq, Show)
 
-instance ToHaskell Statement where
-  toHaskell :: Statement -> String
-  toHaskell (SDataDeclaration x) = toHaskell x
-  toHaskell (SFunctionDefinition x) = toHaskell x
-  toHaskell (SPragma x) = toHaskell x
-  toHaskell (SMacroDefinition x) = toHaskell x
-  toHaskell (SMacroImport x) = toHaskell x
-  toHaskell (SModuleDeclaration x) = "module " <> x <> " where"
-  toHaskell (SNewtypeDeclaration x) = toHaskell x
-  toHaskell (SQualifiedImport x) = toHaskell x
-  toHaskell (SRawStatement x) = x
-  toHaskell (SRestrictedImport x) = toHaskell x
-  toHaskell (STopLevel xs) = toHaskell xs
-  toHaskell (STypeclassDefinition x) = toHaskell x
-  toHaskell (STypeclassInstance x) = toHaskell x
-  toHaskell (STypeSignature x) = toHaskell x
-  toHaskell (STypeSynonym x) = toHaskell x
-  toHaskell (SUnrestrictedImport x) = "import " <> x
+type Program ann = [Statement ann]
 
 makePrisms ''Statement
-
-type Program = [Statement]
 
 makeFieldsNoPrefix ''CaseBlock
 
@@ -295,238 +281,418 @@ makeFieldsNoPrefix ''TypeSignature
 
 makeFieldsNoPrefix ''TypeSynonym
 
-instance ToHaskell CaseBlock where
-  toHaskell :: CaseBlock -> String
-  toHaskell caseBlock =
-    surround Parentheses $
-    "case " <> toHaskell (caseBlock ^. expr) <> " of " <>
-    renderBlock (map matchToHaskell (caseBlock ^. matches))
-    where
-      matchToHaskell (pat, result) = toHaskell pat <> " -> " <> toHaskell result
+class HasAnnotation a ann | a -> ann where
+  getAnn :: a -> ann
 
-instance ToHaskell FunctionApplication where
-  toHaskell :: FunctionApplication -> String
+instance HasAnnotation (Expression ann) ann where
+  getAnn :: Expression ann -> ann
+  getAnn (ECaseBlock caseBlock) = caseBlock ^. ann
+  getAnn (EEmptySExpression ann') = ann'
+  getAnn (EFunctionApplication fnApp) = fnApp ^. ann
+  getAnn (EIdentifier ann' _) = ann'
+  getAnn (EIfBlock ifBlock) = ifBlock ^. ann
+  getAnn (ELambda lambda) = lambda ^. ann
+  getAnn (ELetBlock letBlock) = letBlock ^. ann
+  getAnn (ELiteral literal) = getAnn literal
+  getAnn (ERawExpression ann' _) = ann'
+  getAnn (ERecordDefinition recordDefinition) = recordDefinition ^. ann
+  getAnn (ERecordType recordType) = recordType ^. ann
+
+instance HasAnnotation (Statement ann) ann where
+  getAnn :: Statement ann -> ann
+  getAnn (SDataDeclaration dataDeclaration) = dataDeclaration ^. ann
+  getAnn (SFunctionDefinition fnDef) = fnDef ^. ann
+  getAnn (SMacroDefinition macroDef) = macroDef ^. ann
+  getAnn (SMacroImport macroImport) = macroImport ^. ann
+  getAnn (SModuleDeclaration ann' _) = ann'
+  getAnn (SNewtypeDeclaration newtypeDeclaration) = newtypeDeclaration ^. ann
+  getAnn (SPragma pragma) = pragma ^. ann
+  getAnn (SQualifiedImport qualifiedImport) = qualifiedImport ^. ann
+  getAnn (SRawStatement ann' _) = ann'
+  getAnn (SRestrictedImport restrictedImport) = restrictedImport ^. ann
+  getAnn (STopLevel topLevel) = topLevel ^. ann
+  getAnn (STypeclassDefinition typeclassDefinition) = typeclassDefinition ^. ann
+  getAnn (STypeclassInstance typeclassInstance) = typeclassInstance ^. ann
+  getAnn (STypeSignature typeSig) = typeSig ^. ann
+  getAnn (STypeSynonym typeSynonym) = typeSynonym ^. ann
+  getAnn (SUnrestrictedImport ann' _) = ann'
+
+instance HasAnnotation (Parse.Expression ann) ann where
+  getAnn :: Parse.Expression ann -> ann
+  getAnn (Parse.LiteralChar ann' _) = ann'
+  getAnn (Parse.LiteralInt ann' _) = ann'
+  getAnn (Parse.LiteralString ann' _) = ann'
+  getAnn (Parse.SExpression ann' _) = ann'
+  getAnn (Parse.Symbol ann' _) = ann'
+
+instance HasAnnotation (Literal ann) ann where
+  getAnn :: Literal ann -> ann
+  getAnn (LChar ann' _) = ann'
+  getAnn (LInt ann' _) = ann'
+  getAnn (LString ann' _) = ann'
+
+instance HasAnnotation (TypeDefinition ann) ann where
+  getAnn :: TypeDefinition ann -> ann
+  getAnn (ProperType ann' _) = ann'
+  getAnn (TypeConstructor ann' _) = ann'
+
+instance HasAnnotation (ImportSpecification ann) ann where
+  getAnn :: ImportSpecification ann -> ann
+  getAnn (ImportAll ann') = ann'
+  getAnn (ImportOnly ann' _) = ann'
+
+instance HasAnnotation (Import ann) ann where
+  getAnn :: Import ann -> ann
+  getAnn (ImportItem ann' _) = ann'
+  getAnn (ImportType ann' _ _) = ann'
+
+mkHaskell ::
+     (HasAnnotation a b, HasAnnotation b Parse.SourceMetadata)
+  => a
+  -> String
+  -> SM.Output
+mkHaskell x haskellRendering = SM.Output [(getAnn (getAnn x), haskellRendering)]
+
+mkHaskell' ::
+     (HasAnn a b, HasAnnotation b Parse.SourceMetadata)
+  => a
+  -> String
+  -> SM.Output
+mkHaskell' x haskellRendering =
+  SM.Output [(getAnn (x ^. ann), haskellRendering)]
+
+instance ToHaskell (Statement SM.Expression) where
+  toHaskell :: Statement SM.Expression -> SM.Output
+  toHaskell (SDataDeclaration x) = toHaskell x
+  toHaskell (SFunctionDefinition x) = toHaskell x
+  toHaskell (SPragma x) = toHaskell x
+  toHaskell (SMacroDefinition x) = toHaskell x
+  toHaskell (SMacroImport x) = toHaskell x
+  toHaskell stmt@(SModuleDeclaration _ x) =
+    mkHaskell stmt $ "module " <> x <> " where"
+  toHaskell (SNewtypeDeclaration x) = toHaskell x
+  toHaskell (SQualifiedImport x) = toHaskell x
+  toHaskell stmt@(SRawStatement _ x) = mkHaskell stmt x
+  toHaskell (SRestrictedImport x) = toHaskell x
+  toHaskell (STopLevel xs) = toHaskell xs
+  toHaskell (STypeclassDefinition x) = toHaskell x
+  toHaskell (STypeclassInstance x) = toHaskell x
+  toHaskell (STypeSignature x) = toHaskell x
+  toHaskell (STypeSynonym x) = toHaskell x
+  toHaskell stmt@(SUnrestrictedImport _ x) = mkHaskell stmt $ "import " <> x
+
+instance ToHaskell (TypeDefinition SM.Expression) where
+  toHaskell :: TypeDefinition SM.Expression -> SM.Output
+  toHaskell (TypeConstructor _ x) = toHaskell x
+  toHaskell stmt@(ProperType _ x) = mkHaskell stmt x
+
+instance ToHaskell (CaseBlock SM.Expression) where
+  toHaskell :: CaseBlock SM.Expression -> SM.Output
+  toHaskell caseBlock =
+    SM.surround Parentheses $ mkHaskell' caseBlock "case " <>
+    toHaskell (caseBlock ^. expr) <>
+    mkHaskell' caseBlock " of " <>
+    SM.renderBlock (map matchToHaskell (caseBlock ^. matches))
+    where
+      matchToHaskell (pat, result) =
+        toHaskell pat <> mkHaskell' caseBlock " -> " <> toHaskell result
+
+instance ToHaskell (FunctionApplication SM.Expression) where
+  toHaskell :: FunctionApplication SM.Expression -> SM.Output
   toHaskell functionApplication =
     case functionApplication ^. function of
-      EIdentifier "list" ->
-        surround SquareBrackets $
-        delimit Commas (map toHaskell $ functionApplication ^. arguments)
+      EIdentifier _ "list" ->
+        SM.surround SquareBrackets $
+        SM.delimit Commas (map toHaskell $ functionApplication ^. arguments)
       _ ->
-        surround Parentheses $
-        toHaskell (functionApplication ^. function) <> " " <>
-        delimit Spaces (map toHaskell $ functionApplication ^. arguments)
+        SM.surround Parentheses $ toHaskell (functionApplication ^. function) <>
+        mkHaskell' functionApplication " " <>
+        SM.delimit Spaces (map toHaskell $ functionApplication ^. arguments)
 
-instance ToHaskell TypeSignature where
-  toHaskell :: TypeSignature -> String
+instance ToHaskell (Literal SM.Expression) where
+  toHaskell :: Literal SM.Expression -> SM.Output
+  toHaskell literal@(LChar _ x) =
+    mkHaskell literal $ Display.surround SingleQuotes [x]
+  toHaskell literal@(LInt _ x) = mkHaskell literal $ show x
+  toHaskell literal@(LString _ x) =
+    mkHaskell literal $ Display.surround DoubleQuotes x
+
+instance ToHaskell (TypeSignature SM.Expression) where
+  toHaskell :: TypeSignature SM.Expression -> SM.Output
   toHaskell typeSignature =
-    toHaskell (EIdentifier (typeSignature ^. name)) <> " :: " <>
+    toHaskell (EIdentifier (typeSignature ^. ann) (typeSignature ^. name)) <>
+    mkHaskell' typeSignature " :: " <>
     toHaskell (typeSignature ^. typeDefinition)
 
-instance ToHaskell FunctionDefinition where
-  toHaskell :: FunctionDefinition -> String
+instance ToHaskell (FunctionDefinition SM.Expression) where
+  toHaskell :: FunctionDefinition SM.Expression -> SM.Output
   toHaskell fnDef =
-    toHaskell (EIdentifier (fnDef ^. name)) <> " " <>
-    delimit Spaces (map toHaskell (fnDef ^. arguments)) <>
-    " = " <>
+    toHaskell (EIdentifier (fnDef ^. ann) (fnDef ^. name)) <>
+    mkHaskell' fnDef " " <>
+    SM.delimit Spaces (map toHaskell (fnDef ^. arguments)) <>
+    mkHaskell' fnDef " = " <>
     toHaskell (fnDef ^. body) <>
-    " where " <>
-    renderBlock (map toHaskell (fnDef ^. whereBindings))
-
-instance ToHaskell DataDeclaration where
-  toHaskell :: DataDeclaration -> String
-  toHaskell dataDeclaration =
-    "data " <> toHaskell (dataDeclaration ^. typeDefinition) <> " = " <>
-    delimit
-      Pipes
-      (map (removeSurroundingParentheses . toHaskell) $
-       dataDeclaration ^. constructors)
+    auxBindings
     where
-      removeSurroundingParentheses = tail . init
+      auxBindings =
+        if null (fnDef ^. whereBindings)
+          then mempty
+          else mkHaskell' fnDef " where " <>
+               SM.renderBlock (map toHaskell (fnDef ^. whereBindings))
 
-instance ToHaskell IfBlock where
-  toHaskell :: IfBlock -> String
+instance ToHaskell (DataDeclaration SM.Expression) where
+  toHaskell :: DataDeclaration SM.Expression -> SM.Output
+  toHaskell dataDeclaration =
+    mkHaskell' dataDeclaration "data " <>
+    toHaskell (dataDeclaration ^. typeDefinition) <>
+    mkHaskell' dataDeclaration " = " <>
+    SM.delimit
+      Pipes
+      (map (removeSurroundingParentheses . toHaskell) $ dataDeclaration ^.
+       constructors)
+
+removeSurroundingParentheses :: SM.Output -> SM.Output
+removeSurroundingParentheses = removeOpen . removeClosed
+  where
+    removeOpen = _Wrapped . _head . _2 %~ tail
+    removeClosed = _Wrapped . _last . _2 %~ init
+
+instance ToHaskell (IfBlock SM.Expression) where
+  toHaskell :: IfBlock SM.Expression -> SM.Output
   toHaskell ifBlock =
-    "if " <> toHaskell (ifBlock ^. cond) <> " then " <>
+    mkHaskell' ifBlock "if " <> toHaskell (ifBlock ^. cond) <>
+    mkHaskell' ifBlock " then " <>
     toHaskell (ifBlock ^. ifTrue) <>
-    " else " <>
+    mkHaskell' ifBlock " else " <>
     toHaskell (ifBlock ^. ifFalse)
 
-instance ToHaskell NewtypeDeclaration where
-  toHaskell :: NewtypeDeclaration -> String
+instance ToHaskell (NewtypeDeclaration SM.Expression) where
+  toHaskell :: NewtypeDeclaration SM.Expression -> SM.Output
   toHaskell newtypeDeclaration =
-    "newtype " <> toHaskell (newtypeDeclaration ^. typeDefinition) <> " = " <>
+    mkHaskell' newtypeDeclaration "newtype " <>
+    toHaskell (newtypeDeclaration ^. typeDefinition) <>
+    mkHaskell' newtypeDeclaration " = " <>
     removeSurroundingParentheses (toHaskell (newtypeDeclaration ^. constructor))
-    where
-      removeSurroundingParentheses = tail . init
 
-instance ToHaskell Lambda where
-  toHaskell :: Lambda -> String
+instance ToHaskell (Lambda SM.Expression) where
+  toHaskell :: Lambda SM.Expression -> SM.Output
   toHaskell lambda =
-    surround Parentheses $
-    "\\" <> delimit Spaces (map toHaskell (lambda ^. arguments)) <> " -> " <>
+    SM.surround Parentheses $ mkHaskell' lambda "\\" <>
+    SM.delimit Spaces (map toHaskell (lambda ^. arguments)) <>
+    mkHaskell' lambda " -> " <>
     toHaskell (lambda ^. body)
 
-instance ToHaskell Pragma where
-  toHaskell :: Pragma -> String
-  toHaskell pragma = renderPragma (pragma ^. pragmaSpecification)
+instance ToHaskell (Pragma SM.Expression) where
+  toHaskell :: Pragma SM.Expression -> SM.Output
+  toHaskell pragma =
+    mkHaskell' pragma $ Display.renderPragma (pragma ^. pragmaSpecification)
 
-instance ToHaskell LetBlock where
-  toHaskell :: LetBlock -> String
+instance ToHaskell (LetBlock SM.Expression) where
+  toHaskell :: LetBlock SM.Expression -> SM.Output
   toHaskell letBlock =
-    surround Parentheses $
-    "let " <> renderBlock (map bindingToHaskell (letBlock ^. bindings)) <>
-    " in " <>
+    SM.surround Parentheses $ mkHaskell' letBlock "let " <>
+    SM.renderBlock (map bindingToHaskell (letBlock ^. bindings)) <>
+    mkHaskell' letBlock " in " <>
     toHaskell (letBlock ^. body)
     where
       bindingToHaskell (pattern', value) =
-        toHaskell pattern' <> " = " <> toHaskell value
+        toHaskell pattern' <> mkHaskell' letBlock " = " <> toHaskell value
 
-instance ToHaskell MacroDefinition where
-  toHaskell :: MacroDefinition -> String
+instance ToHaskell (MacroDefinition SM.Expression) where
+  toHaskell :: MacroDefinition SM.Expression -> SM.Output
   toHaskell macroDefinition = toHaskell (macroDefinition ^. functionDefinition)
 
-instance ToHaskell MacroImport where
-  toHaskell :: MacroImport -> String
+instance ToHaskell (MacroImport SM.Expression) where
+  toHaskell :: MacroImport SM.Expression -> SM.Output
   toHaskell macroImport =
     toHaskell $
     RestrictedImport
+      (macroImport ^. ann)
       (macroImport ^. moduleName)
-      (ImportOnly $
-       map (ImportItem . hygenisizeMacroName) $ macroImport ^. imports)
+      (ImportOnly (macroImport ^. ann) $
+       map (ImportItem (macroImport ^. ann) . hygenisizeMacroName) $
+       macroImport ^.
+       imports)
 
-instance ToHaskell QualifiedImport where
-  toHaskell :: QualifiedImport -> String
+instance ToHaskell (ImportSpecification SM.Expression) where
+  toHaskell :: ImportSpecification SM.Expression -> SM.Output
+  toHaskell importSpec@(ImportAll _) = mkHaskell importSpec ""
+  toHaskell (ImportOnly _ importList) =
+    SM.surround Parentheses $ SM.delimit Commas $ map toHaskell importList
+
+instance ToHaskell (QualifiedImport SM.Expression) where
+  toHaskell :: QualifiedImport SM.Expression -> SM.Output
   toHaskell qualifiedImport =
-    "import qualified " <> qualifiedImport ^. moduleName <> " as " <>
-    qualifiedImport ^.
-    alias <>
+    mkHaskell'
+      qualifiedImport
+      ("import qualified " <> qualifiedImport ^. moduleName <> " as " <>
+       qualifiedImport ^.
+       alias) <>
     toHaskell (qualifiedImport ^. imports)
 
-instance ToHaskell RecordDefinition where
-  toHaskell :: RecordDefinition -> String
+instance ToHaskell (Expression SM.Expression) where
+  toHaskell :: Expression SM.Expression -> SM.Output
+  toHaskell (ECaseBlock x) = toHaskell x
+  toHaskell expr'@(EEmptySExpression _) = mkHaskell expr' "()"
+  toHaskell (EFunctionApplication x) = toHaskell x
+  toHaskell expr'@(EIdentifier _ x) =
+    mkHaskell expr' $
+    if isOperator x
+      then Display.surround Parentheses x
+      else x
+  toHaskell (EIfBlock x) = toHaskell x
+  toHaskell (ELambda x) = toHaskell x
+  toHaskell (ELetBlock x) = toHaskell x
+  toHaskell (ELiteral x) = toHaskell x
+  toHaskell expr'@(ERawExpression _ x) = mkHaskell expr' x
+  toHaskell (ERecordDefinition x) = toHaskell x
+  toHaskell (ERecordType x) = toHaskell x
+
+instance ToHaskell (RecordDefinition SM.Expression) where
+  toHaskell :: RecordDefinition SM.Expression -> SM.Output
   toHaskell recordDefinition =
-    surround CurlyBraces $
-    delimit Commas $
+    SM.surround CurlyBraces $ SM.delimit Commas $
     map
-      (\(var, val) -> var <> " = " <> toHaskell val)
+      (\(var, val) ->
+         mkHaskell' recordDefinition (var <> " = ") <> toHaskell val)
       (recordDefinition ^. bindings)
 
-instance ToHaskell RecordType where
-  toHaskell :: RecordType -> String
+instance ToHaskell (RecordType SM.Expression) where
+  toHaskell :: RecordType SM.Expression -> SM.Output
   toHaskell recordDefinition =
-    surround CurlyBraces $
-    delimit Commas $
+    SM.surround CurlyBraces $ SM.delimit Commas $
     map
-      (\(field, ty) -> field <> " :: " <> toHaskell ty)
+      (\(field, ty) ->
+         mkHaskell' recordDefinition (field <> " :: ") <> toHaskell ty)
       (recordDefinition ^. fields)
 
-instance ToHaskell RestrictedImport where
-  toHaskell :: RestrictedImport -> String
+instance ToHaskell (Import SM.Expression) where
+  toHaskell :: Import SM.Expression -> SM.Output
+  toHaskell import'@(ImportItem _ x) =
+    mkHaskell import' $
+    if isOperator x
+      then Display.surround Parentheses x
+      else x
+  toHaskell import'@(ImportType _ typeName imports') =
+    mkHaskell import' $ typeName <>
+    Display.surround Parentheses (Display.delimit Commas imports')
+
+instance ToHaskell (RestrictedImport SM.Expression) where
+  toHaskell :: RestrictedImport SM.Expression -> SM.Output
   toHaskell restrictedImport =
-    "import " <> restrictedImport ^. moduleName <>
+    mkHaskell' restrictedImport ("import " <> restrictedImport ^. moduleName) <>
     toHaskell (restrictedImport ^. imports)
 
-instance ToHaskell TopLevel where
-  toHaskell :: TopLevel -> String
-  toHaskell topLevel = delimit Newlines $ map toHaskell (topLevel ^. statements)
+instance ToHaskell (TopLevel SM.Expression) where
+  toHaskell :: TopLevel SM.Expression -> SM.Output
+  toHaskell topLevel =
+    SM.delimit Newlines $ map toHaskell (topLevel ^. statements)
 
-instance ToHaskell TypeclassDefinition where
-  toHaskell :: TypeclassDefinition -> String
+instance ToHaskell (TypeclassDefinition SM.Expression) where
+  toHaskell :: TypeclassDefinition SM.Expression -> SM.Output
   toHaskell typeclassDefinition =
-    "class " <>
-    surround
+    mkHaskell' typeclassDefinition "class " <>
+    SM.surround
       Parentheses
-      (delimit Commas (map toHaskell (typeclassDefinition ^. constraints))) <>
-    " => " <>
+      (SM.delimit Commas (map toHaskell (typeclassDefinition ^. constraints))) <>
+    mkHaskell' typeclassDefinition " => " <>
     toHaskell (typeclassDefinition ^. name) <>
-    " where " <>
-    renderBlock (map toHaskell $ typeclassDefinition ^. signatures)
+    mkHaskell' typeclassDefinition " where " <>
+    SM.renderBlock (map toHaskell $ typeclassDefinition ^. signatures)
 
-instance ToHaskell TypeclassInstance where
-  toHaskell :: TypeclassInstance -> String
+instance ToHaskell (TypeclassInstance SM.Expression) where
+  toHaskell :: TypeclassInstance SM.Expression -> SM.Output
   toHaskell typeclassInstance =
-    "instance " <> toHaskell (typeclassInstance ^. instanceName) <> " where " <>
-    renderBlock (map toHaskell $ typeclassInstance ^. definitions)
+    mkHaskell' typeclassInstance "instance " <>
+    toHaskell (typeclassInstance ^. instanceName) <>
+    mkHaskell' typeclassInstance " where " <>
+    SM.renderBlock (map toHaskell $ typeclassInstance ^. definitions)
 
-instance ToHaskell TypeSynonym where
-  toHaskell :: TypeSynonym -> String
+instance ToHaskell (TypeSynonym SM.Expression) where
+  toHaskell :: TypeSynonym SM.Expression -> SM.Output
   toHaskell typeSynonym =
-    "type " <> toHaskell (typeSynonym ^. alias) <> " = " <>
+    mkHaskell' typeSynonym "type " <> toHaskell (typeSynonym ^. alias) <>
+    mkHaskell' typeSynonym " = " <>
     toHaskell (typeSynonym ^. definition)
 
-instance Recursive Expression where
-  bottomUpFmap :: (Expression -> Expression) -> Expression -> Expression
+instance Recursive (Expression ann) where
+  bottomUpFmap ::
+       (Expression ann -> Expression ann) -> Expression ann -> Expression ann
   bottomUpFmap f x =
     f $
     case x of
       ECaseBlock caseBlock ->
-        ECaseBlock $
-        caseBlock & expr %~ bottomUpFmap f &
-        matches %~ map (bottomUpFmap f *** bottomUpFmap f)
-      EEmptySExpression -> x
+        ECaseBlock $ caseBlock & expr %~ bottomUpFmap f & matches %~
+        map (bottomUpFmap f *** bottomUpFmap f)
+      EEmptySExpression _ -> x
       EFunctionApplication functionApplication ->
-        EFunctionApplication $
-        functionApplication & function %~ bottomUpFmap f &
-        arguments %~ map (bottomUpFmap f)
-      EIdentifier _ -> x
+        EFunctionApplication $ functionApplication & function %~ bottomUpFmap f &
+        arguments %~
+        map (bottomUpFmap f)
+      EIdentifier _ _ -> x
       EIfBlock ifBlock ->
-        EIfBlock $
-        ifBlock & cond %~ bottomUpFmap f & ifTrue %~ bottomUpFmap f &
-        ifFalse %~ bottomUpFmap f
+        EIfBlock $ ifBlock & cond %~ bottomUpFmap f & ifTrue %~ bottomUpFmap f &
+        ifFalse %~
+        bottomUpFmap f
       ELambda lambda ->
-        ELambda $
-        lambda & arguments %~ map (bottomUpFmap f) & body %~ bottomUpFmap f
+        ELambda $ lambda & arguments %~ map (bottomUpFmap f) & body %~
+        bottomUpFmap f
       ELetBlock letBlock ->
-        ELetBlock $
-        letBlock & bindings %~ map (bottomUpFmap f *** bottomUpFmap f) &
-        body %~ bottomUpFmap f
+        ELetBlock $ letBlock & bindings %~
+        map (bottomUpFmap f *** bottomUpFmap f) &
+        body %~
+        bottomUpFmap f
       ELiteral literal ->
         case literal of
-          LChar _ -> x
-          LInt _ -> x
-          LString _ -> x
-      ERawExpression _ -> x
+          LChar _ _ -> x
+          LInt _ _ -> x
+          LString _ _ -> x
+      ERawExpression _ _ -> x
       ERecordDefinition _ -> x
       ERecordType _ -> x
   bottomUpTraverse ::
-       (Monad m) => (Expression -> m Expression) -> Expression -> m Expression
+       (Monad m)
+    => (Expression ann -> m (Expression ann))
+    -> Expression ann
+    -> m (Expression ann)
   bottomUpTraverse f x =
     f =<<
     case x of
       ECaseBlock caseBlock ->
         ECaseBlock <$>
-        (CaseBlock <$> bottomUpTraverse f (caseBlock ^. expr) <*>
+        (CaseBlock (caseBlock ^. ann) <$> bottomUpTraverse f (caseBlock ^. expr) <*>
          traverse
            (\(a, b) -> (,) <$> bottomUpTraverse f a <*> bottomUpTraverse f b)
            (caseBlock ^. matches))
-      EEmptySExpression -> pure x
+      EEmptySExpression _ -> pure x
       EFunctionApplication functionApplication ->
         EFunctionApplication <$>
-        (FunctionApplication <$>
+        (FunctionApplication (functionApplication ^. ann) <$>
          bottomUpTraverse f (functionApplication ^. function) <*>
          traverse (bottomUpTraverse f) (functionApplication ^. arguments))
-      EIdentifier _ -> pure x
+      EIdentifier _ _ -> pure x
       EIfBlock ifBlock ->
         EIfBlock <$>
-        (IfBlock <$> bottomUpTraverse f (ifBlock ^. cond) <*>
+        (IfBlock (ifBlock ^. ann) <$> bottomUpTraverse f (ifBlock ^. cond) <*>
          bottomUpTraverse f (ifBlock ^. ifTrue) <*>
          bottomUpTraverse f (ifBlock ^. ifFalse))
       ELambda lambda ->
         ELambda <$>
-        (Lambda <$> traverse (bottomUpTraverse f) (lambda ^. arguments) <*>
+        (Lambda (lambda ^. ann) <$>
+         traverse (bottomUpTraverse f) (lambda ^. arguments) <*>
          bottomUpTraverse f (lambda ^. body))
       ELetBlock letBlock ->
         ELetBlock <$>
-        (LetBlock <$>
+        (LetBlock (letBlock ^. ann) <$>
          traverse
            (\(a, b) -> (a, ) <$> bottomUpTraverse f b)
            (letBlock ^. bindings) <*>
          bottomUpTraverse f (letBlock ^. body))
       ELiteral literal ->
         case literal of
-          LChar _ -> pure x
-          LInt _ -> pure x
-          LString _ -> pure x
-      ERawExpression _ -> pure x
+          LChar _ _ -> pure x
+          LInt _ _ -> pure x
+          LString _ _ -> pure x
+      ERawExpression _ _ -> pure x
       ERecordDefinition _ -> pure x
       ERecordType _ -> pure x

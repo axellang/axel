@@ -16,17 +16,17 @@ import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Data.Semigroup ((<>))
 
-data Error
+data Error ann
   = ConvertError String
   | EvalError String
   | MacroError String
   | NormalizeError String
-                   [Expression]
+                   [Expression ann]
   | ParseError String
   | ProjectError String
 
-instance Show Error where
-  show :: Error -> String
+instance Show (Error ann) where
+  show :: Error ann -> String
   show (ConvertError err) = err
   show (EvalError err) = err
   show (MacroError err) = err

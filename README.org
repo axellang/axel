@@ -9,6 +9,6 @@
 ** Code Style
    Use ~hindent~ to format code and ~hlint~ to catch errors.
 ** Running
-   Run ~scripts/build.sh~ to build the project, and ~stack exec axel-exe -- <arguments>~ to run ~app/Main.hs~. The executable takes as arguments either ~file <path to file>~ (which is the path of the Axel program to build and execute) or ~project~ (in which case an Axel project in the current directory will be built and executed).
+   Run ~scripts/build.sh~ to build the project, and ~stack run <arguments>~ to run ~app/Main.hs~. The executable takes as arguments either ~file <path to file>~ (which is the path of the Axel program to build and execute) or ~project~ (in which case an Axel project in the current directory will be built and executed).
 ** Examples
    See the ~examples~ folder for example Axel programs.

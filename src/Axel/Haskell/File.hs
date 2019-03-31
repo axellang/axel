@@ -20,7 +20,6 @@ import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (readResource)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import qualified Axel.Eff.Resource as Res (astDefinition)
-import Axel.Error (Error)
 import Axel.Haskell.Convert (convertFile)
 import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Haskell.Stack (interpretFile)
@@ -31,6 +30,7 @@ import Axel.Parse
   , parseSource
   , programToTopLevelExpressions
   )
+import qualified Axel.Sourcemap as SM (Error, raw)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
 import Control.Lens.Operators ((%~), (<&>))
@@ -50,21 +50,21 @@ import qualified Data.Text as T (isSuffixOf, pack)
 
 import System.FilePath (stripExtension, takeFileName)
 
-convertList :: Expression -> Expression
+convertList :: Expression ann -> Expression ann
 convertList =
   bottomUpFmap $ \case
-    Symbol "List" -> Symbol "[]"
+    Symbol ann "List" -> Symbol ann "[]"
     x -> x
 
-convertUnit :: Expression -> Expression
+convertUnit :: Expression ann -> Expression ann
 convertUnit =
   bottomUpFmap $ \case
-    Symbol "Unit" -> Symbol "()"
-    Symbol "unit" -> Symbol "()"
+    Symbol ann "Unit" -> Symbol ann "()"
+    Symbol ann "unit" -> Symbol ann "()"
     x -> x
 
 readModuleInfo ::
-     (Members '[ Effs.Error Error, Effs.FileSystem] effs)
+     (Members '[ Effs.Error SM.Error, Effs.FileSystem] effs)
   => [FilePath]
   -> Eff effs ModuleInfo
 readModuleInfo axelFiles = do
@@ -76,8 +76,8 @@ readModuleInfo axelFiles = do
         mconcat . map Alt <$>
         mapM
           (\expr ->
-             runError @Error (normalizeStatement expr) <&> \case
-               Right (SModuleDeclaration moduleId) ->
+             runError @SM.Error (normalizeStatement expr) <&> \case
+               Right (SModuleDeclaration _ moduleId) ->
                  Just (filePath, (moduleId, False))
                _ -> Nothing)
           exprs
@@ -85,11 +85,11 @@ readModuleInfo axelFiles = do
   pure $ Map.fromList $ catMaybes modules
 
 transpileSource ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => String
   -> Eff effs String
 transpileSource source =
-  prettifyHaskell . toHaskell <$>
+  prettifyHaskell . SM.raw . toHaskell <$>
   (parseSource source >>=
    exhaustivelyExpandMacros transpileFile' . convertList . convertUnit >>=
    normalizeStatement)
@@ -111,7 +111,7 @@ haskellPathToAxelPath = convertExtension ".axel" ".hs"
 -- | Convert a file in place.
 convertFile' ::
      ( LastMember IO effs
-     , Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem] effs
+     , Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem] effs
      )
   => FilePath
   -> Eff effs FilePath
@@ -121,7 +121,7 @@ convertFile' path = do
   pure newPath
 
 transpileFile ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => FilePath
   -> FilePath
   -> Eff effs ()
@@ -129,13 +129,13 @@ transpileFile path newPath = do
   putStr $ "Transpiling " <> path <> "..."
   fileContents <- FS.readFile path
   newContents <- transpileSource fileContents
-  putStrLn $ " Transpiled to " <> newPath <> "!"
+  putStrLn $ "Transpiled to " <> newPath <> "!"
   FS.writeFile newPath newContents
   modify @ModuleInfo $ Map.adjust (_2 %~ not) path
 
 -- | Transpile a file in place.
 transpileFile' ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => FilePath
   -> Eff effs FilePath
 transpileFile' path = do
@@ -149,7 +149,7 @@ transpileFile' path = do
   pure newPath
 
 evalFile ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => FilePath
   -> Eff effs ()
 evalFile path = do

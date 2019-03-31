@@ -19,11 +19,8 @@ generateGenericInstances: false
 # If the hoed backend is used, insert the ExtendedDefaultRules pragma.
 enableExtendedDefaultingRules: true
 
-
 # List of types excluded from instance generation
 excludedFromInstanceGeneration: []
 
 # If true, print a line for every instrumented module.
 verbose: false
-
-
