@@ -4,7 +4,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns -Wno-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC
+  -Wno-incomplete-patterns -Wno-incomplete-uni-patterns #-}
 
 module Axel.Haskell.Convert where
 

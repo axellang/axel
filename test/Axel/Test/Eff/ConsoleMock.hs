@@ -17,9 +17,11 @@ import Control.Lens
 import Control.Monad.Freer
 import Control.Monad.Freer.State as Effs
 
-newtype ConsoleState = ConsoleState
-  { _consoleOutput :: String
-  } deriving (Eq, Show)
+newtype ConsoleState =
+  ConsoleState
+    { _consoleOutput :: String
+    }
+  deriving (Eq, Show)
 
 makeFieldsNoPrefix ''ConsoleState
 

@@ -20,8 +20,7 @@ data Error ann
   = ConvertError String
   | EvalError String
   | MacroError String
-  | NormalizeError String
-                   [Expression ann]
+  | NormalizeError String [Expression ann]
   | ParseError String
   | ProjectError String
 

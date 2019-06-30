@@ -20,10 +20,12 @@ import Control.Monad.Freer
 import Control.Monad.Freer.Error as Effs
 import Control.Monad.Freer.State as Effs
 
-data GhciState = GhciState
-  { _ghciExecutionLog :: [String]
-  , _ghciMockResults :: [[String]]
-  } deriving (Eq, Show)
+data GhciState =
+  GhciState
+    { _ghciExecutionLog :: [String]
+    , _ghciMockResults :: [[String]]
+    }
+  deriving (Eq, Show)
 
 makeFieldsNoPrefix ''GhciState
 

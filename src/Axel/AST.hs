@@ -49,170 +49,199 @@ class ToHaskell a where
 
 type Identifier = String
 
-data CaseBlock ann = CaseBlock
-  { _ann :: ann
-  , _expr :: Expression ann
-  , _matches :: [(Expression ann, Expression ann)]
-  } deriving (Eq, Show)
-
-data FunctionApplication ann = FunctionApplication
-  { _ann :: ann
-  , _function :: Expression ann
-  , _arguments :: [Expression ann]
-  } deriving (Eq, Show)
-
-data IfBlock ann = IfBlock
-  { _ann :: ann
-  , _cond :: Expression ann
-  , _ifTrue :: Expression ann
-  , _ifFalse :: Expression ann
-  } deriving (Eq, Show)
-
-data TopLevel ann = TopLevel
-  { _ann :: ann
-  , _statements :: [Statement ann]
-  } deriving (Eq, Show)
-
-data TypeDefinition ann
-  = ProperType ann
-               Identifier
-  | TypeConstructor ann
-                    (FunctionApplication ann)
+data CaseBlock ann =
+  CaseBlock
+    { _ann :: ann
+    , _expr :: Expression ann
+    , _matches :: [(Expression ann, Expression ann)]
+    }
   deriving (Eq, Show)
 
-data DataDeclaration ann = DataDeclaration
-  { _ann :: ann
-  , _typeDefinition :: TypeDefinition ann
-  , _constructors :: [FunctionApplication ann]
-  } deriving (Eq, Show)
+data FunctionApplication ann =
+  FunctionApplication
+    { _ann :: ann
+    , _function :: Expression ann
+    , _arguments :: [Expression ann]
+    }
+  deriving (Eq, Show)
 
-data NewtypeDeclaration ann = NewtypeDeclaration
-  { _ann :: ann
-  , _typeDefinition :: TypeDefinition ann
-  , _constructor :: FunctionApplication ann
-  } deriving (Eq, Show)
+data IfBlock ann =
+  IfBlock
+    { _ann :: ann
+    , _cond :: Expression ann
+    , _ifTrue :: Expression ann
+    , _ifFalse :: Expression ann
+    }
+  deriving (Eq, Show)
 
-data FunctionDefinition ann = FunctionDefinition
-  { _ann :: ann
-  , _name :: Identifier
-  , _arguments :: [Expression ann]
-  , _body :: Expression ann
-  , _whereBindings :: [FunctionDefinition ann]
-  } deriving (Eq, Show)
+data TopLevel ann =
+  TopLevel
+    { _ann :: ann
+    , _statements :: [Statement ann]
+    }
+  deriving (Eq, Show)
+
+data TypeDefinition ann
+  = ProperType ann Identifier
+  | TypeConstructor ann (FunctionApplication ann)
+  deriving (Eq, Show)
+
+data DataDeclaration ann =
+  DataDeclaration
+    { _ann :: ann
+    , _typeDefinition :: TypeDefinition ann
+    , _constructors :: [FunctionApplication ann]
+    }
+  deriving (Eq, Show)
+
+data NewtypeDeclaration ann =
+  NewtypeDeclaration
+    { _ann :: ann
+    , _typeDefinition :: TypeDefinition ann
+    , _constructor :: FunctionApplication ann
+    }
+  deriving (Eq, Show)
+
+data FunctionDefinition ann =
+  FunctionDefinition
+    { _ann :: ann
+    , _name :: Identifier
+    , _arguments :: [Expression ann]
+    , _body :: Expression ann
+    , _whereBindings :: [FunctionDefinition ann]
+    }
+  deriving (Eq, Show)
 
 data Import ann
-  = ImportItem ann
-               Identifier
-  | ImportType ann
-               Identifier
-               [Identifier]
+  = ImportItem ann Identifier
+  | ImportType ann Identifier [Identifier]
   deriving (Eq, Show)
 
 data ImportSpecification ann
   = ImportAll ann
-  | ImportOnly ann
-               [Import ann]
+  | ImportOnly ann [Import ann]
   deriving (Eq, Show)
 
-data Lambda ann = Lambda
-  { _ann :: ann
-  , _arguments :: [Expression ann]
-  , _body :: Expression ann
-  } deriving (Eq, Show)
+data Lambda ann =
+  Lambda
+    { _ann :: ann
+    , _arguments :: [Expression ann]
+    , _body :: Expression ann
+    }
+  deriving (Eq, Show)
 
-data LetBlock ann = LetBlock
-  { _ann :: ann
-  , _bindings :: [(Expression ann, Expression ann)]
-  , _body :: Expression ann
-  } deriving (Eq, Show)
+data LetBlock ann =
+  LetBlock
+    { _ann :: ann
+    , _bindings :: [(Expression ann, Expression ann)]
+    , _body :: Expression ann
+    }
+  deriving (Eq, Show)
 
-data MacroDefinition ann = MacroDefinition
-  { _ann :: ann
-  , _functionDefinition :: FunctionDefinition ann
-  } deriving (Eq, Show)
+data MacroDefinition ann =
+  MacroDefinition
+    { _ann :: ann
+    , _functionDefinition :: FunctionDefinition ann
+    }
+  deriving (Eq, Show)
 
-data MacroImport ann = MacroImport
-  { _ann :: ann
-  , _moduleName :: Identifier
-  , _imports :: [Identifier]
-  } deriving (Eq, Show)
+data MacroImport ann =
+  MacroImport
+    { _ann :: ann
+    , _moduleName :: Identifier
+    , _imports :: [Identifier]
+    }
+  deriving (Eq, Show)
 
-data Pragma ann = Pragma
-  { _ann :: ann
-  , _pragmaSpecification :: String
-  } deriving (Eq, Show)
+data Pragma ann =
+  Pragma
+    { _ann :: ann
+    , _pragmaSpecification :: String
+    }
+  deriving (Eq, Show)
 
-data QualifiedImport ann = QualifiedImport
-  { _ann :: ann
-  , _moduleName :: Identifier
-  , _alias :: Identifier
-  , _imports :: ImportSpecification ann
-  } deriving (Eq, Show)
+data QualifiedImport ann =
+  QualifiedImport
+    { _ann :: ann
+    , _moduleName :: Identifier
+    , _alias :: Identifier
+    , _imports :: ImportSpecification ann
+    }
+  deriving (Eq, Show)
 
-data RecordDefinition ann = RecordDefinition
-  { _ann :: ann
-  , _bindings :: [(Identifier, Expression ann)]
-  } deriving (Eq, Show)
+data RecordDefinition ann =
+  RecordDefinition
+    { _ann :: ann
+    , _bindings :: [(Identifier, Expression ann)]
+    }
+  deriving (Eq, Show)
 
-data RecordType ann = RecordType
-  { _ann :: ann
-  , _fields :: [(Identifier, Expression ann)]
-  } deriving (Eq, Show)
+data RecordType ann =
+  RecordType
+    { _ann :: ann
+    , _fields :: [(Identifier, Expression ann)]
+    }
+  deriving (Eq, Show)
 
-data RestrictedImport ann = RestrictedImport
-  { _ann :: ann
-  , _moduleName :: Identifier
-  , _imports :: ImportSpecification ann
-  } deriving (Eq, Show)
+data RestrictedImport ann =
+  RestrictedImport
+    { _ann :: ann
+    , _moduleName :: Identifier
+    , _imports :: ImportSpecification ann
+    }
+  deriving (Eq, Show)
 
-data TypeclassDefinition ann = TypeclassDefinition
-  { _ann :: ann
-  , _name :: Expression ann
-  , _constraints :: [Expression ann]
-  , _signatures :: [TypeSignature ann]
-  } deriving (Eq, Show)
+data TypeclassDefinition ann =
+  TypeclassDefinition
+    { _ann :: ann
+    , _name :: Expression ann
+    , _constraints :: [Expression ann]
+    , _signatures :: [TypeSignature ann]
+    }
+  deriving (Eq, Show)
 
-data TypeclassInstance ann = TypeclassInstance
-  { _ann :: ann
-  , _instanceName :: Expression ann
-  , _definitions :: [FunctionDefinition ann]
-  } deriving (Eq, Show)
+data TypeclassInstance ann =
+  TypeclassInstance
+    { _ann :: ann
+    , _instanceName :: Expression ann
+    , _definitions :: [FunctionDefinition ann]
+    }
+  deriving (Eq, Show)
 
-data TypeSignature ann = TypeSignature
-  { _ann :: ann
-  , _name :: Identifier
-  , _typeDefinition :: Expression ann
-  } deriving (Eq, Show)
+data TypeSignature ann =
+  TypeSignature
+    { _ann :: ann
+    , _name :: Identifier
+    , _typeDefinition :: Expression ann
+    }
+  deriving (Eq, Show)
 
-data TypeSynonym ann = TypeSynonym
-  { _ann :: ann
-  , _alias :: Expression ann
-  , _definition :: Expression ann
-  } deriving (Eq, Show)
+data TypeSynonym ann =
+  TypeSynonym
+    { _ann :: ann
+    , _alias :: Expression ann
+    , _definition :: Expression ann
+    }
+  deriving (Eq, Show)
 
 data Expression ann
   = ECaseBlock (CaseBlock ann)
   | EEmptySExpression ann
   | EFunctionApplication (FunctionApplication ann)
-  | EIdentifier ann
-                Identifier
+  | EIdentifier ann Identifier
   | EIfBlock (IfBlock ann)
   | ELambda (Lambda ann)
   | ELetBlock (LetBlock ann)
   | ELiteral (Literal ann)
-  | ERawExpression ann
-                   String
+  | ERawExpression ann String
   | ERecordDefinition (RecordDefinition ann)
   | ERecordType (RecordType ann)
   deriving (Eq, Show)
 
 data Literal ann
-  = LChar ann
-          Char
-  | LInt ann
-         Int
-  | LString ann
-            String
+  = LChar ann Char
+  | LInt ann Int
+  | LString ann String
   deriving (Eq, Show)
 
 data Statement ann
@@ -220,21 +249,18 @@ data Statement ann
   | SFunctionDefinition (FunctionDefinition ann)
   | SMacroDefinition (MacroDefinition ann)
   | SMacroImport (MacroImport ann)
-  | SModuleDeclaration ann
-                       Identifier
+  | SModuleDeclaration ann Identifier
   | SNewtypeDeclaration (NewtypeDeclaration ann)
   | SPragma (Pragma ann)
   | SQualifiedImport (QualifiedImport ann)
-  | SRawStatement ann
-                  String
+  | SRawStatement ann String
   | SRestrictedImport (RestrictedImport ann)
   | STopLevel (TopLevel ann)
   | STypeclassDefinition (TypeclassDefinition ann)
   | STypeclassInstance (TypeclassInstance ann)
   | STypeSignature (TypeSignature ann)
   | STypeSynonym (TypeSynonym ann)
-  | SUnrestrictedImport ann
-                        Identifier
+  | SUnrestrictedImport ann Identifier
   deriving (Eq, Show)
 
 type Program ann = [Statement ann]

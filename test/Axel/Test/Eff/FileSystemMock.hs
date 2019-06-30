@@ -27,10 +27,8 @@ import Data.Maybe
 import System.FilePath
 
 data FSNode
-  = Directory FilePath
-              [FSNode]
-  | File FilePath
-         String
+  = Directory FilePath [FSNode]
+  | File FilePath String
   deriving (Eq, Show)
 
 fsPath :: Lens' FSNode FilePath
@@ -44,11 +42,13 @@ fsPath =
          Directory _ children -> Directory newPath children
          File _ contents -> File newPath contents)
 
-data FileSystemState = FileSystemState
-  { _fsCurrentDirectory :: FilePath
-  , _fsRoot :: FSNode
-  , _fsTempCounter :: Int
-  } deriving (Eq, Show)
+data FileSystemState =
+  FileSystemState
+    { _fsCurrentDirectory :: FilePath
+    , _fsRoot :: FSNode
+    , _fsTempCounter :: Int
+    }
+  deriving (Eq, Show)
 
 makeFieldsNoPrefix ''FileSystemState
 

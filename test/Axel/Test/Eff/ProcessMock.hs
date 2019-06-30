@@ -44,11 +44,13 @@ instance Show (ProcessResult effs) where
   show :: ProcessResult effs -> String
   show _ = "<ProcessResult>"
 
-data ProcessState effs = ProcessState
-  { _procMockArgs :: [String]
-  , _procExecutionLog :: [(String, [String], Maybe String)]
-  , _procMockResults :: [ProcessResult effs]
-  } deriving (Eq, Show)
+data ProcessState effs =
+  ProcessState
+    { _procMockArgs :: [String]
+    , _procExecutionLog :: [(String, [String], Maybe String)]
+    , _procMockResults :: [ProcessResult effs]
+    }
+  deriving (Eq, Show)
 
 makeFieldsNoPrefix ''ProcessState
 
