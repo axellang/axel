@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -55,7 +56,7 @@ data CaseBlock ann =
     , _expr :: Expression ann
     , _matches :: [(Expression ann, Expression ann)]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data FunctionApplication ann =
   FunctionApplication
@@ -63,7 +64,7 @@ data FunctionApplication ann =
     , _function :: Expression ann
     , _arguments :: [Expression ann]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data IfBlock ann =
   IfBlock
@@ -72,7 +73,7 @@ data IfBlock ann =
     , _ifTrue :: Expression ann
     , _ifFalse :: Expression ann
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data TopLevel ann =
   TopLevel
@@ -128,7 +129,7 @@ data Lambda ann =
     , _arguments :: [Expression ann]
     , _body :: Expression ann
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data LetBlock ann =
   LetBlock
@@ -136,7 +137,7 @@ data LetBlock ann =
     , _bindings :: [(Expression ann, Expression ann)]
     , _body :: Expression ann
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data MacroDefinition ann =
   MacroDefinition
@@ -174,14 +175,14 @@ data RecordDefinition ann =
     { _ann :: ann
     , _bindings :: [(Identifier, Expression ann)]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data RecordType ann =
   RecordType
     { _ann :: ann
     , _fields :: [(Identifier, Expression ann)]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data RestrictedImport ann =
   RestrictedImport
@@ -214,7 +215,7 @@ data TypeSignature ann =
     , _name :: Identifier
     , _typeDefinition :: Expression ann
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data TypeSynonym ann =
   TypeSynonym
@@ -236,13 +237,13 @@ data Expression ann
   | ERawExpression ann String
   | ERecordDefinition (RecordDefinition ann)
   | ERecordType (RecordType ann)
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data Literal ann
   = LChar ann Char
   | LInt ann Int
   | LString ann String
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data Statement ann
   = SDataDeclaration (DataDeclaration ann)

@@ -19,20 +19,16 @@ commandParser
           = (command "convert"
                (info ((<$>) Convert (argument str (metavar "FILE")))
                   (progDesc "(EXPERIMENTAL) Convert a Haskell file to Axel")))
-          where
         fileCommand
           = (command "file"
                (info ((<$>) File (argument str (metavar "FILE")))
                   (progDesc "Build and run a single file")))
-          where
         projectCommand
           = (command "project"
                (info (pure Project) (progDesc "Build and run the project")))
-          where
         versionCommand
           = (command "version"
                (info (pure Version)
                   (progDesc "Display the version of the Axel compiler")))
-          where
 
 commandParser :: (Parser Command)

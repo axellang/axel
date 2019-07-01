@@ -24,6 +24,5 @@ hygenisizeMacroName oldName
              (T.pack suffixedName)
              (filter (\ ((,) sym _) -> (notElem sym Parse.syntaxSymbols))
                 ((<>) haskellSyntaxSymbols haskellOperatorSymbols)))))
-  where
 
 hygenisizeMacroName :: ((->) String String)

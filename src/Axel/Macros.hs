@@ -2,6 +2,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
@@ -11,14 +13,13 @@ module Axel.Macros where
 import Prelude hiding (putStrLn)
 
 import Axel.AST
-  ( Expression(EFunctionApplication, EIdentifier)
-  , FunctionApplication(FunctionApplication)
-  , Identifier
+  ( Identifier
   , MacroDefinition
   , Statement(SMacroDefinition, SMacroImport, STypeSignature)
   , ToHaskell(toHaskell)
-  , TypeSignature(TypeSignature)
+  , TypeSignature
   , _SModuleDeclaration
+  , _STypeSignature
   , functionDefinition
   , getAnn
   , imports
@@ -52,7 +53,6 @@ import qualified Axel.Parse as Parse
   )
 import Axel.Sourcemap (Delimiter(Newlines))
 import qualified Axel.Sourcemap as SM (Error, Expression, raw)
-import Axel.Utils.Debug (unsafeTeeS)
 import Axel.Utils.Display (delimit)
 import Axel.Utils.Function (uncurry3)
 import Axel.Utils.List (head')
@@ -61,11 +61,13 @@ import Axel.Utils.String (replace)
 
 import Control.Lens.Cons (snoc)
 import Control.Lens.Extras (is)
-import Control.Lens.Operators ((%~), (^.))
+import Control.Lens.Operators ((%~), (^.), (^?!))
+import Control.Lens.Prism (_Right)
 import Control.Lens.Tuple (_1, _2)
 import Control.Monad (foldM, unless, void)
 import Control.Monad.Freer (Eff, Members)
-import Control.Monad.Freer.Error (throwError)
+import qualified Control.Monad.Freer as Effs (run)
+import Control.Monad.Freer.Error (runError, throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 import Control.Monad.Freer.State (gets)
 import qualified Control.Monad.Freer.State as Effs (State)
@@ -168,33 +170,20 @@ isMacroImported macroName =
        _ -> False)
 
 typeMacroDefinitions :: [MacroDefinition ann] -> [TypeSignature ()]
-typeMacroDefinitions macroDefs =
-  map
-    (flip
-       (TypeSignature ())
-       (EFunctionApplication $
-        FunctionApplication
-          ()
-          (EIdentifier () "->")
-          [ EFunctionApplication $
-            FunctionApplication
-              ()
-              (EIdentifier () "[]")
-              [EIdentifier () "AST.Expression"]
-          , EFunctionApplication $
-            FunctionApplication
-              ()
-              (EIdentifier () "IO")
-              [ EFunctionApplication $
-                FunctionApplication
-                  ()
-                  (EIdentifier () "[]")
-                  [EIdentifier () "AST.Expression"]
-              ]
-          ]))
-    macroNames
+typeMacroDefinitions macroDefs = map mkTySig macroNames
   where
     macroNames = nub $ map (^. functionDefinition . name) macroDefs
+    mkTySigSource macroName =
+      "(:: " <> macroName <>
+      "(-> ([] (AST.Expression AST.SourceMetadata)) (IO ([] (AST.Expression AST.SourceMetadata)))))"
+    mkTySig :: Identifier -> TypeSignature ()
+    mkTySig macroName =
+      let expr =
+            head $ ignoreError $ Parse.parseMultiple $ mkTySigSource macroName
+          tySig = ignoreError (normalizeStatement expr) ^?! _STypeSignature
+       in () <$ tySig
+    ignoreError :: Eff '[ Effs.Error SM.Error] a -> a
+    ignoreError x = Effs.run (runError x) ^?! _Right
 
 expandMacros ::
      (Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)

@@ -196,7 +196,7 @@ instance ToStmts HSE.Module where
           (AST.MacroImport
              ()
              "Axel"
-             ["applyInfix", "def", "defmacro", "fnCase", "mdo", "quasiquote"]) :
+             ["applyInfix", "def", "defmacro", "fnCase", "do'", "quasiquote"]) :
         concatMap toStmts imports
       , concatMap toStmts decls
       ]
