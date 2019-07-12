@@ -2,7 +2,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -21,7 +20,6 @@ import Axel.AST
   , _SModuleDeclaration
   , _STypeSignature
   , functionDefinition
-  , getAnn
   , imports
   , moduleName
   , name
@@ -137,7 +135,7 @@ expansionPass ::
   -> SM.Expression
   -> Eff effs SM.Expression
 expansionPass ghci expandFile programExpr =
-  Parse.topLevelExpressionsToProgram . map getAnn <$>
+  Parse.topLevelExpressionsToProgram . map denormalizeStatement <$>
   expandMacros ghci expandFile (Parse.programToTopLevelExpressions programExpr)
 
 exhaustivelyExpandMacros ::
