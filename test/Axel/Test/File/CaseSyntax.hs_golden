@@ -1,4 +1,1 @@
-main
-  = (case True of
-         True -> ()
-         False -> ())
+main  = (case True of {True -> ();False -> ()})

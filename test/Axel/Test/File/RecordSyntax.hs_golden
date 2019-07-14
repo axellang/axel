@@ -1,4 +1,3 @@
-data Foo = Foo{foo :: Int, bar :: String}
-
+data Foo = Foo {foo :: Int,bar :: String}
 foo :: Foo
-foo = (Foo{foo = 1, bar = "test"})
+foo  = (Foo {foo = 1,bar = "test"})

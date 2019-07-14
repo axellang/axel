@@ -21,7 +21,6 @@ import Axel.Eff.Resource (readResource)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import qualified Axel.Eff.Resource as Res (astDefinition)
 import Axel.Haskell.Convert (convertFile)
-import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Haskell.Stack (interpretFile)
 import Axel.Macros (ModuleInfo, exhaustivelyExpandMacros)
 import Axel.Normalize (normalizeStatement)
@@ -89,7 +88,7 @@ transpileSource ::
   => String
   -> Eff effs String
 transpileSource source =
-  prettifyHaskell . SM.raw . toHaskell <$>
+  SM.raw . toHaskell <$>
   (parseSource source >>=
    exhaustivelyExpandMacros transpileFile' . convertList . convertUnit >>=
    normalizeStatement)

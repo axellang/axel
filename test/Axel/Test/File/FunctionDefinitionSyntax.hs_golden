@@ -1,5 +1,3 @@
-foo = 1
+foo  = 1
 bar 1 = 3
-bar x = (plus x one)
-  where plus = (+)
-        one = 1
+bar x = (plus x one) where {plus  = (+);one  = 1}

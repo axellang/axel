@@ -1,5 +1,3 @@
 main :: (IO ())
-
 foo :: Int
-
 bar :: ((->) Int ((->) Char Bool))

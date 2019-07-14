@@ -1,2 +1,1 @@
-instance (Eq ((->) a a)) where
-        (==) _ _ = False
+instance (Eq ((->) a a)) where {(==) _ _ = False}

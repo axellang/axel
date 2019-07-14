@@ -1,3 +1,2 @@
 type Baz = String
-
 type (Foo a) = (Either a Baz)
