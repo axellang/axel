@@ -7,10 +7,10 @@
 
 module Axel.Haskell.File where
 
-import Prelude hiding (putStr, putStrLn)
+import Prelude hiding (putStrLn)
 
 import Axel.AST (Statement(SModuleDeclaration), ToHaskell(toHaskell))
-import Axel.Eff.Console (putStr, putStrLn)
+import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (readFile, removeFile, writeFile)
@@ -126,10 +126,9 @@ transpileFile ::
   -> FilePath
   -> Eff effs ()
 transpileFile path newPath = do
-  putStr $ "Transpiling " <> path <> "..."
   fileContents <- FS.readFile path
   newContents <- transpileSource fileContents
-  putStrLn $ "Transpiled to " <> newPath <> "!"
+  putStrLn $ path <> " => " <> newPath
   FS.writeFile newPath newContents
   modify @ModuleInfo $ Map.adjust (_2 %~ not) path
 
