@@ -1,3 +1,2 @@
 instance (Eq ((->) a a)) where
         (==) _ _ = False
-          where

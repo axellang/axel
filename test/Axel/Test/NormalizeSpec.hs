@@ -3,8 +3,8 @@
 module Axel.Test.NormalizeSpec where
 
 import Axel.Denormalize
-import Axel.Error
 import Axel.Normalize
+import Axel.Sourcemap as SM
 import Axel.Test.MockUtils
 import qualified Axel.Test.Parse.ASTGen as Parse.ASTGen
 
@@ -19,4 +19,5 @@ hprop_denormalizeExpression_is_the_inverse_of_normalizeExpression =
     expr <- forAll Parse.ASTGen.genExpression
     expr ===
       denormalizeExpression
-        (unwrapRight $ Eff.run . Effs.runError @Error $ normalizeExpression expr)
+        (unwrapRight $
+         Eff.run . Effs.runError @SM.Error $ normalizeExpression expr)

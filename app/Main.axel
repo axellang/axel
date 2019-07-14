@@ -14,7 +14,6 @@
 (importq Axel.Eff.Process Effs (Process))
 (importq Axel.Eff.Resource Res (runEff))
 (importq Axel.Eff.Resource Effs (Resource))
-(import Axel.Error (Error))
 (importq Axel.Error Error (runEff))
 (import Axel.Haskell.File (convertFile' transpileFile'))
 (import Axel.Haskell.Project (buildProject runProject))

@@ -38,7 +38,7 @@ import qualified Axel.Eff.Resource as Res
   , macroDefinitionAndEnvironmentHeader
   , macroScaffold
   )
-import Axel.Error (Error(MacroError), fatal)
+import Axel.Error (Error(MacroError), fatal, unsafeIgnoreError)
 import Axel.Haskell.Macros (hygenisizeMacroName)
 import Axel.Haskell.Prettify (prettifyHaskell)
 import Axel.Normalize (normalizeStatement)
@@ -177,11 +177,12 @@ typeMacroDefinitions macroDefs = map mkTySig macroNames
     mkTySig :: Identifier -> TypeSignature ()
     mkTySig macroName =
       let expr =
-            head $ ignoreError $ Parse.parseMultiple $ mkTySigSource macroName
-          tySig = ignoreError (normalizeStatement expr) ^?! _STypeSignature
+            head $ unsafeIgnoreError @SM.Error $ Parse.parseMultiple $
+            mkTySigSource macroName
+          tySig =
+            unsafeIgnoreError @SM.Error (normalizeStatement expr) ^?!
+            _STypeSignature
        in () <$ tySig
-    ignoreError :: Eff '[ Effs.Error SM.Error] a -> a
-    ignoreError x = Effs.run (runError x) ^?! _Right
 
 expandMacros ::
      (Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)

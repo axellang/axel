@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -20,7 +21,7 @@ data Expression ann
   | LiteralString ann String
   | SExpression ann [Expression ann]
   | Symbol ann String
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data SourcePosition =
   SourcePosition

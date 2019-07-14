@@ -1,2 +1,2 @@
 makeLenses ''Foo
-main  = putStrLn "Hello, world!" where {}
+main  = putStrLn "Hello, world!"

@@ -1,2 +1,1 @@
 main = ((\ x y -> ((>>) (print x) (print y))) True False)
-  where

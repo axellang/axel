@@ -8,13 +8,14 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Axel.Parse
   ( module Axel.Parse
   , module Axel.Parse.AST
   ) where
 
-import Axel.Error (Error(ParseError), fatal)
+import Axel.Error (Error(ParseError), fatal, unsafeIgnoreError)
 
 -- Re-exporting these so that consumers of parsed ASTs do not need
 -- to know about the internal file.
@@ -232,6 +233,12 @@ parseMultiple input =
         (\case
            SExpression _ [Symbol _ "quote", x] -> quoteParseExpression x
            x -> x)
+
+-- | Will error at runtime if:
+-- |   * A parse error occurs.
+-- |   * Multiple statements were able to be parsed.
+unsafeParseSingle :: String -> SM.Expression
+unsafeParseSingle = head . unsafeIgnoreError @SM.Error . parseMultiple
 
 stripComments :: String -> String
 stripComments = unlines . map cleanLine . lines

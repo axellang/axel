@@ -10,6 +10,7 @@ import Axel.Eff.Resource as Res
 import Axel.Error as Error
 import Axel.Haskell.File
 import Axel.Macros
+import Axel.Sourcemap as SM
 
 import Control.Monad.Freer as Effs
 import Control.Monad.Freer.State (evalState)
@@ -39,5 +40,5 @@ test_transpileSource_golden = do
             Ghci.runEff .
             evalState (M.empty :: ModuleInfo) .
             Res.runEff .
-            Proc.runEff . FS.runEff . Error.runEff @Error . Console.runEff)
+            Proc.runEff . FS.runEff . Error.runEff @SM.Error . Console.runEff)
              (FS.readFile axelFile >>= transpileSource))

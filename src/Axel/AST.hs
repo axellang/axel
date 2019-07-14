@@ -80,12 +80,12 @@ data TopLevel ann =
     { _ann :: ann
     , _statements :: [Statement ann]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data TypeDefinition ann
   = ProperType ann Identifier
   | TypeConstructor ann (FunctionApplication ann)
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data DataDeclaration ann =
   DataDeclaration
@@ -93,7 +93,7 @@ data DataDeclaration ann =
     , _typeDefinition :: TypeDefinition ann
     , _constructors :: [FunctionApplication ann]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data NewtypeDeclaration ann =
   NewtypeDeclaration
@@ -101,7 +101,7 @@ data NewtypeDeclaration ann =
     , _typeDefinition :: TypeDefinition ann
     , _constructor :: FunctionApplication ann
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data FunctionDefinition ann =
   FunctionDefinition
@@ -111,17 +111,17 @@ data FunctionDefinition ann =
     , _body :: Expression ann
     , _whereBindings :: [FunctionDefinition ann]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data Import ann
   = ImportItem ann Identifier
   | ImportType ann Identifier [Identifier]
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data ImportSpecification ann
   = ImportAll ann
   | ImportOnly ann [Import ann]
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data Lambda ann =
   Lambda
@@ -144,7 +144,7 @@ data MacroDefinition ann =
     { _ann :: ann
     , _functionDefinition :: FunctionDefinition ann
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data MacroImport ann =
   MacroImport
@@ -152,14 +152,14 @@ data MacroImport ann =
     , _moduleName :: Identifier
     , _imports :: [Identifier]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data Pragma ann =
   Pragma
     { _ann :: ann
     , _pragmaSpecification :: String
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data QualifiedImport ann =
   QualifiedImport
@@ -168,7 +168,7 @@ data QualifiedImport ann =
     , _alias :: Identifier
     , _imports :: ImportSpecification ann
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data RecordDefinition ann =
   RecordDefinition
@@ -190,7 +190,7 @@ data RestrictedImport ann =
     , _moduleName :: Identifier
     , _imports :: ImportSpecification ann
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data TypeclassDefinition ann =
   TypeclassDefinition
@@ -199,7 +199,7 @@ data TypeclassDefinition ann =
     , _constraints :: [Expression ann]
     , _signatures :: [TypeSignature ann]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data TypeclassInstance ann =
   TypeclassInstance
@@ -207,7 +207,7 @@ data TypeclassInstance ann =
     , _instanceName :: Expression ann
     , _definitions :: [FunctionDefinition ann]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data TypeSignature ann =
   TypeSignature
@@ -223,7 +223,7 @@ data TypeSynonym ann =
     , _alias :: Expression ann
     , _definition :: Expression ann
     }
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 data Expression ann
   = ECaseBlock (CaseBlock ann)
@@ -262,7 +262,7 @@ data Statement ann
   | STypeSignature (TypeSignature ann)
   | STypeSynonym (TypeSynonym ann)
   | SUnrestrictedImport ann Identifier
-  deriving (Eq, Show)
+  deriving (Eq, Functor, Show)
 
 type Program ann = [Statement ann]
 

@@ -11,6 +11,7 @@ import Axel.Parse.AST (Expression, toAxel)
 
 import Control.Monad ((>=>))
 import Control.Monad.Freer (type (~>), Eff, LastMember, send)
+import qualified Control.Monad.Freer as Effs (run)
 import Control.Monad.Freer.Error (runError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 
@@ -42,3 +43,9 @@ runEff =
   runError >=> \case
     Left err -> send $ ioError $ userError $ show err
     Right x -> pure x
+
+unsafeIgnoreError :: (Show b) => Eff '[ Effs.Error b] a -> a
+unsafeIgnoreError x =
+  case Effs.run (runError x) of
+    Left err -> error $ show err
+    Right result -> result

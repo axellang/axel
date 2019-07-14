@@ -49,7 +49,7 @@ spec_Stack = do
         Right ((), result) -> result `shouldBe` expectedFSState
   describe "buildStackProject" $ do
     it "builds a Stack project" $ do
-      let action = Stack.buildStackProject "project/foo"
+      let action = Stack.buildStackProject @() "project/foo"
       let origConsoleState = Mock.mkConsoleState
       let origFSState =
             Mock.mkFileSystemState
@@ -64,7 +64,7 @@ spec_Stack = do
             procState ^. Mock.procExecutionLog `shouldBe`
               [("stack", ["build"], Just "")]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
-      case Eff.run . Effs.runError @Error . Effs.runError @String .
+      case Eff.run . Effs.runError @(Error ()) . Effs.runError @String .
            Mock.runFileSystem origFSState .
            Mock.runProcess origProcState .
            Mock.runConsole origConsoleState $
@@ -96,7 +96,7 @@ spec_Stack = do
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
             fsState ^. Mock.fsRoot . at "newProject" . _Just . Mock.fsPath `shouldBe`
               "newProject"
-      case Eff.run . Effs.runError @Error . Effs.runError @String .
+      case Eff.run . Effs.runError @(Error ()) . Effs.runError @String .
            Mock.runFileSystem origFSState .
            Mock.runProcess origProcState $
            action of
@@ -106,7 +106,7 @@ spec_Stack = do
           expectation x (fsState, procState)
   describe "runStackProject" $ do
     it "runs a Stack project" $ do
-      let action = Stack.runStackProject "project/foo"
+      let action = Stack.runStackProject @() "project/foo"
       let origConsoleState = Mock.mkConsoleState
       let origFSState =
             Mock.mkFileSystemState
@@ -128,7 +128,7 @@ spec_Stack = do
               ]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
             consoleState ^. Mock.consoleOutput `shouldBe` "Running foo-exe...\n"
-      case Eff.run . Effs.runError @Error . Effs.runError @String .
+      case Eff.run . Effs.runError @(Error ()) . Effs.runError @String .
            Mock.runFileSystem origFSState .
            Mock.runProcess origProcState .
            Mock.runConsole origConsoleState $
