@@ -8,8 +8,8 @@ import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
 -- | Adapt an expression generator for use in a statement generator.
--- | Short name since we'll be using this function e lot, and only in this file
--- | (which only contains test utilities anyway).
+--   Short name since we'll be using this function a lot, and only in this file
+--   (which only contains test utilities anyway).
 e :: (Functor f, Monad m) => m (f ann) -> m (f ())
 e f = (() <$) <$> f
 

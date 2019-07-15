@@ -4,24 +4,25 @@ import Control.Lens.Operators ((^.))
 import Control.Lens.Tuple (_1, _2)
 import Control.Lens.Type (Lens)
 
-type Annotated a b = (a, b)
+type Annotated ann a = (a, ann)
 
-annotate :: b -> a -> Annotated a b
+annotate :: ann -> a -> Annotated ann a
 annotate = flip (,)
 
-annotateWith :: (a -> b) -> a -> Annotated a b
+annotateWith :: (a -> ann) -> a -> Annotated ann a
 annotateWith f x = annotate (f x) x
 
-unannotated :: Lens (Annotated a b) (Annotated a' b) a a'
+unannotated :: Lens (Annotated ann a) (Annotated ann a') a a'
 unannotated = _1
 
-annotation :: Lens (Annotated a b) (Annotated a b') b b'
+annotation :: Lens (Annotated ann a) (Annotated ann' a) ann ann'
 annotation = _2
 
-unannotate :: Annotated a b -> a
+unannotate :: Annotated ann a -> a
 unannotate = (^. unannotated)
 
-flattenAnnotations :: Annotated (Annotated a b) c -> Annotated a (b, c)
+flattenAnnotations ::
+     Annotated ann (Annotated ann' a) -> Annotated (ann', ann) a
 flattenAnnotations x =
   let outerAnnotation = x ^. annotation
       innerAnnotation = unannotate x ^. annotation

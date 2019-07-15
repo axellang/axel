@@ -234,9 +234,9 @@ parseMultiple input =
            SExpression _ [Symbol _ "quote", x] -> quoteParseExpression x
            x -> x)
 
--- | Will error at runtime if:
--- |   * A parse error occurs.
--- |   * Multiple statements were able to be parsed.
+-- | Will error at runtime if any are true:
+--    * A parse error occurs.
+--    * Multiple statements were able to be parsed.
 unsafeParseSingle :: String -> SM.Expression
 unsafeParseSingle = head . unsafeIgnoreError @SM.Error . parseMultiple
 

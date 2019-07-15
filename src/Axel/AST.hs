@@ -34,12 +34,12 @@ import qualified Axel.Sourcemap as SM
   )
 import qualified Axel.Utils.Display as Display (delimit, renderPragma, surround)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap, bottomUpTraverse))
+import Axel.Utils.Tuple (annotate, unannotated)
 
 import Control.Arrow ((***))
 import Control.Lens.Combinators (_head, _last)
 import Control.Lens.Operators ((%~), (^.))
 import Control.Lens.TH (makeFieldsNoPrefix, makePrisms)
-import Control.Lens.Tuple (_2)
 import Control.Lens.Wrapped (_Wrapped)
 
 import Data.Function ((&))
@@ -378,7 +378,8 @@ mkHaskell ::
   => a
   -> String
   -> SM.Output
-mkHaskell x haskellRendering = SM.Output [(getAnn (getAnn x), haskellRendering)]
+mkHaskell x haskellRendering =
+  SM.Output [annotate (getAnn (getAnn x)) haskellRendering]
 
 mkHaskell' ::
      (HasAnn a b, HasAnnotation b Parse.SourceMetadata)
@@ -386,7 +387,7 @@ mkHaskell' ::
   -> String
   -> SM.Output
 mkHaskell' x haskellRendering =
-  SM.Output [(getAnn (x ^. ann), haskellRendering)]
+  SM.Output [annotate (getAnn (x ^. ann)) haskellRendering]
 
 instance ToHaskell (Statement SM.Expression) where
   toHaskell :: Statement SM.Expression -> SM.Output
@@ -481,8 +482,8 @@ instance ToHaskell (DataDeclaration SM.Expression) where
 removeSurroundingParentheses :: SM.Output -> SM.Output
 removeSurroundingParentheses = removeOpen . removeClosed
   where
-    removeOpen = _Wrapped . _head . _2 %~ tail
-    removeClosed = _Wrapped . _last . _2 %~ init
+    removeOpen = _Wrapped . _head . unannotated %~ tail
+    removeClosed = _Wrapped . _last . unannotated %~ init
 
 instance ToHaskell (IfBlock SM.Expression) where
   toHaskell :: IfBlock SM.Expression -> SM.Output

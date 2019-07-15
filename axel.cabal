@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f94ada64b24f879820590c172f90bd9922bfd6738ed79d0984e4bfc2dedb9c5f
+-- hash: 6815d969215408b2062c3b01e8828dc2bc7badb51eef9351854befdb753eb7e9
 
 name:           axel
 version:        0.0.11
@@ -54,6 +54,7 @@ library
       Axel.Eff.Console
       Axel.Eff.FileSystem
       Axel.Eff.Ghci
+      Axel.Eff.Loop
       Axel.Eff.Process
       Axel.Eff.Resource
       Axel.Error
@@ -157,6 +158,7 @@ test-suite axel-test
       Axel.Test.NormalizeSpec
       Axel.Test.Parse.ASTGen
       Axel.Test.ParseSpec
+      Axel.Test.SourcemapSpec
       Paths_axel
   hs-source-dirs:
       test
