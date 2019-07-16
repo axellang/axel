@@ -7,7 +7,8 @@
 
 module Axel.Eff.Ghci where
 
-import Control.Monad.Freer (type (~>), Eff, LastMember, interpretM)
+import Control.Monad (void)
+import Control.Monad.Freer (type (~>), Eff, LastMember, Member, interpretM)
 import Control.Monad.Freer.TH (makeEffect)
 
 import Language.Haskell.Ghcid (startGhci, stopGhci)
@@ -26,3 +27,6 @@ runEff =
     Exec ghci command -> Ghci.exec ghci command
     Start -> fst <$> startGhci "ghci" Nothing mempty
     Stop ghci -> stopGhci ghci
+
+enableJsonErrors :: (Member Ghci effs) => Ghci.Ghci -> Eff effs ()
+enableJsonErrors ghci = void $ exec ghci ":set -ddump-json"

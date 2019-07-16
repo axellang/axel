@@ -2,7 +2,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -16,17 +15,23 @@ module Axel.Eff.Process where
 import Control.Monad.Freer (type (~>), Eff, LastMember, Member, interpretM)
 import Control.Monad.Freer.TH (makeEffect)
 
+import qualified Data.ByteString.Lazy.Char8 as B (pack, unpack)
 import Data.Singletons (Sing, SingI, sing)
 import Data.Singletons.TH (singletons)
 
 import qualified System.Environment (getArgs)
 import System.Exit (ExitCode)
-import qualified System.Process (readProcessWithExitCode)
-import qualified System.Process.Typed (proc, runProcess)
+import qualified System.Process.Typed as P
+  ( byteStringInput
+  , readProcess
+  , runProcess
+  , setStdin
+  , shell
+  )
 
 $(singletons
     [d|
-  
+
   data StreamSpecification = CreateStreams
                            | InheritStreams
   |])
@@ -52,8 +57,8 @@ type ProcessRunner (streamSpec :: StreamSpecification) (f :: * -> *)
 data Process r where
   GetArgs :: Process [String]
   RunProcessCreatingStreams
-    :: FilePath -> [String] -> String -> Process (ExitCode, String, String)
-  RunProcessInheritingStreams :: FilePath -> [String] -> Process ExitCode
+    :: String -> String -> Process (ExitCode, String, String)
+  RunProcessInheritingStreams :: String -> Process ExitCode
 
 makeEffect ''Process
 
@@ -62,17 +67,18 @@ runEff =
   interpretM
     (\case
        GetArgs -> System.Environment.getArgs
-       RunProcessCreatingStreams cmd args stdin ->
-         System.Process.readProcessWithExitCode cmd args stdin
-       RunProcessInheritingStreams cmd args ->
-         System.Process.Typed.runProcess (System.Process.Typed.proc cmd args))
+       RunProcessCreatingStreams cmd stdin -> do
+         let stdinStream = P.byteStringInput (B.pack stdin)
+         let config = P.setStdin stdinStream $ P.shell cmd
+         (exitCode, stdout, stderr) <- P.readProcess config
+         pure (exitCode, B.unpack stdout, B.unpack stderr)
+       RunProcessInheritingStreams cmd -> P.runProcess (P.shell cmd))
 
 runProcess ::
      forall (streamSpec :: StreamSpecification) effs. (Member Process effs)
-  => FilePath
-  -> [String]
+  => String
   -> ProcessRunner streamSpec (Eff effs)
-runProcess cmd args =
+runProcess cmd =
   case sing :: Sing streamSpec of
-    SCreateStreams -> runProcessCreatingStreams cmd args
-    SInheritStreams -> runProcessInheritingStreams cmd args
+    SCreateStreams -> runProcessCreatingStreams cmd
+    SInheritStreams -> runProcessInheritingStreams cmd

@@ -28,7 +28,7 @@ import Axel.Denormalize (denormalizeStatement)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (removeFile, writeFile)
 import qualified Axel.Eff.Ghci as Effs (Ghci)
-import qualified Axel.Eff.Ghci as Ghci (exec, start, stop)
+import qualified Axel.Eff.Ghci as Ghci (enableJsonErrors, exec, start, stop)
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (readResource)
 import qualified Axel.Eff.Resource as Effs (Resource)
@@ -143,6 +143,7 @@ exhaustivelyExpandMacros ::
   -> Eff effs SM.Expression
 exhaustivelyExpandMacros expandFile program = do
   ghci <- Ghci.start
+  Ghci.enableJsonErrors ghci
   expandedTopLevelExprs <-
     Parse.programToTopLevelExpressions <$>
     exhaustM (expansionPass ghci expandFile) program

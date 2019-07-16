@@ -47,7 +47,7 @@ instance Show (ProcessResult effs) where
 data ProcessState effs =
   ProcessState
     { _procMockArgs :: [String]
-    , _procExecutionLog :: [(String, [String], Maybe String)]
+    , _procExecutionLog :: [(String, Maybe String)]
     , _procMockResults :: [ProcessResult effs]
     }
   deriving (Eq, Show)
@@ -71,9 +71,8 @@ runProcess origProcessState = runState origProcessState . reinterpret go
   where
     go :: Process ~> Eff (Effs.State (ProcessState effs) ': effs)
     go GetArgs = gets @(ProcessState effs) (^. procMockArgs)
-    go (RunProcessCreatingStreams cmd args stdin) = do
-      modify @(ProcessState effs) $
-        procExecutionLog %~ (|> (cmd, args, Just stdin))
+    go (RunProcessCreatingStreams cmd stdin) = do
+      modify @(ProcessState effs) $ procExecutionLog %~ (|> (cmd, Just stdin))
       gets @(ProcessState effs) (uncons . (^. procMockResults)) >>= \case
         Just (ProcessResult (mockResult, fsAction), newMockResults) -> do
           modify @(ProcessState effs) $ procMockResults .~ newMockResults
@@ -90,9 +89,8 @@ runProcess origProcessState = runState origProcessState . reinterpret go
             @(ProcessState effs)
             "RunProcess"
             "No mock result available"
-    go (RunProcessInheritingStreams cmd args) = do
-      modify @(ProcessState effs) $
-        procExecutionLog %~ (|> (cmd, args, Nothing))
+    go (RunProcessInheritingStreams cmd) = do
+      modify @(ProcessState effs) $ procExecutionLog %~ (|> (cmd, Nothing))
       gets @(ProcessState effs) (uncons . (^. procMockResults)) >>= \case
         Just (ProcessResult (mockResult, fsAction), newMockResults) -> do
           modify @(ProcessState effs) $ procMockResults .~ newMockResults

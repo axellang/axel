@@ -78,7 +78,7 @@ getStackProjectTargets ::
   -> Eff effs [Target]
 getStackProjectTargets projectPath =
   FS.withCurrentDirectory projectPath $ do
-    (_, _, stderr) <- runProcess @'CreateStreams "stack" ["ide", "targets"] ""
+    (_, _, stderr) <- runProcess @'CreateStreams "stack ide targets" ""
     pure $ lines stderr
 
 addStackDependency ::
@@ -105,7 +105,7 @@ buildStackProject projectPath = do
   putStrLn ("Building " <> takeFileName projectPath <> "...")
   result <-
     FS.withCurrentDirectory projectPath $
-    runProcess @'CreateStreams "stack" ["build"] ""
+    runProcess @'CreateStreams "stack build --ghc-options='-ddump-json'" ""
   case result of
     (ExitSuccess, _, _) -> pure ()
     (ExitFailure _, stdout, stderr) ->
@@ -118,7 +118,10 @@ createStackProject ::
      (Members '[ Effs.FileSystem, Effs.Process] effs) => String -> Eff effs ()
 createStackProject projectName = do
   void $
-    runProcess @'CreateStreams "stack" ["new", projectName, "new-template"] ""
+    runProcess
+      @'CreateStreams
+      ("stack new " <> projectName <> " new-template")
+      ""
   setStackageResolver projectName stackageResolverWithAxel
 
 runStackProject ::
@@ -131,7 +134,7 @@ runStackProject projectPath = do
   case findExeTargets targets of
     [target] -> do
       putStrLn ("Running " <> target <> "...")
-      void $ runProcess @'InheritStreams "stack" ["exec", target]
+      void $ runProcess @'InheritStreams ("stack exec " <> target)
     _ ->
       throwError @(Error ann) $
       ProjectError "No executable target was unambiguously found!"
@@ -152,24 +155,24 @@ setStackageResolver ::
   -> Eff effs ()
 setStackageResolver projectPath resolver =
   void $ FS.withCurrentDirectory projectPath $
-  runProcess @'CreateStreams "stack" ["config", "set", "resolver", resolver] ""
+  runProcess @'CreateStreams ("stack config set resolver " <> resolver) ""
 
-includeAxelArguments :: [String]
+includeAxelArguments :: String
 includeAxelArguments =
-  ["--resolver", stackageResolverWithAxel, "--package", axelStackageId]
+  unwords ["--resolver", stackageResolverWithAxel, "--package", axelStackageId]
 
 compileFile ::
      forall (streamSpec :: StreamSpecification) effs. (Member Effs.Process effs)
   => FilePath
   -> ProcessRunner streamSpec (Eff effs)
 compileFile filePath =
-  let args = concat [["ghc"], includeAxelArguments, ["--", filePath]]
-   in runProcess @streamSpec @effs "stack" args
+  let cmd = unwords ["stack", "ghc", includeAxelArguments, "--", filePath]
+   in runProcess @streamSpec @effs cmd
 
 interpretFile ::
      forall (streamSpec :: StreamSpecification) effs. (Member Effs.Process effs)
   => FilePath
   -> ProcessRunner streamSpec (Eff effs)
 interpretFile filePath =
-  let args = concat [["runghc"], includeAxelArguments, ["--", filePath]]
-   in runProcess @streamSpec @effs "stack" args
+  let cmd = unwords ["stack", "runghc", includeAxelArguments, "--", filePath]
+   in runProcess @streamSpec @effs cmd

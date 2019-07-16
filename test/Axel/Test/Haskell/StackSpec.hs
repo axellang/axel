@@ -62,7 +62,7 @@ spec_Stack = do
             result `shouldBe` ()
             consoleState ^. Mock.consoleOutput `shouldBe` "Building foo...\n"
             procState ^. Mock.procExecutionLog `shouldBe`
-              [("stack", ["build"], Just "")]
+              [("stack build --ghc-options='-ddump-json'", Just "")]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
       case Eff.run . Effs.runError @(Error ()) . Effs.runError @String .
            Mock.runFileSystem origFSState .
@@ -88,9 +88,8 @@ spec_Stack = do
       let expectation result (fsState, procState) = do
             result `shouldBe` ()
             procState ^. Mock.procExecutionLog `shouldBe`
-              [ ("stack", ["new", "newProject", "new-template"], Just "")
-              , ( "stack"
-                , ["config", "set", "resolver", stackageResolverWithAxel]
+              [ ("stack new newProject new-template", Just "")
+              , ( "stack config set resolver " <> stackageResolverWithAxel
                 , Just "")
               ]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
@@ -123,9 +122,7 @@ spec_Stack = do
       let expectation result (consoleState, fsState, procState) = do
             result `shouldBe` ()
             procState ^. Mock.procExecutionLog `shouldBe`
-              [ ("stack", ["ide", "targets"], Just "")
-              , ("stack", ["exec", "foo-exe"], Nothing)
-              ]
+              [("stack ide targets", Just ""), ("stack exec foo-exe", Nothing)]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
             consoleState ^. Mock.consoleOutput `shouldBe` "Running foo-exe...\n"
       case Eff.run . Effs.runError @(Error ()) . Effs.runError @String .
@@ -148,15 +145,10 @@ spec_Stack = do
       let expectation stdout (procState, _) = do
             stdout `shouldBe` "testStdout"
             procState ^. Mock.procExecutionLog `shouldBe`
-              [ ( "stack"
-                , [ "ghc"
-                  , "--resolver"
-                  , Stack.stackageResolverWithAxel
-                  , "--package"
-                  , Stack.axelStackageId
-                  , "--"
-                  , "projectFoo/app/Main.hs"
-                  ]
+              [ ( "stack ghc --resolver " <> Stack.stackageResolverWithAxel <>
+                  " --package " <>
+                  Stack.axelStackageId <>
+                  " -- projectFoo/app/Main.hs"
                 , Just "")
               ]
       case Eff.run . Effs.runError @String . Mock.runFileSystem origFSState .
@@ -177,15 +169,10 @@ spec_Stack = do
       let expectation stdout (procState, _) = do
             stdout `shouldBe` "testStdout"
             procState ^. Mock.procExecutionLog `shouldBe`
-              [ ( "stack"
-                , [ "runghc"
-                  , "--resolver"
-                  , Stack.stackageResolverWithAxel
-                  , "--package"
-                  , Stack.axelStackageId
-                  , "--"
-                  , "projectFoo/app/Main.hs"
-                  ]
+              [ ( "stack runghc --resolver " <> Stack.stackageResolverWithAxel <>
+                  " --package " <>
+                  Stack.axelStackageId <>
+                  " -- projectFoo/app/Main.hs"
                 , Just "")
               ]
       case Eff.run . Effs.runError @String . Mock.runFileSystem origFSState .
