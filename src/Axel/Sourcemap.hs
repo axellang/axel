@@ -27,6 +27,7 @@ import qualified Control.Monad.Freer.State as Effs (evalState)
 
 newtype Output =
   Output [Annotated Parse.SourceMetadata String]
+  deriving (Eq, Show)
 
 deriving instance Semigroup Output
 
@@ -85,8 +86,8 @@ renderBlock = surround CurlyBraces . delimit Semicolons
 --   metadata in the original source.
 --   Behavior is undefined if `column transPos == 0`.
 --   TODO Make algorithm functional (assuming this can be cleanly done so).
-findOrigPos :: [Annotated ann String] -> SourcePosition -> Maybe ann
-findOrigPos output transPos =
+findOriginalPosition :: [Annotated ann String] -> SourcePosition -> Maybe ann
+findOriginalPosition output transPos =
   Effs.run $
   Effs.evalState (SourcePosition {line = 1, column = 0}) $
   Effs.runLoop $ do

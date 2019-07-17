@@ -1,7 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -10,7 +9,7 @@ module Axel.Error where
 import Axel.Parse.AST (Expression, toAxel)
 
 import Control.Monad ((>=>))
-import Control.Monad.Freer (type (~>), Eff, LastMember, send)
+import Control.Monad.Freer (type (~>), Eff)
 import qualified Control.Monad.Freer as Effs (run)
 import Control.Monad.Freer.Error (runError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
@@ -38,11 +37,8 @@ instance Show (Error ann) where
 fatal :: String -> String -> a
 fatal context message = error $ "[FATAL] " <> context <> " - " <> message
 
-runEff :: (Show e, LastMember IO effs) => Eff (Effs.Error e ': effs) ~> Eff effs
-runEff =
-  runError >=> \case
-    Left err -> send $ ioError $ userError $ show err
-    Right x -> pure x
+unsafeRunEff :: (Show e) => Eff (Effs.Error e ': effs) ~> Eff effs
+unsafeRunEff = runError >=> either (error . show) pure -- TODO Don't(?) use `error` directly
 
 unsafeIgnoreError :: (Show b) => Eff '[ Effs.Error b] a -> a
 unsafeIgnoreError x =

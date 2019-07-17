@@ -16,6 +16,7 @@ import Control.Monad.Freer (type (~>), Eff, LastMember, Member, interpretM)
 import Control.Monad.Freer.TH (makeEffect)
 
 import qualified Data.ByteString.Lazy.Char8 as B (pack, unpack)
+import Data.Kind (Type)
 import Data.Singletons (Sing, SingI, sing)
 import Data.Singletons.TH (singletons)
 
@@ -36,7 +37,7 @@ $(singletons
                            | InheritStreams
   |])
 
-type family StreamsHandler (a :: StreamSpecification) (f :: * -> *) :: *
+type family StreamsHandler (a :: StreamSpecification) (f :: Type -> Type) :: Type
 
 type instance StreamsHandler 'CreateStreams f =
      String -> f (ExitCode, String, String)
@@ -47,10 +48,10 @@ type ProcessRunner' (streamSpec :: StreamSpecification) f
    = forall streamsHandler. (streamsHandler ~ StreamsHandler streamSpec f) =>
                               streamsHandler
 
-type ProcessRunnerPrimitive (streamSpec :: StreamSpecification) (f :: * -> *)
+type ProcessRunnerPrimitive (streamSpec :: StreamSpecification) (f :: Type -> Type)
    = FilePath -> [String] -> ProcessRunner' streamSpec f
 
-type ProcessRunner (streamSpec :: StreamSpecification) (f :: * -> *)
+type ProcessRunner (streamSpec :: StreamSpecification) (f :: Type -> Type)
    = (SingI streamSpec) =>
        ProcessRunner' streamSpec f
 

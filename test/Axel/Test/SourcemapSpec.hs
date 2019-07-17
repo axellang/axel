@@ -13,10 +13,11 @@ import Test.Tasty.Hspec
 
 spec_Sourcemap :: SpecWith ()
 spec_Sourcemap = do
-  describe "findOrigPos" $ -- TODO Convert these into property tests
+  describe "findOriginalPosition" $ -- TODO Convert these into property tests
    do
     let (output, line, column) `was` expected =
-          findOrigPos output (SourcePosition {line, column}) `shouldBe` expected
+          findOriginalPosition output (SourcePosition {line, column}) `shouldBe`
+          expected
     context "output is empty" $ do
       it "fails" $ do
         ([], 1, 1) `was` (Nothing :: Maybe ())

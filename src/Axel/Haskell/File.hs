@@ -29,10 +29,10 @@ import Axel.Parse
   , parseSource
   , programToTopLevelExpressions
   )
-import qualified Axel.Sourcemap as SM (Error, raw)
+import qualified Axel.Sourcemap as SM (Error, Output, raw)
 import Axel.Utils.Recursion (Recursive(bottomUpFmap))
 
-import Control.Lens.Operators ((%~), (<&>))
+import Control.Lens.Operators ((<&>), (?~))
 import Control.Lens.Tuple (_2)
 import Control.Monad (forM, mapM, unless, void)
 import Control.Monad.Freer (Eff, LastMember, Members)
@@ -77,7 +77,7 @@ readModuleInfo axelFiles = do
           (\expr ->
              runError @SM.Error (normalizeStatement expr) <&> \case
                Right (SModuleDeclaration _ moduleId) ->
-                 Just (filePath, (moduleId, False))
+                 Just (filePath, (moduleId, Nothing))
                _ -> Nothing)
           exprs
       pure moduleDecl
@@ -85,12 +85,13 @@ readModuleInfo axelFiles = do
 
 transpileSource ::
      (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
-  => String
-  -> Eff effs String
-transpileSource source =
-  SM.raw . toHaskell <$>
+  => FilePath
+  -> String
+  -> Eff effs SM.Output
+transpileSource filePath source =
+  toHaskell <$>
   (parseSource source >>=
-   exhaustivelyExpandMacros transpileFile' . convertList . convertUnit >>=
+   exhaustivelyExpandMacros filePath transpileFile' . convertList . convertUnit >>=
    normalizeStatement)
 
 convertExtension :: String -> String -> FilePath -> FilePath
@@ -126,10 +127,10 @@ transpileFile ::
   -> Eff effs ()
 transpileFile path newPath = do
   fileContents <- FS.readFile path
-  newContents <- transpileSource fileContents
+  newContents <- transpileSource path fileContents
   putStrLn $ path <> " => " <> newPath
-  FS.writeFile newPath newContents
-  modify @ModuleInfo $ Map.adjust (_2 %~ not) path
+  FS.writeFile newPath (SM.raw newContents)
+  modify @ModuleInfo $ Map.adjust (_2 ?~ newContents) path
 
 -- | Transpile a file in place.
 transpileFile' ::
@@ -140,8 +141,8 @@ transpileFile' path = do
   moduleInfo <- gets @ModuleInfo $ Map.lookup path
   let alreadyCompiled =
         case moduleInfo of
-          Just (_, isCompiled) -> isCompiled
-          Nothing -> False
+          Just (_, Just _) -> True
+          _ -> False
   let newPath = axelPathToHaskellPath path
   unless alreadyCompiled $ transpileFile path newPath
   pure newPath

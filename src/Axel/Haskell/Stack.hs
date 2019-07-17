@@ -1,15 +1,12 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module Axel.Haskell.Stack where
 
@@ -30,6 +27,8 @@ import Axel.Eff.Process
   )
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Error (Error(ProjectError), fatal)
+import Axel.Haskell.Error (processErrors)
+import Axel.Macros (ModuleInfo, getTranspiledFiles)
 
 import Control.Lens.Operators ((%~))
 import Control.Monad (void)
@@ -99,20 +98,21 @@ addStackDependency dependencyId projectPath =
 buildStackProject ::
      forall ann effs.
      (Members '[ Effs.Console, Effs.Error (Error ann), Effs.FileSystem, Effs.Process] effs)
-  => ProjectPath
+  => ModuleInfo
+  -> ProjectPath
   -> Eff effs ()
-buildStackProject projectPath = do
+buildStackProject moduleInfo projectPath = do
   putStrLn ("Building " <> takeFileName projectPath <> "...")
   result <-
     FS.withCurrentDirectory projectPath $
     runProcess @'CreateStreams "stack build --ghc-options='-ddump-json'" ""
   case result of
     (ExitSuccess, _, _) -> pure ()
-    (ExitFailure _, stdout, stderr) ->
+    (ExitFailure _, _, stderr) ->
       throwError @(Error ann) $
       ProjectError
-        ("Project failed to build.\n\nStdout:\n" <> stdout <> "\n\nStderr:\n" <>
-         stderr)
+        ("Project failed to build.\n\n" <>
+         processErrors (getTranspiledFiles moduleInfo) stderr)
 
 createStackProject ::
      (Members '[ Effs.FileSystem, Effs.Process] effs) => String -> Eff effs ()

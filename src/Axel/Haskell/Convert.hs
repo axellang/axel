@@ -21,7 +21,7 @@ import Axel.Error (Error(ConvertError), fatal)
 import qualified Axel.Parse as Parse
 import Axel.Parse.AST (toAxel)
 import qualified Axel.Sourcemap as SM (Error, Expression)
-import Axel.Utils.List (remove, stablyGroupAllWith)
+import Axel.Utils.List (removeOut, stablyGroupAllWith)
 import Axel.Utils.String (replace)
 import Axel.Utils.Tuple (flattenAnnotations, unannotated)
 
@@ -31,6 +31,8 @@ import Control.Lens.Operators ((%~), (^.))
 import Control.Monad.Freer (Eff, LastMember, Members, sendM)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
+
+import qualified Data.List.NonEmpty as NE (toList)
 
 import qualified Language.Haskell.Exts as HSE
 
@@ -561,7 +563,7 @@ groupFunctionDefinitions =
       extractTySig ::
            ([AST.Statement ()], Maybe String)
         -> (([AST.Statement ()], [AST.Statement ()]), Maybe String)
-      extractTySig = unannotated %~ remove (is AST._STypeSignature)
+      extractTySig = unannotated %~ removeOut (is AST._STypeSignature)
       transformFnDef (AST.SFunctionDefinition fnDef) =
         let whereBindings =
               case map
@@ -577,7 +579,7 @@ groupFunctionDefinitions =
             whereBindings
       transformFnDef _ = fatal "groupFunctionDefinitions" "0001"
    in stablyGroupAllWith findFnName >>>
-      map (flattenAnnotations . extractTySig) >>>
+      map (flattenAnnotations . extractTySig . (unannotated %~ NE.toList)) >>>
       concatMap
         (\(stmts, (tySigs, maybeFnName)) ->
            case maybeFnName of

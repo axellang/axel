@@ -25,13 +25,13 @@ import Axel.Haskell.Stack
   , createStackProject
   , runStackProject
   )
+import Axel.Macros (ModuleInfo)
 import qualified Axel.Parse.AST as Parse (SourceMetadata)
 import qualified Axel.Sourcemap as SM (Error)
 
-import Control.Monad (void)
 import Control.Monad.Freer (Eff, Members)
 import qualified Control.Monad.Freer.Error as Effs (Error)
-import Control.Monad.Freer.State (evalState)
+import qualified Control.Monad.Freer.State as Effs (execState)
 
 import Data.Semigroup ((<>))
 import qualified Data.Text as T (isSuffixOf, pack)
@@ -57,21 +57,21 @@ newProject projectName = do
 
 transpileProject ::
      (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
-  => Eff effs [FilePath]
+  => Eff effs ModuleInfo
 transpileProject = do
   files <- concat <$> mapM getDirectoryContentsRec ["app", "src", "test"]
   let axelFiles =
         filter (\filePath -> ".axel" `T.isSuffixOf` T.pack filePath) files
   moduleInfo <- readModuleInfo axelFiles
-  evalState moduleInfo $ mapM transpileFile' axelFiles
+  Effs.execState moduleInfo $ mapM transpileFile' axelFiles
 
 buildProject ::
      (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
   => Eff effs ()
 buildProject = do
   projectPath <- getCurrentDirectory
-  void transpileProject
-  buildStackProject @Parse.SourceMetadata projectPath
+  transpiledFiles <- transpileProject
+  buildStackProject @Parse.SourceMetadata transpiledFiles projectPath
 
 runProject ::
      (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Process] effs)

@@ -5,9 +5,12 @@
 --      never be imported by itself but only implicitly as part of this module.
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Axel.Parse
@@ -32,6 +35,7 @@ import Axel.Utils.Recursion
   ( Recursive(bottomUpFmap, bottomUpTraverse, topDownFmap)
   )
 
+import Control.Lens.TH (makeFieldsNoPrefix)
 import Control.Monad.Freer (Eff, Member)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
@@ -46,6 +50,8 @@ import Text.Parsec.Language (haskellDef)
 import Text.Parsec.Pos (sourceColumn, sourceLine)
 import Text.Parsec.Prim (getPosition, many)
 import Text.Parsec.Token (makeTokenParser, stringLiteral)
+
+makeFieldsNoPrefix ''SourcePosition
 
 -- TODO `Expression` should probably instead be an instance of `Traversable`, use recursion schemes, etc.
 --      If so, should I provide `toFix` and `fromFix` functions for macros to take advantage of?
