@@ -19,6 +19,8 @@ import Control.Lens
 import Control.Monad.Freer as Eff
 import qualified Control.Monad.Freer.Error as Effs
 
+import qualified Data.Map as M
+
 import System.Exit
 
 import Test.Tasty.Hspec
@@ -49,7 +51,7 @@ spec_Stack = do
         Right ((), result) -> result `shouldBe` expectedFSState
   describe "buildStackProject" $ do
     it "builds a Stack project" $ do
-      let action = Stack.buildStackProject @() "project/foo"
+      let action = Stack.buildStackProject @() M.empty "project/foo"
       let origConsoleState = Mock.mkConsoleState
       let origFSState =
             Mock.mkFileSystemState

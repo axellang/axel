@@ -14,9 +14,6 @@ import Control.Lens.Operators ((^.), (^?))
 import Control.Lens.TH (makeFieldsNoPrefix)
 import Control.Lens.Tuple (_1, _2)
 
-import Axel.Utils.Debug (unsafeTee, unsafeTeeS)
-import Debug.Trace (trace)
-
 import qualified Data.Aeson as Json (Value, decode')
 import Data.Aeson.Lens (_String, key)
 import qualified Data.ByteString.Lazy.Char8 as BL (pack)
@@ -73,18 +70,13 @@ tryProcessGhcOutput transpiledFiles line = do
 toAxelError :: TranspiledFilesInfo -> GhcError -> Maybe String
 toAxelError transpiledFiles ghcError = do
   SM.Output transpiledOutput <-
-    M.lookup
-      (unsafeTee $ ghcError ^. transpiledSpan . _1)
-      (unsafeTeeS transpiledFiles)
-  trace "\n\n\nTWO\n\n\n" $ pure ()
+    M.lookup (ghcError ^. transpiledSpan . _1) transpiledFiles
   let findPosition field =
         SM.findOriginalPosition
           transpiledOutput
           (ghcError ^. transpiledSpan . _2 . field)
   origStartPosition <- findPosition start
-  trace "\n\n\nTHREE\n\n\n" $ pure ()
   origEndPosition <- findPosition end
-  trace "\n\n\nFOUR\n\n\n" $ pure ()
   pure $ "\n\n\n\n" <> ghcError ^. message <>
     "\n\nThis error message is in terms of the transpiled output.\nIn terms of the Axel code, however, I'm pretty sure this error is originally in the file '" <>
     ghcError ^.

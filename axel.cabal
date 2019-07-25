@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8be641f7aef516ab1cbb912b8267ae5710ca2390f812e8da9f046b6853537da3
+-- hash: 913aa18c384a875fd0696d140114d2911b6d7d91a67bf5a33579a66603456bed
 
 name:           axel
 version:        0.0.11
@@ -165,7 +165,7 @@ test-suite axel-test
       Paths_axel
   hs-source-dirs:
       test
-  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -threaded -rtsopts -with-rtsopts=-N -Wno-missing-import-lists
   build-tool-depends:
       debug:debug
     , hpack:hpack

@@ -38,7 +38,7 @@ fatal :: String -> String -> a
 fatal context message = error $ "[FATAL] " <> context <> " - " <> message
 
 unsafeRunEff :: (Show e) => Eff (Effs.Error e ': effs) ~> Eff effs
-unsafeRunEff = runError >=> either (error . show) pure -- TODO Don't(?) use `error` directly
+unsafeRunEff = runError >=> either (errorWithoutStackTrace . show) pure -- TODO Don't(?) use `error(WithoutStackTrace)` directly
 
 unsafeIgnoreError :: (Show b) => Eff '[ Effs.Error b] a -> a
 unsafeIgnoreError x =

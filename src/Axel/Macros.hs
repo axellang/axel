@@ -131,7 +131,8 @@ generateMacroProgram oldMacroName macroDefs allEnv args = do
            [ renderStmts preModuleEnv
            , header
            , renderStmts postModuleEnv
-           , renderStmts $ map SMacroDefinition hygenicMacroDefs
+           , renderStmts $ map SMacroDefinition hygenicMacroDefs <>
+             map STypeSignature (typeMacroDefinitions hygenicMacroDefs)
            , footer
            ]
   pure (astDef, scaffold, macroDefAndEnv)
@@ -182,22 +183,20 @@ isMacroImported macroName =
        SMacroImport macroImport -> macroName `elem` macroImport ^. imports
        _ -> False)
 
-typeMacroDefinitions :: [MacroDefinition ann] -> [TypeSignature ()]
+typeMacroDefinitions :: [MacroDefinition ann] -> [TypeSignature SM.Expression]
 typeMacroDefinitions macroDefs = map mkTySig macroNames
   where
     macroNames = nub $ map (^. functionDefinition . name) macroDefs
     mkTySigSource macroName =
       "(:: " <> macroName <>
       "(-> ([] (AST.Expression AST.SourceMetadata)) (IO ([] (AST.Expression AST.SourceMetadata)))))"
-    mkTySig :: Identifier -> TypeSignature ()
+    mkTySig :: Identifier -> TypeSignature SM.Expression
     mkTySig macroName =
       let expr =
             head $ unsafeIgnoreError @SM.Error $ Parse.parseMultiple $
             mkTySigSource macroName
-          tySig =
-            unsafeIgnoreError @SM.Error (normalizeStatement expr) ^?!
-            _STypeSignature
-       in () <$ tySig
+       in unsafeIgnoreError @SM.Error (normalizeStatement expr) ^?!
+          _STypeSignature
 
 expandMacros ::
      (Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)

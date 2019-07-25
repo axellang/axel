@@ -1,7 +1,7 @@
 (pragma "LANGUAGE DataKinds")
 (pragma "LANGUAGE TypeApplications")
 (module Main)
-(importm Axel (def defmacro fnCase do' quasiquote))
+(importm Axel (def defmacro \case do' quasiquote))
 (raw "import Prelude hiding (putStrLn)")
 (import Axel.Eff.Console (putStrLn))
 (importq Axel.Eff.Console Effs (Console))

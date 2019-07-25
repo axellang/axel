@@ -2,11 +2,18 @@
 
 module Axel.Utils.String where
 
+import Control.Lens.Combinators (_head)
+import Control.Lens.Operators ((%~))
+
+import Data.Char (toUpper)
 import qualified Data.Text as T (pack, replace, unpack)
 
 import GHC.Exts (IsString(fromString))
 
 import Language.Haskell.TH.Quote (QuasiQuoter(QuasiQuoter))
+
+capitalize :: String -> String
+capitalize = _head %~ toUpper
 
 replace :: String -> String -> String -> String
 replace needle replacement haystack =

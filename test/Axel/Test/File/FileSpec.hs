@@ -35,10 +35,11 @@ test_transpileSource_golden = do
         goldenVsString
           (takeBaseName axelFile)
           hsFile
-          (C.pack <$>
+          (C.pack . SM.raw <$>
            (Effs.runM .
             Ghci.runEff .
             evalState (M.empty :: ModuleInfo) .
             Res.runEff .
-            Proc.runEff . FS.runEff . Error.runEff @SM.Error . Console.runEff)
-             (FS.readFile axelFile >>= transpileSource))
+            Proc.runEff .
+            FS.runEff . Error.unsafeRunEff @SM.Error . Console.runEff)
+             (FS.readFile axelFile >>= transpileSource (takeBaseName axelFile)))

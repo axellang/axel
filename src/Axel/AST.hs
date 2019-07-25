@@ -15,6 +15,7 @@ module Axel.AST where
 
 import Axel.Haskell.Language (isOperator)
 import Axel.Haskell.Macros (hygenisizeMacroName)
+import Axel.Parse (handleStringEscapes)
 import qualified Axel.Parse.AST as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
@@ -440,10 +441,10 @@ instance ToHaskell (FunctionApplication SM.Expression) where
 instance ToHaskell (Literal SM.Expression) where
   toHaskell :: Literal SM.Expression -> SM.Output
   toHaskell literal@(LChar _ x) =
-    mkHaskell literal $ Display.surround SingleQuotes [x]
+    mkHaskell literal $ Display.surround SingleQuotes (handleStringEscapes [x])
   toHaskell literal@(LInt _ x) = mkHaskell literal $ show x
   toHaskell literal@(LString _ x) =
-    mkHaskell literal $ Display.surround DoubleQuotes x
+    mkHaskell literal $ Display.surround DoubleQuotes (handleStringEscapes x)
 
 instance ToHaskell (TypeSignature SM.Expression) where
   toHaskell :: TypeSignature SM.Expression -> SM.Output
