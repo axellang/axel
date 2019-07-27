@@ -32,7 +32,7 @@ import qualified System.Process.Typed as P
 
 $(singletons
     [d|
-
+  
   data StreamSpecification = CreateStreams
                            | InheritStreams
   |])

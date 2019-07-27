@@ -18,7 +18,7 @@ module Axel.Parse
   , module Axel.Parse.AST
   ) where
 
-import Axel.Error (Error(ParseError), fatal, unsafeIgnoreError)
+import Axel.Error (Error(ParseError), unsafeIgnoreError)
 
 -- Re-exporting these so that consumers of parsed ASTs do not need
 -- to know about the internal file.
@@ -141,21 +141,30 @@ expression =
   symbol
 
 parseMultiple ::
-     (Member (Effs.Error SM.Error) effs) => String -> Eff effs [SM.Expression]
-parseMultiple input =
+     (Member (Effs.Error SM.Error) effs)
+  => Maybe FilePath
+  -> String
+  -> Eff effs [SM.Expression]
+parseMultiple filePath input =
   case parse
          (many1 (optional whitespace *> expression <* optional whitespace) <*
           eof)
          ""
          input of
     Right exprs -> pure exprs
-    Left err -> throwError (ParseError (show err) :: SM.Error)
+    Left err ->
+      let context =
+            case filePath of
+              Nothing -> ""
+              Just filePath' -> "While compiling '" <> filePath' <> "':\n\n"
+       in throwError @SM.Error $ ParseError (context <> show err)
 
 -- | Will error at runtime if any are true:
 --    * A parse error occurs.
 --    * Multiple statements were able to be parsed.
-unsafeParseSingle :: String -> SM.Expression
-unsafeParseSingle = head . unsafeIgnoreError @SM.Error . parseMultiple
+unsafeParseSingle :: Maybe FilePath -> String -> SM.Expression
+unsafeParseSingle filePath =
+  head . unsafeIgnoreError @SM.Error . parseMultiple filePath
 
 stripComments :: String -> String
 stripComments = unlines . map cleanLine . lines
@@ -163,9 +172,12 @@ stripComments = unlines . map cleanLine . lines
     cleanLine = takeUntil "--"
 
 parseSource ::
-     (Member (Effs.Error SM.Error) effs) => String -> Eff effs SM.Expression
-parseSource input = do
-  statements <- parseMultiple $ stripComments input
+     (Member (Effs.Error SM.Error) effs)
+  => Maybe FilePath
+  -> String
+  -> Eff effs SM.Expression
+parseSource filePath input = do
+  statements <- parseMultiple filePath $ stripComments input
   pure $ topLevelExpressionsToProgram statements
 
 syntaxSymbols :: String

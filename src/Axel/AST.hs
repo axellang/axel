@@ -11,6 +11,9 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- TODO Should this module (as well as the corresponding `denormalize*` utilities)
+--      be exposed during the expansion phase, so that a higher-level (and more typesafe)
+--      representation of the AST can be used if the user so wishes?
 module Axel.AST where
 
 import Axel.Haskell.Language (isOperator)

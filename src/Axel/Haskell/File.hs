@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Axel.Haskell.File where
 
@@ -70,7 +71,8 @@ readModuleInfo axelFiles = do
   modules <-
     forM axelFiles $ \filePath -> do
       source <- FS.readFile filePath
-      exprs <- programToTopLevelExpressions <$> parseSource source
+      exprs <-
+        programToTopLevelExpressions <$> parseSource (Just filePath) source
       Alt moduleDecl <-
         mconcat . map Alt <$>
         mapM
@@ -84,14 +86,18 @@ readModuleInfo axelFiles = do
   pure $ Map.fromList $ catMaybes modules
 
 transpileSource ::
-     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     forall effs fileExpanderEffs.
+     ( Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs
+     , fileExpanderEffs ~ '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo]
+     )
   => FilePath
   -> String
   -> Eff effs SM.Output
 transpileSource filePath source =
   toHaskell <$>
-  (parseSource source >>=
-   exhaustivelyExpandMacros filePath transpileFile' . convertList . convertUnit >>=
+  (parseSource (Just filePath) source >>=
+   exhaustivelyExpandMacros @fileExpanderEffs filePath (void . transpileFile') .
+   convertList . convertUnit >>=
    normalizeStatement)
 
 convertExtension :: String -> String -> FilePath -> FilePath
