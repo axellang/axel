@@ -10,6 +10,7 @@ import Axel.Test.MockUtils
 
 import Control.Monad.Freer as Eff
 import Control.Monad.Freer.Error (runError)
+import Control.Monad.Freer.Reader (runReader)
 
 import Hedgehog
 
@@ -23,7 +24,8 @@ hprop_normalizeExpression_is_the_inverse_of_denormalizeExpression =
     expr =$=
       unwrapRight
         (Eff.run $
-         runError @SM.Error $ normalizeExpression (denormalizeExpression expr))
+         runError @SM.Error $
+         runReader "" $ normalizeExpression (denormalizeExpression expr))
 
 hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement :: Property
 hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement =
@@ -32,4 +34,5 @@ hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement =
     stmt =$=
       unwrapRight
         (Eff.run $
-         runError @SM.Error $ normalizeStatement (denormalizeStatement stmt))
+         runError @SM.Error $
+         runReader "" $ normalizeStatement (denormalizeStatement stmt))
