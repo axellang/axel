@@ -39,6 +39,7 @@ import Control.Monad (forM, mapM, unless, void)
 import Control.Monad.Freer (Eff, LastMember, Members)
 import Control.Monad.Freer.Error (runError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
+import Control.Monad.Freer.Reader (runReader)
 import Control.Monad.Freer.State (gets, modify)
 import qualified Control.Monad.Freer.State as Effs (State)
 
@@ -77,7 +78,7 @@ readModuleInfo axelFiles = do
         mconcat . map Alt <$>
         mapM
           (\expr ->
-             runError @SM.Error (normalizeStatement expr) <&> \case
+             runError @SM.Error (runReader filePath $ normalizeStatement expr) <&> \case
                Right (SModuleDeclaration _ moduleId) ->
                  Just (filePath, (moduleId, Nothing))
                _ -> Nothing)
@@ -98,7 +99,7 @@ transpileSource filePath source =
   (parseSource (Just filePath) source >>=
    exhaustivelyExpandMacros @fileExpanderEffs filePath (void . transpileFile') .
    convertList . convertUnit >>=
-   normalizeStatement)
+   runReader filePath . normalizeStatement)
 
 convertExtension :: String -> String -> FilePath -> FilePath
 convertExtension oldExt newExt axelPath =

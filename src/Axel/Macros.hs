@@ -196,7 +196,8 @@ fullyExpandExpr expandFile expr = do
              xs
          x -> pure x)
       program
-  forM_ newTopLevelExprs $ normalizeStatement >=> \case
+  filePath <- view @(Ghci.Ghci, FilePath) _2
+  forM_ newTopLevelExprs $ Effs.runReader filePath . normalizeStatement >=> \case
     SMacroDefinition macroDef ->
       (%=) @MacroExpansionEnv macroDefs (`snoc` macroDef)
     newStmt -> do
@@ -293,7 +294,9 @@ exhaustivelyExpandMacros filePath expandFile program = do
     Effs.runReader (ghci, filePath) $ Parse.programToTopLevelExpressions <$>
     exhaustM (expansionPass @fileExpanderEffs expandFile) program
   macroTypeSigs <-
-    do normalizedStmts <- traverse normalizeStatement expandedTopLevelExprs
+    do normalizedStmts <-
+         Effs.runReader filePath $
+         traverse normalizeStatement expandedTopLevelExprs
        let typeSigs =
              typeMacroDefinitions $ mapMaybe isMacroDefinition normalizedStmts
        pure $ map (denormalizeStatement . STypeSignature) typeSigs
@@ -317,7 +320,9 @@ typeMacroDefinitions macroDefs' = map mkTySig macroNames
             fromJust $ head' $ unsafeIgnoreError @SM.Error $
             Parse.parseMultiple Nothing $
             mkTySigSource macroName
-       in unsafeIgnoreError @SM.Error (normalizeStatement expr) ^?!
+       in unsafeIgnoreError
+            @SM.Error
+            (Effs.runReader "" $ normalizeStatement expr) ^?!
           _STypeSignature
 
 expandMacroApplication ::
@@ -361,8 +366,7 @@ evalMacro astDefinition scaffold macroDefinitionAndEnvironment = do
       pure result
     else throwError @SM.Error $
          MacroError
-           ("While compiling '" <> originalFilePath <>
-            "', the following errors were encountered:\n\n" <>
+           ("While compiling '" <> originalFilePath <> "':\n\n" <>
             processErrors M.empty (unlines loadResult))
   where
     macroDefinitionAndEnvironmentFileName =
