@@ -53,7 +53,8 @@
             [`(\ (~varId) (case ~varId ~@cases))])
          AST.gensym)))
 
-(=macro syntaxPattern ([pattern])
+(defmacro syntaxPattern
+ ([pattern]
   (pure
    [(AST.bottomUpFmap
      (\ (expr)
@@ -64,7 +65,7 @@
              expr))
           (_ expr)))
      pattern)])
-   (= exprConstructors () ["AST.LiteralChar" "AST.LiteralInt" "AST.LiteralString" "AST.SExpression" "AST.Symbol"])) -- TODO `dataTypeRep` and all that jazz
+   (= exprConstructors () ["AST.LiteralChar" "AST.LiteralInt" "AST.LiteralString" "AST.SExpression" "AST.Symbol"]))) -- TODO `dataTypeRep` and all that jazz
 
 -- TODO Rewrite with `syntaxPattern`.
 (def expandDo' {[(AST.Expression AST.SourceMetadata)] -> (AST.Expression AST.SourceMetadata)}

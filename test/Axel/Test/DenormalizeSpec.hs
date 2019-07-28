@@ -25,7 +25,9 @@ hprop_normalizeExpression_is_the_inverse_of_denormalizeExpression =
       unwrapRight
         (Eff.run $
          runError @SM.Error $
-         runReader "" $ normalizeExpression (denormalizeExpression expr))
+         runReader "" $
+         runReader ([] :: [SM.Expression]) $
+         normalizeExpression (denormalizeExpression expr))
 
 hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement :: Property
 hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement =
@@ -35,4 +37,6 @@ hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement =
       unwrapRight
         (Eff.run $
          runError @SM.Error $
-         runReader "" $ normalizeStatement (denormalizeStatement stmt))
+         runReader "" $
+         runReader ([] :: [SM.Expression]) $
+         normalizeStatement (denormalizeStatement stmt))

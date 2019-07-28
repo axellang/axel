@@ -24,7 +24,7 @@ import qualified Axel.Eff.Resource as Res (astDefinition)
 import Axel.Haskell.Convert (convertFile)
 import Axel.Haskell.Stack (interpretFile)
 import Axel.Macros (ModuleInfo, exhaustivelyExpandMacros)
-import Axel.Normalize (normalizeStatement)
+import Axel.Normalize (normalizeStatement, withExprCtxt)
 import Axel.Parse
   ( Expression(Symbol)
   , parseSource
@@ -78,7 +78,9 @@ readModuleInfo axelFiles = do
         mconcat . map Alt <$>
         mapM
           (\expr ->
-             runError @SM.Error (runReader filePath $ normalizeStatement expr) <&> \case
+             runError
+               @SM.Error
+               (runReader filePath $ withExprCtxt $ normalizeStatement expr) <&> \case
                Right (SModuleDeclaration _ moduleId) ->
                  Just (filePath, (moduleId, Nothing))
                _ -> Nothing)
@@ -99,7 +101,7 @@ transpileSource filePath source =
   (parseSource (Just filePath) source >>=
    exhaustivelyExpandMacros @fileExpanderEffs filePath (void . transpileFile') .
    convertList . convertUnit >>=
-   runReader filePath . normalizeStatement)
+   runReader filePath . withExprCtxt . normalizeStatement)
 
 convertExtension :: String -> String -> FilePath -> FilePath
 convertExtension oldExt newExt axelPath =

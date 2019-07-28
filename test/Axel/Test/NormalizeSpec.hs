@@ -21,5 +21,7 @@ hprop_denormalizeExpression_is_the_inverse_of_normalizeExpression =
     expr ===
       denormalizeExpression
         (unwrapRight $
-         Eff.run . Effs.runError @SM.Error . Effs.runReader "" $
+         Eff.run .
+         Effs.runError @SM.Error .
+         Effs.runReader "" . Effs.runReader ([] :: [SM.Expression]) $
          normalizeExpression expr)

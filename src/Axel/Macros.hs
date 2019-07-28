@@ -50,7 +50,7 @@ import Axel.Error (Error(MacroError), fatal, unsafeIgnoreError)
 import Axel.Haskell.Error (processErrors)
 import Axel.Haskell.Macros (hygenisizeMacroName)
 import Axel.Haskell.Prettify (prettifyHaskell)
-import Axel.Normalize (normalizeStatement)
+import Axel.Normalize (normalizeStatement, withExprCtxt)
 import qualified Axel.Parse as Parse
   ( Expression(SExpression, Symbol)
   , parseMultiple
@@ -126,7 +126,7 @@ expandMacros ::
   -> Eff effs [Statement SM.Expression]
 expandMacros expandFile origTopLevelExprs =
   Effs.evalState (MacroExpansionEnv [] []) $ do
-    mapM_ (fullyExpandExpr @fileExpanderEffs expandFile) origTopLevelExprs
+    mapM_ (expandProgramExpr @fileExpanderEffs expandFile) origTopLevelExprs
     hygenicMacroDefs <-
       map (SMacroDefinition . hygenisizeMacroDefinition) <$>
       use @MacroExpansionEnv macroDefs
@@ -157,7 +157,8 @@ ensureCompiledDependency expandFile macroImport = do
       when (isNothing transpiledOutput) $ expandFile dependencyFilePath
     Nothing -> pure ()
 
-fullyExpandExpr ::
+-- | Fully expand an expression tree.
+expandProgramExpr ::
      forall fileExpanderEffs effs.
      ( Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State MacroExpansionEnv, Effs.State ModuleInfo, Effs.Reader ( Ghci.Ghci
                                                                                                                                                                  , FilePath)] effs
@@ -166,7 +167,7 @@ fullyExpandExpr ::
   => FileExpander fileExpanderEffs
   -> SM.Expression
   -> Eff effs [SM.Expression]
-fullyExpandExpr expandFile expr = do
+expandProgramExpr expandFile expr = do
   let program = Parse.topLevelExpressionsToProgram [expr]
   newTopLevelExprs <-
     Parse.programToTopLevelExpressions <$>
@@ -174,30 +175,12 @@ fullyExpandExpr expandFile expr = do
       (\case
          Parse.SExpression ann' xs ->
            Parse.SExpression ann' <$>
-           concatMapM
-             (\x ->
-                case x of
-                  Parse.SExpression _ (Parse.Symbol _ function:args) -> do
-                    isImported <- isMacroImported function
-                    maybeMacroDefs <-
-                      if isImported
-                        then pure $ Just []
-                        else lookupMacroDefinitions function <&> \case
-                               [] -> Nothing
-                               macroDefs' -> Just macroDefs'
-                    case maybeMacroDefs of
-                      Just _ -> do
-                        newExprs <- expandMacroApplication function args
-                        concatMapM
-                          (fullyExpandExpr @fileExpanderEffs expandFile)
-                          newExprs
-                      Nothing -> pure [x]
-                  _ -> pure [x])
-             xs
+           handleFunctionApplication @fileExpanderEffs expandFile xs
          x -> pure x)
       program
   filePath <- view @(Ghci.Ghci, FilePath) _2
-  forM_ newTopLevelExprs $ Effs.runReader filePath . normalizeStatement >=> \case
+  forM_ newTopLevelExprs $ Effs.runReader filePath . withExprCtxt .
+    normalizeStatement >=> \case
     SMacroDefinition macroDef ->
       (%=) @MacroExpansionEnv macroDefs (`snoc` macroDef)
     newStmt -> do
@@ -207,6 +190,37 @@ fullyExpandExpr expandFile expr = do
           ensureCompiledDependency @fileExpanderEffs expandFile macroImport
         _ -> pure ()
   pure newTopLevelExprs
+
+-- | If a function application is a macro call, expand it.
+handleFunctionApplication ::
+     forall fileExpanderEffs effs.
+     ( Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State MacroExpansionEnv, Effs.State ModuleInfo, Effs.Reader ( Ghci.Ghci
+                                                                                                                                                                 , FilePath)] effs
+     , Members fileExpanderEffs effs
+     )
+  => FileExpander fileExpanderEffs
+  -> [SM.Expression]
+  -> Eff effs [SM.Expression]
+handleFunctionApplication expandFile =
+  concatMapM
+    (\x ->
+       case x of
+         Parse.SExpression _ (Parse.Symbol _ function:args) -> do
+           isImported <- isMacroImported function
+           maybeMacroDefs <-
+             if isImported
+               then pure $ Just []
+               else lookupMacroDefinitions function <&> \case
+                      [] -> Nothing
+                      macroDefs' -> Just macroDefs'
+           case maybeMacroDefs of
+             Just _ -> do
+               newExprs <- expandMacroApplication function args
+               concatMapM
+                 (expandProgramExpr @fileExpanderEffs expandFile)
+                 newExprs
+             Nothing -> pure [x]
+         _ -> pure [x])
 
 lookupMacroDefinitions ::
      (Member (Effs.State MacroExpansionEnv) effs)
@@ -295,7 +309,7 @@ exhaustivelyExpandMacros filePath expandFile program = do
     exhaustM (expansionPass @fileExpanderEffs expandFile) program
   macroTypeSigs <-
     do normalizedStmts <-
-         Effs.runReader filePath $
+         Effs.runReader filePath $ withExprCtxt $
          traverse normalizeStatement expandedTopLevelExprs
        let typeSigs =
              typeMacroDefinitions $ mapMaybe isMacroDefinition normalizedStmts
@@ -322,7 +336,7 @@ typeMacroDefinitions macroDefs' = map mkTySig macroNames
             mkTySigSource macroName
        in unsafeIgnoreError
             @SM.Error
-            (Effs.runReader "" $ normalizeStatement expr) ^?!
+            (Effs.runReader "" $ withExprCtxt $ normalizeStatement expr) ^?!
           _STypeSignature
 
 expandMacroApplication ::
