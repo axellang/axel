@@ -14,7 +14,6 @@
 module Axel.Test.Eff.FileSystemMock where
 
 import Axel.Eff.FileSystem as Effs
-import Axel.Test.MockUtils
 
 import Control.Lens hiding (children)
 import Control.Monad.Freer
@@ -25,6 +24,8 @@ import Data.List.Split
 import Data.Maybe
 
 import System.FilePath
+
+import TestUtils
 
 data FSNode
   = Directory FilePath [FSNode]
@@ -184,6 +185,10 @@ runFileSystem ::
 runFileSystem origState = runState origState . reinterpret go
   where
     go :: FileSystem ~> Eff (Effs.State FileSystemState ': effs)
+    go (AppendFile relativePath addedContents) = do
+      oldContents <- go $ ReadFile relativePath
+      let newContents = oldContents <> addedContents
+      go $ WriteFile relativePath newContents
     go (CopyFile src dest) = do
       contents <- go $ ReadFile src
       go $ WriteFile contents dest

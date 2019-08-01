@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Axel.Utils.String where
@@ -27,3 +28,9 @@ s =
     (error "Cannot use s as a pattern")
     (error "Cannot use s as a type")
     (error "Cannot use s as a dec")
+
+handleStringEscapes :: String -> String
+handleStringEscapes =
+  concatMap $ \case
+    '\\' -> "\\\\"
+    c -> [c]

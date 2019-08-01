@@ -28,6 +28,7 @@ import System.FilePath ((</>))
 import qualified System.IO.Strict as S (readFile)
 
 data FileSystem a where
+  AppendFile :: String -> FilePath -> FileSystem ()
   CopyFile :: FilePath -> FilePath -> FileSystem ()
   CreateDirectoryIfMissing :: Bool -> FilePath -> FileSystem ()
   DoesDirectoryExist :: FilePath -> FileSystem Bool
@@ -45,6 +46,7 @@ runEff :: (LastMember IO effs) => Eff (FileSystem ': effs) ~> Eff effs
 runEff =
   interpretM
     (\case
+       AppendFile path contents -> Prelude.appendFile path contents
        CopyFile src dest -> System.Directory.copyFile src dest
        CreateDirectoryIfMissing createParentDirs path ->
          System.Directory.createDirectoryIfMissing createParentDirs path

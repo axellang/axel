@@ -1,0 +1,19 @@
+(importq Axel.Parse.AST AST all)
+(importq Axel.Sourcemap SM all)
+
+(def assertEq {(AST.Expression a) -> {(AST.Expression b) -> (SM.Expression)}}
+ ((expr expected)
+  (if {{unit <$ expr} == {unit <$ expected}}
+    '(raw "{- Passed! -}")
+    (error {(AST.toAxel expr) <> {" given, but " <> {(AST.toAxel expected) <> " expected!"}}}))))
+
+(defmacro testQuasiquote
+ (_
+  (pure
+   [(assertEq `topLevelBasic (AST.Symbol Nothing "topLevelBasic"))
+    (assertEq `'topLevelQuote (AST.SExpression Nothing [(AST.Symbol Nothing "quote") (AST.Symbol Nothing "topLevelQuote")]))
+    (assertEq `(inFormBasic ~(AST.Symbol Nothing "inFormUnquote") ~@[(AST.Symbol Nothing "inFormSpliceUnquote1") (AST.Symbol Nothing "inFormSpliceUnquote2")] 'inFormQuote) (AST.SExpression Nothing [(AST.Symbol Nothing "inFormBasic") (AST.Symbol Nothing "inFormUnquote") (AST.Symbol Nothing "inFormSpliceUnquote1") (AST.Symbol Nothing "inFormSpliceUnquote2") (AST.SExpression Nothing [(AST.Symbol Nothing "quote") (AST.Symbol Nothing "inFormQuote")])]))])))
+-- `((inForm2Basic ~inForm2Unquote ~@inForm2Splice 'inForm2Quote))
+-- `(`(nestedQuasiquote))
+
+(testQuasiquote)

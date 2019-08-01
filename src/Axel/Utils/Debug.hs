@@ -2,6 +2,8 @@ module Axel.Utils.Debug where
 
 import Debug.Trace (trace, traceShow)
 
+{-# ANN module "HLint: ignore Avoid restricted module" #-}
+
 unsafeTee :: String -> String
 unsafeTee x = trace x x
 

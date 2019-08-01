@@ -7,6 +7,8 @@ import Axel.AST
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Literal(LChar, LInt, LString)
+  , SMExpression
+  , SMStatement
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
           SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
           SQualifiedImport, SRawStatement, SRestrictedImport, STopLevel,
@@ -15,7 +17,6 @@ import Axel.AST
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , alias
-  , ann
   , arguments
   , bindings
   , body
@@ -29,7 +30,7 @@ import Axel.AST
   , fields
   , function
   , functionDefinition
-  , getAnn
+  , getAnn'
   , ifFalse
   , ifTrue
   , imports
@@ -42,7 +43,7 @@ import Axel.AST
   , typeDefinition
   , whereBindings
   )
-import qualified Axel.Parse as Parse
+import qualified Axel.Parse.AST as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   )
@@ -50,9 +51,9 @@ import qualified Axel.Sourcemap as SM (Expression)
 
 import Control.Lens.Operators ((^.))
 
-denormalizeExpression :: Expression SM.Expression -> SM.Expression
+denormalizeExpression :: SMExpression -> SM.Expression
 denormalizeExpression (ECaseBlock caseBlock) =
-  let ann' = getAnn (caseBlock ^. ann)
+  let ann' = getAnn' caseBlock
       denormalizedCases =
         map
           (\(pat, res) ->
@@ -63,15 +64,15 @@ denormalizeExpression (ECaseBlock caseBlock) =
    in Parse.SExpression ann' $ Parse.Symbol ann' "case" :
       denormalizeExpression (caseBlock ^. expr) :
       denormalizedCases
-denormalizeExpression (EEmptySExpression ann') =
-  Parse.SExpression (getAnn ann') []
+denormalizeExpression expr'@(EEmptySExpression _) =
+  Parse.SExpression (getAnn' expr') []
 denormalizeExpression (EFunctionApplication functionApplication) =
-  Parse.SExpression (getAnn (functionApplication ^. ann)) $
+  Parse.SExpression (getAnn' functionApplication) $
   denormalizeExpression (functionApplication ^. function) :
   map denormalizeExpression (functionApplication ^. arguments)
-denormalizeExpression (EIdentifier ann' x) = Parse.Symbol (getAnn ann') x
+denormalizeExpression expr'@(EIdentifier _ x) = Parse.Symbol (getAnn' expr') x
 denormalizeExpression (EIfBlock ifBlock) =
-  let ann' = getAnn (ifBlock ^. ann)
+  let ann' = getAnn' ifBlock
    in Parse.SExpression
         ann'
         [ Parse.Symbol ann' "if"
@@ -80,7 +81,7 @@ denormalizeExpression (EIfBlock ifBlock) =
         , denormalizeExpression (ifBlock ^. ifFalse)
         ]
 denormalizeExpression (ELambda lambda) =
-  let ann' = getAnn (lambda ^. ann)
+  let ann' = getAnn' lambda
       denormalizedArguments =
         Parse.SExpression ann' $ map denormalizeExpression (lambda ^. arguments)
    in Parse.SExpression
@@ -90,7 +91,7 @@ denormalizeExpression (ELambda lambda) =
         , denormalizeExpression (lambda ^. body)
         ]
 denormalizeExpression (ELetBlock letBlock) =
-  let ann' = getAnn (letBlock ^. ann)
+  let ann' = getAnn' letBlock
       denormalizedBindings =
         Parse.SExpression ann' $
         map
@@ -107,17 +108,16 @@ denormalizeExpression (ELetBlock letBlock) =
         ]
 denormalizeExpression (ELiteral x) =
   case x of
-    LChar ann' char -> Parse.LiteralChar (getAnn ann') char
-    LInt ann' int -> Parse.LiteralInt (getAnn ann') int
-    LString ann' string -> Parse.LiteralString (getAnn ann') string
-denormalizeExpression (ERawExpression ann' rawSource) =
-  Parse.SExpression
-    (getAnn ann')
-    [ Parse.Symbol (getAnn ann') "raw"
-    , Parse.LiteralString (getAnn ann') rawSource
-    ]
+    LChar _ char -> Parse.LiteralChar (getAnn' x) char
+    LInt _ int -> Parse.LiteralInt (getAnn' x) int
+    LString _ string -> Parse.LiteralString (getAnn' x) string
+denormalizeExpression expr'@(ERawExpression _ rawSource) =
+  let ann' = getAnn' expr'
+   in Parse.SExpression
+        ann'
+        [Parse.Symbol ann' "raw", Parse.LiteralString ann' rawSource]
 denormalizeExpression (ERecordDefinition recordDefinition) =
-  let ann' = getAnn (recordDefinition ^. ann)
+  let ann' = getAnn' recordDefinition
       denormalizedBindings =
         map
           (\(var, val) ->
@@ -127,7 +127,7 @@ denormalizeExpression (ERecordDefinition recordDefinition) =
           (recordDefinition ^. bindings)
    in Parse.SExpression ann' (Parse.Symbol ann' "record" : denormalizedBindings)
 denormalizeExpression (ERecordType recordType) =
-  let ann' = getAnn (recordType ^. ann)
+  let ann' = getAnn' recordType
       denormalizedFields =
         map
           (\(field, ty) ->
@@ -140,27 +140,31 @@ denormalizeExpression (ERecordType recordType) =
         (Parse.Symbol ann' "recordType" : denormalizedFields)
 
 denormalizeImportSpecification ::
-     ImportSpecification SM.Expression -> SM.Expression
-denormalizeImportSpecification (ImportAll ann') =
-  Parse.Symbol (getAnn ann') "all"
-denormalizeImportSpecification (ImportOnly ann' importList) =
-  Parse.SExpression (getAnn ann') $ map denormalizeImport importList
+     ImportSpecification (Maybe SM.Expression) -> SM.Expression
+denormalizeImportSpecification importSpec@(ImportAll _) =
+  Parse.Symbol (getAnn' importSpec) "all"
+denormalizeImportSpecification importSpec@(ImportOnly _ importList) =
+  Parse.SExpression (getAnn' importSpec) $ map denormalizeImport importList
   where
-    denormalizeImport (ImportItem ann'' item) = Parse.Symbol (getAnn ann'') item
-    denormalizeImport (ImportType ann'' type' items) =
-      Parse.SExpression
-        (getAnn ann'')
-        (Parse.Symbol (getAnn ann'') type' :
-         map (Parse.Symbol (getAnn ann'')) items)
+    denormalizeImport importList'@(ImportItem _ item) =
+      Parse.Symbol (getAnn' importList') item
+    denormalizeImport importList'@(ImportType _ type' items) =
+      let ann' = getAnn' importList'
+       in Parse.SExpression
+            ann'
+            (Parse.Symbol ann' type' : map (Parse.Symbol ann') items)
 
-denormalizeStatement :: Statement SM.Expression -> SM.Expression
+denormalizeStatement :: SMStatement -> SM.Expression
 denormalizeStatement (SDataDeclaration dataDeclaration) =
-  let ann' = getAnn (dataDeclaration ^. ann)
+  let ann' = getAnn' dataDeclaration
       denormalizedTypeDefinition =
         case dataDeclaration ^. typeDefinition of
           TypeConstructor _ typeConstructor ->
             denormalizeExpression $ EFunctionApplication typeConstructor
-          ProperType ann'' properType -> Parse.Symbol (getAnn ann'') properType
+          ProperType _ properType ->
+            Parse.Symbol
+              (getAnn' $ dataDeclaration ^. typeDefinition)
+              properType
    in Parse.SExpression
         ann'
         (Parse.Symbol ann' "data" : denormalizedTypeDefinition :
@@ -168,14 +172,14 @@ denormalizeStatement (SDataDeclaration dataDeclaration) =
            (denormalizeExpression . EFunctionApplication)
            (dataDeclaration ^. constructors))
 denormalizeStatement (SFunctionDefinition fnDef) =
-  let ann' = getAnn (fnDef ^. ann)
+  let ann' = getAnn' fnDef
    in Parse.SExpression ann' $ Parse.Symbol ann' "=" :
       Parse.Symbol ann' (fnDef ^. name) :
       Parse.SExpression ann' (map denormalizeExpression (fnDef ^. arguments)) :
       denormalizeExpression (fnDef ^. body) :
       map (denormalizeStatement . SFunctionDefinition) (fnDef ^. whereBindings)
 denormalizeStatement (SMacroDefinition macroDef) =
-  let ann' = getAnn (macroDef ^. ann)
+  let ann' = getAnn' macroDef
    in Parse.SExpression ann' $ Parse.Symbol ann' "=macro" :
       Parse.Symbol ann' (macroDef ^. functionDefinition . name) :
       Parse.SExpression
@@ -186,7 +190,7 @@ denormalizeStatement (SMacroDefinition macroDef) =
         (denormalizeStatement . SFunctionDefinition)
         (macroDef ^. functionDefinition . whereBindings)
 denormalizeStatement (SMacroImport macroImport) =
-  let ann' = getAnn (macroImport ^. ann)
+  let ann' = getAnn' macroImport
    in Parse.SExpression
         ann'
         [ Parse.Symbol ann' "importm"
@@ -194,17 +198,21 @@ denormalizeStatement (SMacroImport macroImport) =
         , Parse.SExpression ann' $
           map (Parse.Symbol ann') (macroImport ^. imports)
         ]
-denormalizeStatement (SModuleDeclaration ann' identifier) =
-  Parse.SExpression
-    (getAnn ann')
-    [Parse.Symbol (getAnn ann') "module", Parse.Symbol (getAnn ann') identifier]
+denormalizeStatement stmt@(SModuleDeclaration _ identifier) =
+  let ann' = getAnn' stmt
+   in Parse.SExpression
+        ann'
+        [Parse.Symbol ann' "module", Parse.Symbol ann' identifier]
 denormalizeStatement (SNewtypeDeclaration newtypeDeclaration) =
-  let ann' = getAnn (newtypeDeclaration ^. ann)
+  let ann' = getAnn' newtypeDeclaration
       denormalizedTypeDefinition =
         case newtypeDeclaration ^. typeDefinition of
           TypeConstructor _ typeConstructor ->
             denormalizeExpression $ EFunctionApplication typeConstructor
-          ProperType ann'' properType -> Parse.Symbol (getAnn ann'') properType
+          ProperType _ properType ->
+            Parse.Symbol
+              (getAnn' $ newtypeDeclaration ^. typeDefinition)
+              properType
    in Parse.SExpression
         ann'
         [ Parse.Symbol ann' "newtype"
@@ -213,14 +221,14 @@ denormalizeStatement (SNewtypeDeclaration newtypeDeclaration) =
           EFunctionApplication (newtypeDeclaration ^. constructor)
         ]
 denormalizeStatement (SPragma pragma) =
-  let ann' = getAnn (pragma ^. ann)
+  let ann' = getAnn' pragma
    in Parse.SExpression
         ann'
         [ Parse.Symbol ann' "pragma"
         , Parse.LiteralString ann' (pragma ^. pragmaSpecification)
         ]
 denormalizeStatement (SQualifiedImport qualifiedImport) =
-  let ann' = getAnn (qualifiedImport ^. ann)
+  let ann' = getAnn' qualifiedImport
    in Parse.SExpression
         ann'
         [ Parse.Symbol ann' "importq"
@@ -228,25 +236,25 @@ denormalizeStatement (SQualifiedImport qualifiedImport) =
         , Parse.Symbol ann' $ qualifiedImport ^. alias
         , denormalizeImportSpecification (qualifiedImport ^. imports)
         ]
-denormalizeStatement (SRawStatement ann' rawSource) =
-  Parse.SExpression
-    (getAnn ann')
-    [ Parse.Symbol (getAnn ann') "raw"
-    , Parse.LiteralString (getAnn ann') rawSource
-    ]
+denormalizeStatement expr'@(SRawStatement _ rawSource) =
+  let ann' = getAnn' expr'
+   in Parse.SExpression
+        ann'
+        [Parse.Symbol ann' "raw", Parse.LiteralString ann' rawSource]
 denormalizeStatement (SRestrictedImport restrictedImport) =
-  let ann' = getAnn (restrictedImport ^. ann)
+  let ann' = getAnn' restrictedImport
    in Parse.SExpression
         ann'
         [ Parse.Symbol ann' "import"
         , Parse.Symbol ann' $ restrictedImport ^. moduleName
         , denormalizeImportSpecification (restrictedImport ^. imports)
         ]
-denormalizeStatement (STopLevel (TopLevel ann' statements)) =
-  Parse.SExpression (getAnn ann') $ Parse.Symbol (getAnn ann') "begin" :
-  map denormalizeStatement statements
+denormalizeStatement stmt@(STopLevel (TopLevel _ statements)) =
+  let ann' = getAnn' stmt
+   in Parse.SExpression ann' $ Parse.Symbol ann' "begin" :
+      map denormalizeStatement statements
 denormalizeStatement (STypeclassDefinition typeclassDefinition) =
-  let ann' = getAnn (typeclassDefinition ^. ann)
+  let ann' = getAnn' typeclassDefinition
    in Parse.SExpression
         ann'
         (Parse.Symbol ann' "class" :
@@ -259,7 +267,7 @@ denormalizeStatement (STypeclassDefinition typeclassDefinition) =
            (denormalizeStatement . STypeSignature)
            (typeclassDefinition ^. signatures))
 denormalizeStatement (STypeclassInstance typeclassInstance) =
-  let ann' = getAnn (typeclassInstance ^. ann)
+  let ann' = getAnn' typeclassInstance
    in Parse.SExpression
         ann'
         (Parse.Symbol ann' "instance" :
@@ -268,7 +276,7 @@ denormalizeStatement (STypeclassInstance typeclassInstance) =
            (denormalizeStatement . SFunctionDefinition)
            (typeclassInstance ^. definitions))
 denormalizeStatement (STypeSignature typeSig) =
-  let ann' = getAnn (typeSig ^. ann)
+  let ann' = getAnn' typeSig
    in Parse.SExpression
         ann'
         [ Parse.Symbol ann' "::"
@@ -276,16 +284,15 @@ denormalizeStatement (STypeSignature typeSig) =
         , denormalizeExpression (typeSig ^. typeDefinition)
         ]
 denormalizeStatement (STypeSynonym typeSynonym) =
-  let ann' = getAnn (typeSynonym ^. ann)
+  let ann' = getAnn' typeSynonym
    in Parse.SExpression
         ann'
         [ Parse.Symbol ann' "type"
         , denormalizeExpression (typeSynonym ^. alias)
         , denormalizeExpression (typeSynonym ^. definition)
         ]
-denormalizeStatement (SUnrestrictedImport ann' identifier) =
-  Parse.SExpression
-    (getAnn ann')
-    [ Parse.Symbol (getAnn ann') "importUnrestricted"
-    , Parse.Symbol (getAnn ann') identifier
-    ]
+denormalizeStatement stmt@(SUnrestrictedImport _ identifier) =
+  let ann' = getAnn' stmt
+   in Parse.SExpression
+        ann'
+        [Parse.Symbol ann' "importUnrestricted", Parse.Symbol ann' identifier]

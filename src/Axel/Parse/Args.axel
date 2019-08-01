@@ -1,7 +1,5 @@
 (module Axel.Parse.Args)
 
-(importm Axel (applyInfix def))
-
 (import Data.Semigroup (<>))
 
 (import Options.Applicative (Parser argument command info metavar progDesc str subparser))

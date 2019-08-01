@@ -10,28 +10,31 @@ module Axel.Haskell.File where
 
 import Prelude hiding (putStrLn)
 
-import Axel.AST (Statement(SModuleDeclaration), ToHaskell(toHaskell))
+import Axel.AST
+  ( Statement(SModuleDeclaration, STopLevel)
+  , ToHaskell(toHaskell)
+  , TopLevel(TopLevel)
+  )
 import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (readFile, removeFile, writeFile)
 import qualified Axel.Eff.Ghci as Effs (Ghci)
+import qualified Axel.Eff.Log as Effs (Log)
 import Axel.Eff.Process (StreamSpecification(InheritStreams))
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (readResource)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import qualified Axel.Eff.Resource as Res (astDefinition)
+import Axel.Error (Error)
 import Axel.Haskell.Convert (convertFile)
 import Axel.Haskell.Stack (interpretFile)
-import Axel.Macros (ModuleInfo, exhaustivelyExpandMacros)
+import Axel.Macros (ModuleInfo, processProgram)
 import Axel.Normalize (normalizeStatement, withExprCtxt)
-import Axel.Parse
-  ( Expression(Symbol)
-  , parseSource
-  , programToTopLevelExpressions
-  )
-import qualified Axel.Sourcemap as SM (Error, Output, raw)
-import Axel.Utils.Recursion (Recursive(bottomUpFmap))
+import Axel.Parse (parseSource)
+import Axel.Parse.AST (Expression(Symbol))
+import qualified Axel.Sourcemap as SM (Output, raw, unwrapCompoundExpressions)
+import Axel.Utils.Recursion (bottomUpFmap)
 
 import Control.Lens.Operators ((<&>), (?~))
 import Control.Lens.Tuple (_2)
@@ -43,6 +46,7 @@ import Control.Monad.Freer.Reader (runReader)
 import Control.Monad.Freer.State (gets, modify)
 import qualified Control.Monad.Freer.State as Effs (State)
 
+import Data.Data (Data)
 import qualified Data.Map as Map (adjust, fromList, lookup)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Monoid (Alt(Alt))
@@ -51,13 +55,13 @@ import qualified Data.Text as T (isSuffixOf, pack)
 
 import System.FilePath (stripExtension, takeFileName)
 
-convertList :: Expression ann -> Expression ann
+convertList :: (Data ann) => Expression ann -> Expression ann
 convertList =
   bottomUpFmap $ \case
     Symbol ann "List" -> Symbol ann "[]"
     x -> x
 
-convertUnit :: Expression ann -> Expression ann
+convertUnit :: (Data ann) => Expression ann -> Expression ann
 convertUnit =
   bottomUpFmap $ \case
     Symbol ann "Unit" -> Symbol ann "()"
@@ -65,7 +69,7 @@ convertUnit =
     x -> x
 
 readModuleInfo ::
-     (Members '[ Effs.Error SM.Error, Effs.FileSystem] effs)
+     (Members '[ Effs.Error Error, Effs.FileSystem] effs)
   => [FilePath]
   -> Eff effs ModuleInfo
 readModuleInfo axelFiles = do
@@ -73,13 +77,13 @@ readModuleInfo axelFiles = do
     forM axelFiles $ \filePath -> do
       source <- FS.readFile filePath
       exprs <-
-        programToTopLevelExpressions <$> parseSource (Just filePath) source
+        SM.unwrapCompoundExpressions <$> parseSource (Just filePath) source
       Alt moduleDecl <-
         mconcat . map Alt <$>
         mapM
           (\expr ->
              runError
-               @SM.Error
+               @Error
                (runReader filePath $ withExprCtxt $ normalizeStatement expr) <&> \case
                Right (SModuleDeclaration _ moduleId) ->
                  Just (filePath, (moduleId, Nothing))
@@ -90,18 +94,16 @@ readModuleInfo axelFiles = do
 
 transpileSource ::
      forall effs fileExpanderEffs.
-     ( Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs
-     , fileExpanderEffs ~ '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo]
+     ( Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs
+     , fileExpanderEffs ~ '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo]
      )
   => FilePath
   -> String
   -> Eff effs SM.Output
 transpileSource filePath source =
-  toHaskell <$>
+  toHaskell . STopLevel . TopLevel Nothing <$>
   (parseSource (Just filePath) source >>=
-   exhaustivelyExpandMacros @fileExpanderEffs filePath (void . transpileFile') .
-   convertList . convertUnit >>=
-   runReader filePath . withExprCtxt . normalizeStatement)
+   processProgram @fileExpanderEffs (void . transpileFile') filePath)
 
 convertExtension :: String -> String -> FilePath -> FilePath
 convertExtension oldExt newExt axelPath =
@@ -120,7 +122,7 @@ haskellPathToAxelPath = convertExtension ".axel" ".hs"
 -- | Convert a file in place.
 convertFile' ::
      ( LastMember IO effs
-     , Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem] effs
+     , Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem] effs
      )
   => FilePath
   -> Eff effs FilePath
@@ -130,7 +132,7 @@ convertFile' path = do
   pure newPath
 
 transpileFile ::
-     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => FilePath
   -> FilePath
   -> Eff effs ()
@@ -143,7 +145,7 @@ transpileFile path newPath = do
 
 -- | Transpile a file in place.
 transpileFile' ::
-     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => FilePath
   -> Eff effs FilePath
 transpileFile' path = do
@@ -157,7 +159,7 @@ transpileFile' path = do
   pure newPath
 
 evalFile ::
-     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process, Effs.Resource] effs)
   => FilePath
   -> Eff effs ()
 evalFile path = do

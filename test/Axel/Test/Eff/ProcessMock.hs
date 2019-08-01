@@ -19,7 +19,6 @@ module Axel.Test.Eff.ProcessMock where
 
 import Axel.Eff.FileSystem as Effs
 import Axel.Eff.Process as Effs
-import Axel.Test.MockUtils
 
 import Control.Lens
 import Control.Monad.Freer as Eff
@@ -29,6 +28,8 @@ import Control.Monad.Freer.State as Effs
 import Data.Functor
 
 import System.Exit
+
+import TestUtils
 
 newtype ProcessResult effs =
   ProcessResult ((ExitCode, Maybe (String, String)), Eff effs ())

@@ -31,6 +31,7 @@ import Axel.AST
   , RecordDefinition(RecordDefinition)
   , RecordType(RecordType)
   , RestrictedImport(RestrictedImport)
+  , SMStatement
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
           SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
           SQualifiedImport, SRawStatement, SRestrictedImport, STopLevel,
@@ -43,12 +44,12 @@ import Axel.AST
   , TypeclassDefinition(TypeclassDefinition)
   , TypeclassInstance(TypeclassInstance)
   )
-import Axel.Error (Error(NormalizeError))
-import qualified Axel.Parse as Parse
+import Axel.Error (Error(NormalizeError), unsafeIgnoreError)
+import qualified Axel.Parse.AST as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
   )
-import qualified Axel.Sourcemap as SM (Error, Expression)
+import qualified Axel.Sourcemap as SM (Expression)
 
 import Control.Monad.Freer (Eff, Member, Members)
 import Control.Monad.Freer.Error (throwError)
@@ -69,25 +70,24 @@ withExprCtxt :: Eff (Effs.Reader [SM.Expression] ': effs) a -> Eff effs a
 withExprCtxt = runReader []
 
 throwNormalizeError ::
-     (Members '[ Effs.Error SM.Error, Effs.Reader FilePath, Effs.Reader ExprCtxt] effs)
+     (Members '[ Effs.Error Error, Effs.Reader FilePath, Effs.Reader ExprCtxt] effs)
   => String
   -> Eff effs a
 throwNormalizeError msg = do
   filePath <- ask @FilePath
   exprCtxt <- ask @ExprCtxt
-  throwError @SM.Error $
-    NormalizeError ("While compiling '" <> filePath <> "':\n\n" <> msg) exprCtxt
+  throwError @Error $ NormalizeError filePath msg exprCtxt
 
 normalizeExpression ::
-     (Members '[ Effs.Error SM.Error, Effs.Reader FilePath, Effs.Reader ExprCtxt] effs)
+     (Members '[ Effs.Error Error, Effs.Reader FilePath, Effs.Reader ExprCtxt] effs)
   => SM.Expression
-  -> Eff effs (Expression SM.Expression)
+  -> Eff effs (Expression (Maybe SM.Expression))
 normalizeExpression expr@(Parse.LiteralChar _ char) =
-  pure $ ELiteral (LChar expr char)
+  pure $ ELiteral (LChar (Just expr) char)
 normalizeExpression expr@(Parse.LiteralInt _ int) =
-  pure $ ELiteral (LInt expr int)
+  pure $ ELiteral (LInt (Just expr) int)
 normalizeExpression expr@(Parse.LiteralString _ string) =
-  pure $ ELiteral (LString expr string)
+  pure $ ELiteral (LString (Just expr) string)
 normalizeExpression expr@(Parse.SExpression _ items) =
   pushCtxt expr $
   case items of
@@ -100,14 +100,16 @@ normalizeExpression expr@(Parse.SExpression _ items) =
                  x -> pushCtxt x $ throwNormalizeError "Invalid case!")
               cases
        in ECaseBlock <$>
-          (CaseBlock expr <$> normalizeExpression var <*> normalizedCases)
+          (CaseBlock (Just expr) <$> normalizeExpression var <*> normalizedCases)
     [Parse.Symbol _ "\\", Parse.SExpression _ args, body] ->
       let normalizedArguments = traverse normalizeExpression args
        in ELambda <$>
-          (Lambda expr <$> normalizedArguments <*> normalizeExpression body)
+          (Lambda (Just expr) <$> normalizedArguments <*>
+           normalizeExpression body)
     [Parse.Symbol _ "if", cond, ifTrue, ifFalse] ->
       EIfBlock <$>
-      (IfBlock expr <$> normalizeExpression cond <*> normalizeExpression ifTrue <*>
+      (IfBlock (Just expr) <$> normalizeExpression cond <*>
+       normalizeExpression ifTrue <*>
        normalizeExpression ifFalse)
     [Parse.Symbol _ "let", Parse.SExpression _ bindings, body] ->
       let normalizedBindings =
@@ -119,7 +121,8 @@ normalizeExpression expr@(Parse.SExpression _ items) =
                  x -> pushCtxt x $ throwNormalizeError "Invalid pattern!")
               bindings
        in ELetBlock <$>
-          (LetBlock expr <$> normalizedBindings <*> normalizeExpression body)
+          (LetBlock (Just expr) <$> normalizedBindings <*>
+           normalizeExpression body)
     [Parse.Symbol _ "raw", rawSource] ->
       let normalizedRawSource =
             case rawSource of
@@ -128,7 +131,7 @@ normalizeExpression expr@(Parse.SExpression _ items) =
                 pushCtxt x $
                 throwNormalizeError
                   "`raw` takes strings representing the code to inject directly."
-       in ERawExpression expr <$> normalizedRawSource
+       in ERawExpression (Just expr) <$> normalizedRawSource
     Parse.Symbol _ "record":bindings ->
       let normalizedBindings =
             traverse
@@ -139,7 +142,8 @@ normalizeExpression expr@(Parse.SExpression _ items) =
                    _ ->
                      pushCtxt x $ throwNormalizeError "Invalid field binding!")
               bindings
-       in ERecordDefinition <$> (RecordDefinition expr <$> normalizedBindings)
+       in ERecordDefinition <$>
+          (RecordDefinition (Just expr) <$> normalizedBindings)
     Parse.Symbol _ "recordType":fields ->
       let normalizedFields =
             traverse
@@ -151,25 +155,26 @@ normalizeExpression expr@(Parse.SExpression _ items) =
                      pushCtxt x $
                      throwNormalizeError "Invalid field definition!")
               fields
-       in ERecordType <$> (RecordType expr <$> normalizedFields)
+       in ERecordType <$> (RecordType (Just expr) <$> normalizedFields)
     fn:args ->
       EFunctionApplication <$>
-      (FunctionApplication expr <$> normalizeExpression fn <*>
+      (FunctionApplication (Just expr) <$> normalizeExpression fn <*>
        traverse normalizeExpression args)
-    [] -> pure $ EEmptySExpression expr
+    [] -> pure $ EEmptySExpression (Just expr)
 normalizeExpression expr@(Parse.Symbol _ symbol) =
-  pure $ EIdentifier expr symbol
+  pure $ EIdentifier (Just expr) symbol
 
 normalizeFunctionDefinition ::
-     (Members '[ Effs.Error SM.Error, Effs.Reader FilePath, Effs.Reader ExprCtxt] effs)
+     (Members '[ Effs.Error Error, Effs.Reader FilePath, Effs.Reader ExprCtxt] effs)
   => SM.Expression
   -> Identifier
   -> [SM.Expression]
   -> SM.Expression
   -> [SM.Expression]
-  -> Eff effs (FunctionDefinition SM.Expression)
+  -> Eff effs (FunctionDefinition (Maybe SM.Expression))
 normalizeFunctionDefinition expr fnName arguments body whereDefs =
-  FunctionDefinition expr fnName <$> traverse normalizeExpression arguments <*>
+  FunctionDefinition (Just expr) fnName <$>
+  traverse normalizeExpression arguments <*>
   normalizeExpression body <*>
   traverse
     (\x ->
@@ -179,21 +184,21 @@ normalizeFunctionDefinition expr fnName arguments body whereDefs =
     whereDefs
 
 normalizeStatement ::
-     (Members '[ Effs.Error SM.Error, Effs.Reader FilePath, Effs.Reader ExprCtxt] effs)
+     (Members '[ Effs.Error Error, Effs.Reader FilePath, Effs.Reader ExprCtxt] effs)
   => SM.Expression
-  -> Eff effs (Statement SM.Expression)
+  -> Eff effs SMStatement
 normalizeStatement expr@(Parse.SExpression _ items) =
   pushCtxt expr $
   case items of
     [Parse.Symbol _ "::", Parse.Symbol _ fnName, typeDef] ->
       STypeSignature <$>
-      (TypeSignature expr fnName <$> normalizeExpression typeDef)
+      (TypeSignature (Just expr) fnName <$> normalizeExpression typeDef)
     Parse.Symbol _ "=":Parse.Symbol _ fnName:Parse.SExpression _ arguments:body:whereDefs ->
       SFunctionDefinition <$>
       normalizeFunctionDefinition expr fnName arguments body whereDefs
     Parse.Symbol _ "begin":stmts ->
       let normalizedStmts = traverse normalizeStatement stmts
-       in STopLevel . TopLevel expr <$> normalizedStmts
+       in STopLevel . TopLevel (Just expr) <$> normalizedStmts
     Parse.Symbol _ "class":classConstraints:className:sigs ->
       let normalizedConstraints =
             normalizeExpression classConstraints >>= \case
@@ -211,7 +216,7 @@ normalizeStatement expr@(Parse.SExpression _ items) =
                      pushCtxt x $ throwNormalizeError "Invalid type signature!")
               sigs
        in STypeclassDefinition <$>
-          (TypeclassDefinition expr <$> normalizeExpression className <*>
+          (TypeclassDefinition (Just expr) <$> normalizeExpression className <*>
            normalizedConstraints <*>
            normalizedSigs)
     Parse.Symbol _ "data":typeDef:constructors ->
@@ -228,11 +233,13 @@ normalizeStatement expr@(Parse.SExpression _ items) =
        in normalizeExpression typeDef >>= \case
             EFunctionApplication typeConstructor ->
               SDataDeclaration <$>
-              (DataDeclaration expr (TypeConstructor expr typeConstructor) <$>
+              (DataDeclaration
+                 (Just expr)
+                 (TypeConstructor (Just expr) typeConstructor) <$>
                normalizedConstructors)
             EIdentifier _ properType ->
               SDataDeclaration <$>
-              (DataDeclaration expr (ProperType expr properType) <$>
+              (DataDeclaration (Just expr) (ProperType (Just expr) properType) <$>
                normalizedConstructors)
             _ -> pushCtxt typeDef $ throwNormalizeError "Invalid type!"
     [Parse.Symbol _ "newtype", typeDef, constructor] ->
@@ -245,24 +252,30 @@ normalizeStatement expr@(Parse.SExpression _ items) =
        in normalizeExpression typeDef >>= \case
             EFunctionApplication typeConstructor ->
               SNewtypeDeclaration <$>
-              (NewtypeDeclaration expr (TypeConstructor expr typeConstructor) <$>
+              (NewtypeDeclaration
+                 (Just expr)
+                 (TypeConstructor (Just expr) typeConstructor) <$>
                normalizedConstructor)
             EIdentifier _ properType ->
               SNewtypeDeclaration <$>
-              (NewtypeDeclaration expr (ProperType expr properType) <$>
+              (NewtypeDeclaration
+                 (Just expr)
+                 (ProperType (Just expr) properType) <$>
                normalizedConstructor)
             _ -> pushCtxt typeDef $ throwNormalizeError "Invalid type!"
     [Parse.Symbol _ "import", Parse.Symbol _ moduleName, importSpec] ->
       SRestrictedImport <$>
-      (RestrictedImport expr moduleName <$> normalizeImportSpec importSpec)
+      (RestrictedImport (Just expr) moduleName <$>
+       normalizeImportSpec importSpec)
     [Parse.Symbol _ "importm", Parse.Symbol _ moduleName, macroImportSpec] ->
-      SMacroImport . MacroImport expr moduleName <$>
+      SMacroImport . MacroImport (Just expr) moduleName <$>
       normalizeMacroImportSpec macroImportSpec
     [Parse.Symbol _ "importq", Parse.Symbol _ moduleName, Parse.Symbol _ alias, importSpec] ->
       SQualifiedImport <$>
-      (QualifiedImport expr moduleName alias <$> normalizeImportSpec importSpec)
+      (QualifiedImport (Just expr) moduleName alias <$>
+       normalizeImportSpec importSpec)
     [Parse.Symbol _ "importUnrestricted", Parse.Symbol _ moduleName] ->
-      pure $ SUnrestrictedImport expr moduleName
+      pure $ SUnrestrictedImport (Just expr) moduleName
     Parse.Symbol _ "instance":instanceName:defs ->
       let normalizedDefs =
             traverse
@@ -272,15 +285,15 @@ normalizeStatement expr@(Parse.SExpression _ items) =
                    _ -> pushCtxt x $ throwNormalizeError "Invalid definition!")
               defs
        in STypeclassInstance <$>
-          (TypeclassInstance expr <$> normalizeExpression instanceName <*>
+          (TypeclassInstance (Just expr) <$> normalizeExpression instanceName <*>
            normalizedDefs)
     [Parse.Symbol _ "pragma", Parse.LiteralString _ pragma] ->
-      pure $ SPragma (Pragma expr pragma)
+      pure $ SPragma (Pragma (Just expr) pragma)
     Parse.Symbol _ "=macro":Parse.Symbol _ macroName:Parse.SExpression _ arguments:body:whereBindings ->
-      SMacroDefinition . MacroDefinition expr <$>
+      SMacroDefinition . MacroDefinition (Just expr) <$>
       normalizeFunctionDefinition expr macroName arguments body whereBindings
     [Parse.Symbol _ "module", Parse.Symbol _ moduleName] ->
-      pure $ SModuleDeclaration expr moduleName
+      pure $ SModuleDeclaration (Just expr) moduleName
     [Parse.Symbol _ "raw", rawSource] ->
       let normalizedRawSource =
             case rawSource of
@@ -289,12 +302,12 @@ normalizeStatement expr@(Parse.SExpression _ items) =
                 pushCtxt x $
                 throwNormalizeError
                   "`raw` takes strings representing the code to inject directly."
-       in SRawStatement expr <$> normalizedRawSource
+       in SRawStatement (Just expr) <$> normalizedRawSource
     [Parse.Symbol _ "type", alias, def] ->
       let normalizedAlias = normalizeExpression alias
           normalizedDef = normalizeExpression def
        in STypeSynonym <$>
-          (TypeSynonym expr <$> normalizedAlias <*> normalizedDef)
+          (TypeSynonym (Just expr) <$> normalizedAlias <*> normalizedDef)
     _ -> throwNormalizeError "Invalid statement!"
   where
     normalizeMacroImportSpec importSpec =
@@ -309,16 +322,16 @@ normalizeStatement expr@(Parse.SExpression _ items) =
           pushCtxt x $ throwNormalizeError "Invalid macro import specification!"
     normalizeImportSpec importSpec =
       case importSpec of
-        Parse.Symbol _ "all" -> pure $ ImportAll expr
+        Parse.Symbol _ "all" -> pure $ ImportAll (Just expr)
         Parse.SExpression _ importList -> normalizeImportList importList
         x -> pushCtxt x $ throwNormalizeError "Invalid import specification!"
     normalizeImportList input =
-      ImportOnly expr <$>
+      ImportOnly (Just expr) <$>
       traverse
         (\item ->
            pushCtxt item $
            case item of
-             Parse.Symbol _ import' -> pure $ ImportItem expr import'
+             Parse.Symbol _ import' -> pure $ ImportItem (Just expr) import'
              Parse.SExpression _ (Parse.Symbol _ type':imports) ->
                let normalizedImports =
                      traverse
@@ -327,8 +340,12 @@ normalizeStatement expr@(Parse.SExpression _ items) =
                           x ->
                             pushCtxt x $ throwNormalizeError "Invalid import!")
                        imports
-                in ImportType expr type' <$> normalizedImports
+                in ImportType (Just expr) type' <$> normalizedImports
              _ -> throwNormalizeError "Invalid import!")
         input
 normalizeStatement expr =
   pushCtxt expr $ throwNormalizeError "Invalid top-level form!"
+
+unsafeNormalizeStatement :: SM.Expression -> SMStatement
+unsafeNormalizeStatement =
+  unsafeIgnoreError @Error . runReader "" . withExprCtxt . normalizeStatement

@@ -2,12 +2,10 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -17,15 +15,19 @@ module Axel.Macros where
 
 import Prelude hiding (putStrLn)
 
+import Axel (preludeMacros)
 import Axel.AST
   ( Identifier
+  , ImportSpecification(ImportAll)
   , MacroDefinition
-  , MacroImport
-  , Statement(SMacroDefinition, SMacroImport, STypeSignature)
+  , MacroImport(MacroImport)
+  , QualifiedImport(QualifiedImport)
+  , SMStatement
+  , Statement(SMacroDefinition, SMacroImport, SModuleDeclaration,
+          SQualifiedImport, SRawStatement)
   , ToHaskell(toHaskell)
-  , TypeSignature
+  , _SMacroDefinition
   , _SModuleDeclaration
-  , _STypeSignature
   , functionDefinition
   , imports
   , moduleName
@@ -33,64 +35,74 @@ import Axel.AST
   )
 import Axel.Denormalize (denormalizeStatement)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
-import qualified Axel.Eff.FileSystem as FS (removeFile, writeFile)
+import qualified Axel.Eff.FileSystem as FS
+  ( createDirectoryIfMissing
+  , withCurrentDirectory
+  , writeFile
+  )
 import qualified Axel.Eff.Ghci as Effs (Ghci)
-import qualified Axel.Eff.Ghci as Ghci (enableJsonErrors, exec, start, stop)
-import Axel.Eff.Lens ((%=), use, view)
+import qualified Axel.Eff.Ghci as Ghci (exec, start, stop)
+import Axel.Eff.Lens (view)
+import qualified Axel.Eff.Log as Effs (Log)
+import Axel.Eff.Log (logStrLn)
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (readResource)
 import qualified Axel.Eff.Resource as Effs (Resource)
-import qualified Axel.Eff.Resource as Res
-  ( astDefinition
-  , macroDefinitionAndEnvironmentFooter
-  , macroDefinitionAndEnvironmentHeader
-  , macroScaffold
-  )
-import Axel.Error (Error(MacroError), fatal, unsafeIgnoreError)
-import Axel.Haskell.Error (processErrors)
+import qualified Axel.Eff.Resource as Res (macroScaffold)
+import qualified Axel.Eff.Restartable as Effs (Restartable)
+import Axel.Eff.Restartable (restart, restartable)
+import Axel.Error (Error(MacroError), fatal)
 import Axel.Haskell.Macros (hygenisizeMacroName)
-import Axel.Haskell.Prettify (prettifyHaskell)
-import Axel.Normalize (normalizeStatement, withExprCtxt)
-import qualified Axel.Parse as Parse
-  ( Expression(SExpression, Symbol)
-  , parseMultiple
-  , programToTopLevelExpressions
-  , topLevelExpressionsToProgram
+import Axel.Normalize
+  ( normalizeStatement
+  , unsafeNormalizeStatement
+  , withExprCtxt
   )
-import Axel.Sourcemap (Delimiter(Newlines))
-import qualified Axel.Sourcemap as SM (Error, Expression, Output, raw)
-import Axel.Utils.Display (delimit)
-import Axel.Utils.Function (uncurry3)
-import Axel.Utils.List (filterMap, head')
-import Axel.Utils.Monad (concatMapM)
-import Axel.Utils.Recursion (Recursive(bottomUpTraverse), exhaustM)
+import qualified Axel.Parse as Parse (parseMultiple)
+import Axel.Parse.AST
+  ( _SExpression
+  , bottomUpFmapSplicing
+  , quoteExpression
+  , toAxel
+  )
+import qualified Axel.Parse.AST as Parse (Expression(SExpression, Symbol))
+import Axel.Sourcemap
+  ( isCompoundExpressionWrapperHead
+  , quoteSourceMetadata
+  , unwrapCompoundExpressions
+  , wrapCompoundExpressions
+  )
+import qualified Axel.Sourcemap as SM (Expression, Output, raw)
+import Axel.Utils.List (filterMap, filterMapOut, head')
+import Axel.Utils.Recursion (bottomUpFmap, zipperTopDownTraverse)
 import Axel.Utils.String (replace)
+import Axel.Utils.Zipper (unsafeLeft, unsafeUp)
 
-import Control.Lens.Cons (snoc)
+import Control.Lens (snoc)
 import Control.Lens.Extras (is)
-import Control.Lens.Operators ((%~), (<&>), (^.), (^?!))
-import Control.Lens.TH (makeFieldsNoPrefix)
-import Control.Lens.Tuple (_2)
-import Control.Monad ((>=>), forM_, when)
+import Control.Lens.Operators ((%~), (^.), (^?))
+import Control.Lens.Tuple (_1, _2)
+import Control.Monad (guard, unless, when)
 import Control.Monad.Freer (Eff, Member, Members)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
-import Control.Monad.Freer.Reader (ask)
 import qualified Control.Monad.Freer.Reader as Effs (Reader, runReader)
-import Control.Monad.Freer.State (gets)
+import Control.Monad.Freer.State (get, gets, modify)
 import qualified Control.Monad.Freer.State as Effs (State, evalState)
 
 import Data.Function ((&))
-import Data.List (nub)
-import Data.List.Split (splitWhen)
+import Data.Generics.Uniplate.Zipper (Zipper, fromZipper, hole, replaceHole, up)
+import Data.Hashable (hash)
+import Data.List (isPrefixOf, nub)
+import Data.List.Split (split, whenElt)
 import Data.Map (Map)
-import qualified Data.Map as M (elems, empty, filter, fromList, toList)
-import Data.Maybe (fromJust, isNothing, mapMaybe)
+import qualified Data.Map as M (elems, filter, fromList, toList)
+import Data.Maybe (isNothing)
 import Data.Semigroup ((<>))
 
 import qualified Language.Haskell.Ghcid as Ghci (Ghci)
 
-import System.FilePath ((<.>))
+import System.FilePath ((<.>), (</>))
 
 type ModuleInfo = Map Identifier (FilePath, Maybe SM.Output)
 
@@ -103,49 +115,79 @@ getTranspiledFiles =
        (filePath, Just output) -> Just (filePath, output)) .
   M.elems
 
-data MacroExpansionEnv =
-  MacroExpansionEnv
-    { _stmts :: [Statement SM.Expression]
-    , _macroDefs :: [MacroDefinition SM.Expression]
-    }
-
-makeFieldsNoPrefix ''MacroExpansionEnv
-
 type FileExpander effs
    = forall openEffs. (Members effs openEffs) =>
                         FilePath -> Eff openEffs ()
 
-expandMacros ::
+-- | Fully expand a program, and add macro definition type signatures.
+processProgram ::
      forall fileExpanderEffs effs.
-     ( Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Reader ( Ghci.Ghci
-                                                                                             , FilePath), Effs.Resource, Effs.State ModuleInfo] effs
-     , Members fileExpanderEffs (Effs.State MacroExpansionEnv ': effs)
+     ( Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs
+     , Members fileExpanderEffs (Effs.State [SMStatement] ': Effs.Restartable SM.Expression ': Effs.Reader ( Ghci.Ghci
+                                                                                                           , FilePath) ': effs)
      )
   => FileExpander fileExpanderEffs
-  -> [SM.Expression]
-  -> Eff effs [Statement SM.Expression]
-expandMacros expandFile origTopLevelExprs =
-  Effs.evalState (MacroExpansionEnv [] []) $ do
-    mapM_ (expandProgramExpr @fileExpanderEffs expandFile) origTopLevelExprs
-    hygenicMacroDefs <-
-      map (SMacroDefinition . hygenisizeMacroDefinition) <$>
-      use @MacroExpansionEnv macroDefs
-    (<> hygenicMacroDefs) <$> use @MacroExpansionEnv stmts
+  -> FilePath
+  -> SM.Expression
+  -> Eff effs [SMStatement]
+processProgram expandFile filePath program = do
+  ghci <- Ghci.start
+  newProgramExpr <-
+    Effs.runReader (ghci, filePath) $
+    expandProgramExpr @fileExpanderEffs expandFile program
+  Ghci.stop ghci
+  newStmts <-
+    mapM
+      (Effs.runReader filePath . withExprCtxt . normalizeStatement)
+      (unwrapCompoundExpressions newProgramExpr)
+  let addAstImport =
+        insertImports [SRawStatement Nothing "import Axel.Parse.AST as AST"]
+  pure $ finalizeProgram $ addAstImport newStmts
+
+finalizeProgram :: [SMStatement] -> [SMStatement]
+finalizeProgram stmts =
+  let expandQuotes =
+        bottomUpFmapSplicing
+          (\case
+             Parse.SExpression _ (Parse.Symbol _ "quote":xs) ->
+               map (quoteExpression quoteSourceMetadata) xs
+             x -> [x])
+      convertList =
+        bottomUpFmap $ \case
+          Parse.Symbol ann' "List" -> Parse.Symbol ann' "[]"
+          x -> x
+      convertUnit =
+        bottomUpFmap $ \case
+          Parse.Symbol ann' "Unit" -> Parse.Symbol ann' "()"
+          Parse.Symbol ann' "unit" -> Parse.Symbol ann' "()"
+          x -> x
+      (nonMacroDefs, macroDefs) = filterMapOut (^? _SMacroDefinition) stmts
+      hygenicMacroDefs = map hygenisizeMacroDefinition macroDefs
+      macroTySigs = typeMacroDefinitions hygenicMacroDefs
+      toTopLevelStmts = map unsafeNormalizeStatement . unwrapCompoundExpressions
+      toProgramExpr = wrapCompoundExpressions . map denormalizeStatement
+   in toTopLevelStmts $ convertUnit $ convertList $ expandQuotes $ toProgramExpr $
+      nonMacroDefs <>
+      map SMacroDefinition hygenicMacroDefs <>
+      macroTySigs
 
 isMacroImported ::
-     (Member (Effs.State MacroExpansionEnv) effs) => Identifier -> Eff effs Bool
-isMacroImported macroName =
-  any
-    (\case
-       SMacroImport macroImport -> macroName `elem` macroImport ^. imports
-       _ -> False) <$>
-  use @MacroExpansionEnv stmts
+     (Member (Effs.State [SMStatement]) effs) => Identifier -> Eff effs Bool
+isMacroImported macroName = do
+  let isFromPrelude = macroName `elem` preludeMacros
+  isImportedDirectly <-
+    any
+      (\case
+         SMacroImport macroImport -> macroName `elem` macroImport ^. imports
+         _ -> False) <$>
+    get @[SMStatement]
+  pure $ isFromPrelude || isImportedDirectly
 
 ensureCompiledDependency ::
      forall fileExpanderEffs effs.
      (Member (Effs.State ModuleInfo) effs, Members fileExpanderEffs effs)
   => FileExpander fileExpanderEffs
-  -> MacroImport SM.Expression
+  -> MacroImport (Maybe SM.Expression)
   -> Eff effs ()
 ensureCompiledDependency expandFile macroImport = do
   moduleInfo <-
@@ -157,198 +199,242 @@ ensureCompiledDependency expandFile macroImport = do
       when (isNothing transpiledOutput) $ expandFile dependencyFilePath
     Nothing -> pure ()
 
--- | Fully expand an expression tree.
+isStatementFocused :: Zipper SM.Expression SM.Expression -> Bool
+isStatementFocused zipper =
+  let wholeProgramExpr = fromZipper zipper
+      isCompoundExpr = Just wholeProgramExpr == (hole <$> up zipper)
+      isCompoundExprWrapper =
+        case hole zipper of
+          Parse.Symbol _ "begin" -> True
+          _ -> False
+   in isCompoundExpr && not isCompoundExprWrapper
+
+-- | Fully expand a top-level expression.
+-- | Macro expansion is top-down: it proceeds top to bottom, outwards to inwards,
+-- | and left to right. Whenever a macro is successfully expanded to yield new
+-- | expressions in place of the macro call in question, the substitution is made
+-- | and macro expansion is repeated from the beginning. As new definitions, etc.
+-- | are found at the top level while the program tree is being traversed, they
+-- | will be added to the environment accessible to macros during expansion.
 expandProgramExpr ::
      forall fileExpanderEffs effs.
-     ( Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State MacroExpansionEnv, Effs.State ModuleInfo, Effs.Reader ( Ghci.Ghci
-                                                                                                                                                                 , FilePath)] effs
+     ( Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo, Effs.Reader ( Ghci.Ghci
+                                                                                                                                          , FilePath)] effs
+     , Members fileExpanderEffs (Effs.State [SMStatement] ': Effs.Restartable SM.Expression ': effs)
+     )
+  => FileExpander fileExpanderEffs
+  -> SM.Expression
+  -> Eff effs SM.Expression
+expandProgramExpr expandFile programExpr =
+  restartable @SM.Expression programExpr $ Effs.evalState ([] :: [SMStatement]) .
+  zipperTopDownTraverse
+    (\zipper -> do
+       when (isStatementFocused zipper) $
+         -- NOTE This algorithm will exclude the last statement, but we won't
+         --      have any macros that rely on it (since macros can only access
+         --      what is before them in the file). Thus, this omission is okay.
+         let prevTopLevelExpr = hole $ unsafeLeft zipper
+          in unless (isCompoundExpressionWrapperHead prevTopLevelExpr) $
+             addStatementToMacroEnvironment
+               @fileExpanderEffs
+               expandFile
+               prevTopLevelExpr
+       let expr = hole zipper
+       when (is _SExpression expr) $ do
+         maybeNewExprs <- handleFunctionApplication expr
+         case maybeNewExprs of
+           Just newExprs -> replaceExpr zipper newExprs >>= restart
+           Nothing -> pure ()
+       pure expr)
+
+-- | Returns the full program expr (after the necessary substitution has been applied).
+replaceExpr ::
+     (Members '[ Effs.Error Error, Effs.Reader (Ghci.Ghci, FilePath)] effs)
+  => Zipper SM.Expression SM.Expression
+  -> [SM.Expression]
+  -> Eff effs SM.Expression
+replaceExpr zipper newExprs =
+  let programExpr = fromZipper zipper
+      oldExpr = hole zipper
+      -- NOTE Using `unsafeUp` is safe since `begin` cannot be the name of a macro,
+      --      and thus `zipper` will never be focused on the whole program.
+      oldParentExprZ = unsafeUp zipper
+      newParentExpr =
+        case hole oldParentExprZ of
+          Parse.SExpression ann' xs ->
+            let xs' = do
+                  x <- xs
+                  -- TODO What if there are multiple, equivalent copies of `oldExpr`?
+                  --      If they are not top-level statements, then the macro in question
+                  --      must already exist and thus we would have expanded it already.
+                  --      If they are top-level statements, but e.g. were auto-generated, then
+                  --      `==` will call them equal. If the macro in question did not exist
+                  --      when the first statement was defined, but it does by the second
+                  --      statement, then our result may be incorrect.
+                  if x == oldExpr
+                    then newExprs
+                    else pure x
+             in Parse.SExpression ann' xs'
+          _ -> fatal "expandProgramExpr" "0001"
+      newProgramExpr = fromZipper $ replaceHole newParentExpr oldParentExprZ
+   in if newProgramExpr == programExpr
+        then throwLoopError oldExpr newExprs
+        else pure newProgramExpr
+
+throwLoopError ::
+     (Members '[ Effs.Error Error, Effs.Reader (Ghci.Ghci, FilePath)] effs)
+  => SM.Expression
+  -> [SM.Expression]
+  -> Eff effs a
+throwLoopError oldExpr newExprs = do
+  filePath <- view @(Ghci.Ghci, FilePath) _2
+  throwError $
+    MacroError
+      filePath
+      oldExpr
+      ("Infinite loop detected during macro expansion!\nCheck that no macro calls expand (directly or indirectly) to themselves.\n" <>
+       toAxel oldExpr <>
+       " expanded into " <>
+       unwords (map toAxel newExprs) <>
+       ".")
+
+addStatementToMacroEnvironment ::
+     forall fileExpanderEffs effs.
+     ( Members '[ Effs.Error Error, Effs.State ModuleInfo, Effs.Reader ( Ghci.Ghci
+                                                                       , FilePath), Effs.State [SMStatement]] effs
      , Members fileExpanderEffs effs
      )
   => FileExpander fileExpanderEffs
   -> SM.Expression
-  -> Eff effs [SM.Expression]
-expandProgramExpr expandFile expr = do
-  let program = Parse.topLevelExpressionsToProgram [expr]
-  newTopLevelExprs <-
-    Parse.programToTopLevelExpressions <$>
-    bottomUpTraverse
-      (\case
-         Parse.SExpression ann' xs ->
-           Parse.SExpression ann' <$>
-           handleFunctionApplication @fileExpanderEffs expandFile xs
-         x -> pure x)
-      program
+  -> Eff effs ()
+addStatementToMacroEnvironment expandFile newExpr = do
   filePath <- view @(Ghci.Ghci, FilePath) _2
-  forM_ newTopLevelExprs $ Effs.runReader filePath . withExprCtxt .
-    normalizeStatement >=> \case
-    SMacroDefinition macroDef ->
-      (%=) @MacroExpansionEnv macroDefs (`snoc` macroDef)
-    newStmt -> do
-      (%=) @MacroExpansionEnv stmts (`snoc` newStmt)
-      case newStmt of
-        SMacroImport macroImport ->
-          ensureCompiledDependency @fileExpanderEffs expandFile macroImport
-        _ -> pure ()
-  pure newTopLevelExprs
+  stmt <- Effs.runReader filePath $ withExprCtxt $ normalizeStatement newExpr
+  case stmt of
+    SMacroImport macroImport ->
+      ensureCompiledDependency @fileExpanderEffs expandFile macroImport
+    _ -> pure ()
+  modify @[SMStatement] (`snoc` stmt)
 
 -- | If a function application is a macro call, expand it.
 handleFunctionApplication ::
-     forall fileExpanderEffs effs.
-     ( Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State MacroExpansionEnv, Effs.State ModuleInfo, Effs.Reader ( Ghci.Ghci
-                                                                                                                                                                 , FilePath)] effs
-     , Members fileExpanderEffs effs
-     )
-  => FileExpander fileExpanderEffs
-  -> [SM.Expression]
-  -> Eff effs [SM.Expression]
-handleFunctionApplication expandFile =
-  concatMapM
-    (\x ->
-       case x of
-         Parse.SExpression _ (Parse.Symbol _ function:args) -> do
-           isImported <- isMacroImported function
-           maybeMacroDefs <-
-             if isImported
-               then pure $ Just []
-               else lookupMacroDefinitions function <&> \case
-                      [] -> Nothing
-                      macroDefs' -> Just macroDefs'
-           case maybeMacroDefs of
-             Just _ -> do
-               newExprs <- expandMacroApplication function args
-               concatMapM
-                 (expandProgramExpr @fileExpanderEffs expandFile)
-                 newExprs
-             Nothing -> pure [x]
-         _ -> pure [x])
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo, Effs.Reader ( Ghci.Ghci
+                                                                                                                                         , FilePath), Effs.State [SMStatement]] effs)
+  => SM.Expression
+  -> Eff effs (Maybe [SM.Expression])
+handleFunctionApplication (Parse.SExpression _ (Parse.Symbol _ function:args)) = do
+  shouldExpand <- isMacroCall function
+  if shouldExpand
+    then Just <$> expandMacroApplication function args
+    else pure Nothing
+handleFunctionApplication _ = pure Nothing
+
+isMacroCall ::
+     (Member (Effs.State [SMStatement]) effs) => Identifier -> Eff effs Bool
+isMacroCall function = do
+  localDefs <- lookupMacroDefinitions function
+  let isDefinedLocally = not $ null localDefs
+  isImported <- isMacroImported function
+  pure $ isImported || isDefinedLocally
 
 lookupMacroDefinitions ::
-     (Member (Effs.State MacroExpansionEnv) effs)
+     (Member (Effs.State [SMStatement]) effs)
   => Identifier
-  -> Eff effs [MacroDefinition SM.Expression]
+  -> Eff effs [MacroDefinition (Maybe SM.Expression)]
 lookupMacroDefinitions identifier =
-  filter (\macroDef -> macroDef ^. functionDefinition . name == identifier) <$>
-  use @MacroExpansionEnv macroDefs
+  filterMap
+    (\stmt -> do
+       macroDef <- stmt ^? _SMacroDefinition
+       guard $ identifier == (macroDef ^. functionDefinition . name)
+       pure macroDef) <$>
+  get @[SMStatement]
 
 hygenisizeMacroDefinition :: MacroDefinition ann -> MacroDefinition ann
-hygenisizeMacroDefinition macroDef =
-  macroDef & functionDefinition . name %~ hygenisizeMacroName
+hygenisizeMacroDefinition = functionDefinition . name %~ hygenisizeMacroName
+
+insertImports :: [SMStatement] -> [SMStatement] -> [SMStatement]
+insertImports newStmts program =
+  case split (whenElt $ is _SModuleDeclaration) program of
+    [preEnv, moduleDeclaration, postEnv] ->
+      preEnv <> moduleDeclaration <> newStmts <> postEnv
+    [_] -> newStmts <> program
+    _ -> fatal "insertImport" "0001"
+
+mkMacroTypeSignature :: Identifier -> SMStatement
+mkMacroTypeSignature =
+  SRawStatement Nothing .
+  (<> " :: [AST.Expression SM.SourceMetadata] -> IO [AST.Expression SM.SourceMetadata]")
 
 generateMacroProgram ::
-     (Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Resource, Effs.State MacroExpansionEnv] effs)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Resource, Effs.State [SMStatement]] effs)
   => Identifier
   -> [SM.Expression]
-  -> Eff effs (String, String, String)
+  -> Eff effs (String, String)
 generateMacroProgram oldMacroName args = do
-  auxEnv <- use @MacroExpansionEnv stmts
   let newMacroName = hygenisizeMacroName oldMacroName
-  let insertDefName =
-        let defNamePlaceholder = "%%%MACRO_NAME%%%"
-         in replace defNamePlaceholder newMacroName
+  let mainFnName = "main_AXEL_AUTOGENERATED_FUNCTION_DEFINITION"
+  let footer =
+        [ mkMacroTypeSignature mainFnName
+        , SRawStatement Nothing $ mainFnName <> " = " <> newMacroName
+        ]
+  let header =
+        [ SMacroImport $ MacroImport Nothing "Axel" preludeMacros
+        , SQualifiedImport $
+          QualifiedImport Nothing "Axel.Parse.AST" "AST" (ImportAll Nothing)
+        , SQualifiedImport $
+          QualifiedImport Nothing "Axel.Sourcemap" "SM" (ImportAll Nothing)
+        , SQualifiedImport $
+          QualifiedImport
+            Nothing
+            "Unsafe.Coerce"
+            "Unsafe.Coerce_AXEL_AUTOGENERATED_IMPORT"
+            (ImportAll Nothing)
+        ]
   let insertArgs =
         let argsPlaceholder = "%%%ARGUMENTS%%%"
          in replace argsPlaceholder (show args)
-  let (preModuleEnv, postModuleEnv) =
-        if any (is _SModuleDeclaration) auxEnv
-          then case splitWhen (is _SModuleDeclaration) auxEnv of
-                 preEnv:postEnv:_ -> (preEnv, postEnv)
-                 _ -> fatal "generateMacroProgram" "0001"
-          else ([], auxEnv)
-  let renderStmts =
-        prettifyHaskell . delimit Newlines . map (SM.raw . toHaskell)
-  astDef <- readResource Res.astDefinition
+  let renderStmts :: [SMStatement] -> String
+      renderStmts = unlines . map (SM.raw . toHaskell)
   scaffold <- insertArgs <$> readResource Res.macroScaffold
-  hygenicMacroDefs <-
-    map hygenisizeMacroDefinition <$> use @MacroExpansionEnv macroDefs
-  macroDefAndEnv <-
-    do header <- readResource Res.macroDefinitionAndEnvironmentHeader
-       footer <-
-         insertDefName <$> readResource Res.macroDefinitionAndEnvironmentFooter
-       pure $
-         unlines
-           [ renderStmts preModuleEnv
-           , header
-           , renderStmts postModuleEnv
-           , renderStmts $ map SMacroDefinition hygenicMacroDefs <>
-             map STypeSignature (typeMacroDefinitions hygenicMacroDefs)
-           , footer
-           ]
-  pure (astDef, scaffold, macroDefAndEnv)
+  auxEnv <- get @[SMStatement]
+  -- TODO If the file being transpiled has pragmas but no explicit module declaration,
+  --      they will be erroneously included *after* the module declaration.
+  --      Should we just require Axel files to have module declarations, or is there a
+  --      less intrusive alternate solution?
+  let macroDefAndEnv =
+        let moduleDecl =
+              SModuleDeclaration
+                Nothing
+                "AutogeneratedAxelMacroDefinitionAndEnvironment"
+            programStmts =
+              insertImports header $ moduleDecl : (auxEnv <> footer)
+         in renderStmts $ finalizeProgram programStmts
+  pure (scaffold, macroDefAndEnv)
 
-expansionPass ::
-     forall fileExpanderEffs effs.
-     ( Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Reader ( Ghci.Ghci
-                                                                                             , FilePath), Effs.Resource, Effs.State ModuleInfo] effs
-     , Members fileExpanderEffs (Effs.State MacroExpansionEnv ': effs)
-     )
-  => FileExpander fileExpanderEffs
-  -> SM.Expression
-  -> Eff effs SM.Expression
-expansionPass expandFile programExpr =
-  Parse.topLevelExpressionsToProgram . map denormalizeStatement <$>
-  expandMacros
-    @fileExpanderEffs
-    expandFile
-    (Parse.programToTopLevelExpressions programExpr)
-
-exhaustivelyExpandMacros ::
-     forall fileExpanderEffs effs.
-     ( Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs
-     , Members fileExpanderEffs (Effs.State MacroExpansionEnv ': Effs.Reader ( Ghci.Ghci
-                                                                             , FilePath) ': effs)
-     )
-  => FilePath
-  -> FileExpander fileExpanderEffs
-  -> SM.Expression
-  -> Eff effs SM.Expression
-exhaustivelyExpandMacros filePath expandFile program = do
-  ghci <- Ghci.start
-  Ghci.enableJsonErrors ghci
-  expandedTopLevelExprs <-
-    Effs.runReader (ghci, filePath) $ Parse.programToTopLevelExpressions <$>
-    exhaustM (expansionPass @fileExpanderEffs expandFile) program
-  macroTypeSigs <-
-    do normalizedStmts <-
-         Effs.runReader filePath $ withExprCtxt $
-         traverse normalizeStatement expandedTopLevelExprs
-       let typeSigs =
-             typeMacroDefinitions $ mapMaybe isMacroDefinition normalizedStmts
-       pure $ map (denormalizeStatement . STypeSignature) typeSigs
-  Ghci.stop ghci
-  pure $
-    Parse.topLevelExpressionsToProgram (expandedTopLevelExprs <> macroTypeSigs)
+typeMacroDefinitions :: [MacroDefinition ann] -> [SMStatement]
+typeMacroDefinitions = map mkMacroTypeSignature . getMacroNames
   where
-    isMacroDefinition (SMacroDefinition x) = Just x
-    isMacroDefinition _ = Nothing
+    getMacroNames = nub . map (^. functionDefinition . name)
 
-typeMacroDefinitions :: [MacroDefinition ann] -> [TypeSignature SM.Expression]
-typeMacroDefinitions macroDefs' = map mkTySig macroNames
-  where
-    macroNames = nub $ map (^. functionDefinition . name) macroDefs'
-    mkTySigSource macroName =
-      "(:: " <> macroName <>
-      "(-> ([] (AST.Expression AST.SourceMetadata)) (IO ([] (AST.Expression AST.SourceMetadata)))))"
-    mkTySig :: Identifier -> TypeSignature SM.Expression
-    mkTySig macroName =
-      let expr =
-            fromJust $ head' $ unsafeIgnoreError @SM.Error $
-            Parse.parseMultiple Nothing $
-            mkTySigSource macroName
-       in unsafeIgnoreError
-            @SM.Error
-            (Effs.runReader "" $ withExprCtxt $ normalizeStatement expr) ^?!
-          _STypeSignature
+-- | Source metadata is lost.
+-- | Use only for logging and such where that doesn't matter.
+losslyReconstructMacroCall :: Identifier -> [SM.Expression] -> SM.Expression
+losslyReconstructMacroCall macroName args =
+  Parse.SExpression
+    Nothing
+    (Parse.Symbol Nothing macroName : map (Nothing <$) args)
 
 expandMacroApplication ::
-     (Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource, Effs.Reader ( Ghci.Ghci
-                                                                                                           , FilePath), Effs.State MacroExpansionEnv] effs)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.Reader ( Ghci.Ghci
+                                                                                                                  , FilePath), Effs.State [SMStatement]] effs)
   => Identifier
   -> [SM.Expression]
   -> Eff effs [SM.Expression]
 expandMacroApplication macroName args = do
+  logStrLn $ "Expanding: " <> toAxel (losslyReconstructMacroCall macroName args)
   filePath' <- view @(Ghci.Ghci, FilePath) _2
   macroProgram <- generateMacroProgram macroName args
-  newSource <- uncurry3 evalMacro macroProgram
+  newSource <- uncurry (evalMacro (macroName, args)) macroProgram
   Parse.parseMultiple (Just filePath') newSource
 
 isMacroDefinitionStatement :: Statement ann -> Bool
@@ -356,45 +442,46 @@ isMacroDefinitionStatement (SMacroDefinition _) = True
 isMacroDefinitionStatement _ = False
 
 evalMacro ::
-     (Members '[ Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Reader ( Ghci.Ghci
-                                                                                            , FilePath)] effs)
-  => String
+     forall effs.
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Reader ( Ghci.Ghci
+                                                                                         , FilePath)] effs)
+  => (Identifier, [SM.Expression])
   -> String
   -> String
   -> Eff effs String
-evalMacro astDefinition scaffold macroDefinitionAndEnvironment = do
-  setup
-  (ghci, originalFilePath) <- ask
+evalMacro (macroName, args) scaffold macroDefinitionAndEnvironment = do
+  tmpDir <- getTempDirectory
+  let macroDefinitionAndEnvironmentFileName =
+        tmpDir </> "AutogeneratedAxelMacroDefinitionAndEnvironment.hs"
+  let scaffoldFileName = tmpDir </> scaffoldModuleName <.> "hs"
+  FS.writeFile scaffoldFileName scaffold
+  FS.writeFile
+    macroDefinitionAndEnvironmentFileName
+    macroDefinitionAndEnvironment
+  ghci <- view @(Ghci.Ghci, FilePath) _1
   loadResult <-
     Ghci.exec ghci $
-    unwords
-      [ ":l"
-      , scaffoldFileName
-      , astDefinitionFileName
-      , macroDefinitionAndEnvironmentFileName
-      ]
-  if "Ok, three modules loaded." `elem` loadResult
+    unwords [":l", scaffoldFileName, macroDefinitionAndEnvironmentFileName]
+  if "Ok, two modules loaded." `elem` loadResult
     then do
-      result <- unlines <$> Ghci.exec ghci ":main"
-      cleanup
-      pure result
-    else throwError @SM.Error $
-         MacroError
-           ("While compiling '" <> originalFilePath <> "':\n\n" <>
-            processErrors M.empty (unlines loadResult))
+      result <- Ghci.exec ghci ":main"
+      unlines result &
+        if any ("*** Exception:" `isPrefixOf`) result
+          then throwMacroError
+          else pure
+    else throwMacroError (unlines loadResult)
   where
-    macroDefinitionAndEnvironmentFileName =
-      "AutogeneratedAxelMacroDefinitionAndEnvironment.hs"
+    getTempDirectory = do
+      let uniqueId = hash $ scaffold <> macroDefinitionAndEnvironment
+      let dirName = "axelTemp" </> show uniqueId
+      FS.createDirectoryIfMissing True dirName
+      pure dirName
     scaffoldModuleName = "AutogeneratedAxelScaffold"
-    scaffoldFileName = scaffoldModuleName <.> "hs"
-    astDefinitionFileName = "AutogeneratedAxelASTDefinition.hs"
-    setup = do
-      FS.writeFile scaffoldFileName scaffold
-      FS.writeFile astDefinitionFileName astDefinition
-      FS.writeFile
-        macroDefinitionAndEnvironmentFileName
-        macroDefinitionAndEnvironment
-    cleanup = do
-      FS.removeFile astDefinitionFileName
-      FS.removeFile macroDefinitionAndEnvironmentFileName
-      FS.removeFile scaffoldFileName
+    throwMacroError :: String -> Eff effs a
+    throwMacroError msg = do
+      originalFilePath <- view @(Ghci.Ghci, FilePath) _2
+      throwError @Error $
+        MacroError
+          originalFilePath
+          (losslyReconstructMacroCall macroName args)
+          msg

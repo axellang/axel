@@ -1,0 +1,14 @@
+(defmacro generateMacroChain
+ ([(AST.Symbol ann macro)]
+  (pure
+   (let ((macro1 {macro <> "1"}) (macro2 {macro <> "2"}) (macro3 {macro <> "3"}))
+    [`(defmacro ~(AST.Symbol ann macro1)
+       ([] (pure ['(def shouldExist (IO Unit)
+                    (() (pure unit)))])))
+     `(defmacro ~(AST.Symbol ann macro2)
+       ([] (pure [`(~'~(AST.Symbol ann macro1))])))
+     `(defmacro ~(AST.Symbol ann macro3)
+       ([] (pure [`(~'~(AST.Symbol ann macro2))])))]))))
+
+(generateMacroChain macros) -- Generate an interdependent macro chain
+(macros3) -- Call the macro chain

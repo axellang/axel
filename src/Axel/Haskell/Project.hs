@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Axel.Haskell.Project where
 
@@ -14,9 +13,11 @@ import Axel.Eff.FileSystem
   )
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.Ghci as Effs (Ghci)
+import qualified Axel.Eff.Log as Effs (Log)
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (getResourcePath, newProjectTemplate)
 import qualified Axel.Eff.Resource as Effs (Resource)
+import Axel.Error (Error)
 import Axel.Haskell.File (readModuleInfo, transpileFile')
 import Axel.Haskell.Stack
   ( addStackDependency
@@ -26,8 +27,6 @@ import Axel.Haskell.Stack
   , runStackProject
   )
 import Axel.Macros (ModuleInfo)
-import qualified Axel.Parse.AST as Parse (SourceMetadata)
-import qualified Axel.Sourcemap as SM (Error)
 
 import Control.Monad.Freer (Eff, Members)
 import qualified Control.Monad.Freer.Error as Effs (Error)
@@ -56,7 +55,7 @@ newProject projectName = do
   mapM_ copyAxel ["Setup", "app" </> "Main", "src" </> "Lib", "test" </> "Spec"]
 
 transpileProject ::
-     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
   => Eff effs ModuleInfo
 transpileProject = do
   files <- concat <$> mapM getDirectoryContentsRec ["app", "src", "test"]
@@ -66,14 +65,14 @@ transpileProject = do
   Effs.execState moduleInfo $ mapM transpileFile' axelFiles
 
 buildProject ::
-     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Resource] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
   => Eff effs ()
 buildProject = do
   projectPath <- getCurrentDirectory
   transpiledFiles <- transpileProject
-  buildStackProject @Parse.SourceMetadata transpiledFiles projectPath
+  buildStackProject transpiledFiles projectPath
 
 runProject ::
-     (Members '[ Effs.Console, Effs.Error SM.Error, Effs.FileSystem, Effs.Process] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
   => Eff effs ()
-runProject = getCurrentDirectory >>= runStackProject @Parse.SourceMetadata
+runProject = getCurrentDirectory >>= runStackProject

@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -16,22 +17,26 @@ import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Data.Semigroup ((<>))
 
-data Error ann
-  = ConvertError String
-  | EvalError String
-  | MacroError String
-  | NormalizeError String [Expression ann]
-  | ParseError String
-  | ProjectError String
+data Error where
+  ConvertError :: FilePath -> String -> Error
+  MacroError :: FilePath -> Expression ann -> String -> Error
+  NormalizeError :: FilePath -> String -> [Expression ann] -> Error
+  ParseError :: FilePath -> String -> Error
+  ProjectError :: String -> Error
 
-instance Show (Error ann) where
-  show :: Error ann -> String
-  show (ConvertError err) = err
-  show (EvalError err) = err
-  show (MacroError err) = err
-  show (NormalizeError err context) =
-    "error:\n" <> err <> "\n\n" <> "context:\n" <> unlines (map toAxel context)
-  show (ParseError err) = err
+mkFileErrorMsg :: FilePath -> String -> String
+mkFileErrorMsg filePath err = "While compiling '" <> filePath <> "':\n\n" <> err
+
+instance Show Error where
+  show :: Error -> String
+  show (ConvertError filePath err) = mkFileErrorMsg filePath err
+  show (MacroError filePath ctxt err) =
+    mkFileErrorMsg filePath $
+    "While expanding " <> toAxel ctxt <> ":\n\n" <> err
+  show (NormalizeError filePath err context) =
+    mkFileErrorMsg filePath $
+    err <> "\n\n" <> "Context:\n" <> unlines (map toAxel context)
+  show (ParseError filePath err) = mkFileErrorMsg filePath err
   show (ProjectError err) = err
 
 fatal :: String -> String -> a

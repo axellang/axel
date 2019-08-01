@@ -6,7 +6,7 @@
 
 module Axel.Haskell.Error where
 
-import Axel.Parse (SourcePosition(SourcePosition))
+import Axel.Sourcemap (SourcePosition(SourcePosition))
 import qualified Axel.Sourcemap as SM (Output(Output), findOriginalPosition)
 import Axel.Utils.Json (_Int)
 

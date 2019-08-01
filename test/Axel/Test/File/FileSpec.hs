@@ -5,6 +5,7 @@ module Axel.Test.File.FileSpec where
 import Axel.Eff.Console as Console
 import Axel.Eff.FileSystem as FS
 import Axel.Eff.Ghci as Ghci
+import Axel.Eff.Log as Log
 import Axel.Eff.Process as Proc
 import Axel.Eff.Resource as Res
 import Axel.Error as Error
@@ -37,9 +38,11 @@ test_transpileSource_golden = do
           hsFile
           (C.pack . SM.raw <$>
            (Effs.runM .
+            Console.runEff .
+            Log.runEffAsConsole .
             Ghci.runEff .
             evalState (M.empty :: ModuleInfo) .
             Res.runEff .
             Proc.runEff .
-            FS.runEff . Error.unsafeRunEff @SM.Error . Console.runEff)
+            FS.runEff . Error.unsafeRunEff @Error.Error . Console.runEff)
              (FS.readFile axelFile >>= transpileSource (takeBaseName axelFile)))

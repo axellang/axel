@@ -1,3 +1,4 @@
+import Axel.Parse.AST as AST
 main :: (IO ())
 foo :: Int
 bar :: ((->) Int ((->) Char Bool))

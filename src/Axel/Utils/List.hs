@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Axel.Utils.List where
 
 import Axel.Utils.Tuple
@@ -10,17 +8,20 @@ import Axel.Utils.Tuple
   , unannotate
   )
 
-import Control.Category ((>>>))
-import Control.Lens ((^.))
+import Control.Lens ((%~), (&), (^.), _1, _2)
 
 import Data.Function (on)
-import Data.List (elemIndex, foldl', isPrefixOf, sortOn)
+import Data.List (elemIndex, isPrefixOf, sortOn)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import qualified Data.List.NonEmpty as NE (groupBy, head, map)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (fromJust, listToMaybe)
 
 head' :: [a] -> Maybe a
 head' = listToMaybe
+
+-- Alternatively, `unsafeHead = head`.
+unsafeHead :: [a] -> a
+unsafeHead = fromJust . listToMaybe
 
 groupAllWith :: (Ord b) => (a -> b) -> [a] -> [Annotated b (NonEmpty a)]
 groupAllWith f =
@@ -59,11 +60,14 @@ takeUntil xs (y:ys) =
     then []
     else y : takeUntil xs ys
 
+filterMapOut :: (a -> Maybe b) -> [a] -> ([a], [b])
+filterMapOut f =
+  foldr
+    (\x acc ->
+       case f x of
+         Just x' -> acc & _2 %~ (x' :)
+         Nothing -> acc & _1 %~ (x :))
+    ([], [])
+
 filterMap :: (a -> Maybe b) -> [a] -> [b]
-filterMap f =
-  foldl'
-    (\acc ->
-       f >>> \case
-         Just x -> x : acc
-         Nothing -> acc)
-    []
+filterMap f xs = snd $ filterMapOut f xs

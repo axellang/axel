@@ -13,12 +13,13 @@
 module Axel.Test.Eff.GhciMock where
 
 import Axel.Eff.Ghci as Effs
-import Axel.Test.MockUtils
 
 import Control.Lens
 import Control.Monad.Freer
 import Control.Monad.Freer.Error as Effs
 import Control.Monad.Freer.State as Effs
+
+import TestUtils
 
 data GhciState =
   GhciState

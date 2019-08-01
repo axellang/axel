@@ -37,8 +37,7 @@ data-files:
 - resources/**/*
 library:
   source-dirs: src
-  ghc-options:
-  - -Wmissing-import-lists
+  ghc-options: []
   dependencies:
   - aeson
   - bytestring
@@ -46,6 +45,7 @@ library:
   - directory
   - filepath
   - ghcid
+  - hashable
   - haskell-src-exts
   - lens
   - lens-aeson
@@ -60,6 +60,7 @@ library:
   - template-haskell
   - text
   - typed-process
+  - uniplate
   - vector
   - yaml
 executables:
@@ -70,7 +71,6 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -Wmissing-import-lists
     dependencies:
     - axel
     - containers
@@ -96,4 +96,6 @@ tests:
     - tasty-golden
     - tasty-hedgehog
     - tasty-hspec
+    - tasty-hunit
     - transformers
+    - uniplate

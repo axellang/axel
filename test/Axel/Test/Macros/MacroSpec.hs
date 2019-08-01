@@ -5,6 +5,7 @@ module Axel.Test.Macros.MacroSpec where
 import Axel.Eff.Console as Console
 import Axel.Eff.FileSystem as FS
 import Axel.Eff.Ghci as Ghci
+import Axel.Eff.Log as Log
 import Axel.Eff.Process as Proc
 import Axel.Eff.Resource as Res
 import Axel.Error as Error
@@ -24,8 +25,8 @@ import System.FilePath
 import Test.Tasty
 import Test.Tasty.Golden
 
-test_transpileSource_golden :: IO TestTree
-test_transpileSource_golden = do
+test_macroExpansion_golden :: IO TestTree
+test_macroExpansion_golden = do
   axelFiles <- findByExtension [".axel_golden"] "test/Axel/Test/Macros"
   pure $
     testGroup "macro expansion golden tests" $ do
@@ -37,9 +38,11 @@ test_transpileSource_golden = do
           hsFile
           (C.pack . SM.raw <$>
            (Effs.runM .
+            Console.runEff .
             Ghci.runEff .
             evalState (M.empty :: ModuleInfo) .
             Res.runEff .
             Proc.runEff .
-            FS.runEff . Error.unsafeRunEff @SM.Error . Console.runEff)
+            FS.runEff .
+            Error.unsafeRunEff @Error.Error . Console.runEff . Log.ignoreEff)
              (FS.readFile axelFile >>= transpileSource (takeBaseName axelFile)))

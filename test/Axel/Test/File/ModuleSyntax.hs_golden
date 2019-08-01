@@ -1,2 +1,3 @@
 module Test.Main where
+import Axel.Parse.AST as AST
 foo  = ()

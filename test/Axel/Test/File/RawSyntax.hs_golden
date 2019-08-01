@@ -1,2 +1,3 @@
+import Axel.Parse.AST as AST
 makeLenses ''Foo
 main  = putStrLn "Hello, world!"

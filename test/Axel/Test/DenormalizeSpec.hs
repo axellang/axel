@@ -3,16 +3,18 @@
 module Axel.Test.DenormalizeSpec where
 
 import Axel.Denormalize
+import Axel.Error as Error
 import Axel.Normalize
 import Axel.Sourcemap as SM
 import qualified Axel.Test.ASTGen as ASTGen
-import Axel.Test.MockUtils
 
 import Control.Monad.Freer as Eff
 import Control.Monad.Freer.Error (runError)
 import Control.Monad.Freer.Reader (runReader)
 
 import Hedgehog
+
+import TestUtils
 
 (=$=) :: (Functor f, Eq (f ()), Show (f ()), MonadTest m) => f a -> f b -> m ()
 a =$= b = (() <$ a) === (() <$ b)
@@ -24,7 +26,7 @@ hprop_normalizeExpression_is_the_inverse_of_denormalizeExpression =
     expr =$=
       unwrapRight
         (Eff.run $
-         runError @SM.Error $
+         runError @Error.Error $
          runReader "" $
          runReader ([] :: [SM.Expression]) $
          normalizeExpression (denormalizeExpression expr))
@@ -36,7 +38,7 @@ hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement =
     stmt =$=
       unwrapRight
         (Eff.run $
-         runError @SM.Error $
+         runError @Error.Error $
          runReader "" $
          runReader ([] :: [SM.Expression]) $
          normalizeStatement (denormalizeStatement stmt))

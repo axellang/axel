@@ -3,8 +3,9 @@
 
 module Axel.Test.ParseSpec where
 
+import Axel.Error as Error
 import Axel.Parse
-import qualified Axel.Sourcemap as SM
+import Axel.Parse.AST
 import Axel.Utils.String
 
 import Control.Monad.Freer as Eff
@@ -68,14 +69,6 @@ spec_Parse = do
               , SExpression () [Symbol () "foo", Symbol () "bar"]
               ]
       parseSingle "~(foo bar)" `shouldBe` result
-    it "can parse a quoted expression" $ do
-      let result =
-            SExpression
-              ()
-              [ Symbol () "quote"
-              , SExpression () [Symbol () "foo", Symbol () "bar"]
-              ]
-      parseSingle "'(foo bar)" `shouldBe` result
   describe "parseMultiple" $ do
     it "can parse multiple expressions" $ do
       let input =
@@ -99,7 +92,7 @@ spec_Parse = do
                 ()
                 [Symbol () "bar", Symbol () "x", Symbol () "y", Symbol () "z"]
             ]
-      case Eff.run . Effs.runError @SM.Error $ parseMultiple Nothing input of
+      case Eff.run . Effs.runError @Error.Error $ parseMultiple Nothing input of
         Left err -> expectationFailure $ show err
         Right x -> map (() <$) x `shouldBe` result
   describe "parseSource" $ do
@@ -121,6 +114,6 @@ spec_Parse = do
                   , LiteralInt () 3
                   ]
               ]
-      case Eff.run . Effs.runError @SM.Error $ parseSource Nothing input of
+      case Eff.run . Effs.runError @Error.Error $ parseSource Nothing input of
         Left err -> expectationFailure $ show err
         Right x -> () <$ x `shouldBe` result

@@ -1,1 +1,2 @@
+import Axel.Parse.AST as AST
 newtype (Foo a) = Bar (a Int)

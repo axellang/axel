@@ -1,2 +1,3 @@
+import Axel.Parse.AST as AST
 type Baz = String
 type (Foo a) = (Either a Baz)

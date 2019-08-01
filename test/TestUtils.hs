@@ -5,11 +5,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Axel.Test.MockUtils where
+module TestUtils where
 
+import Control.Exception
 import Control.Monad.Freer
 import Control.Monad.Freer.Error as Effs
 import Control.Monad.Freer.State as Effs
+
+import Test.Tasty.HUnit as HUnit
 
 throwInterpretError ::
      forall s effs a. (Members '[ Effs.Error String, Effs.State s] effs, Show s)
@@ -28,3 +31,12 @@ throwInterpretError actionName message = do
 unwrapRight :: (Show b) => Either b a -> a
 unwrapRight (Right x) = x
 unwrapRight (Left x) = error $ show x
+
+assertEqual :: (Eq a, Show a) => String -> a -> a -> Assertion
+assertEqual msg expected actual =
+  catch (HUnit.assertEqual "" expected actual) $ \(HUnitFailure maybeSrcLoc errorMsg) ->
+    errorWithoutStackTrace $
+    "assertEquals FAILURE\n\nmessage: " <> msg <> "\n\n" <> errorMsg <>
+    (case maybeSrcLoc of
+       Just srcLoc -> "\n\nat: " <> show srcLoc
+       Nothing -> "")

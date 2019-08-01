@@ -96,8 +96,7 @@ addStackDependency dependencyId projectPath =
       Left _ -> fatal "addStackDependency" "0001"
 
 buildStackProject ::
-     forall ann effs.
-     (Members '[ Effs.Console, Effs.Error (Error ann), Effs.FileSystem, Effs.Process] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
   => ModuleInfo
   -> ProjectPath
   -> Eff effs ()
@@ -109,7 +108,7 @@ buildStackProject moduleInfo projectPath = do
   case result of
     (ExitSuccess, _, _) -> pure ()
     (ExitFailure _, _, stderr) ->
-      throwError @(Error ann) $
+      throwError $
       ProjectError
         ("Project failed to build.\n\n" <>
          processErrors (getTranspiledFiles moduleInfo) stderr)
@@ -125,8 +124,7 @@ createStackProject projectName = do
   setStackageResolver projectName stackageResolverWithAxel
 
 runStackProject ::
-     forall ann effs.
-     (Members '[ Effs.Console, Effs.Error (Error ann), Effs.FileSystem, Effs.Process] effs)
+     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
   => ProjectPath
   -> Eff effs ()
 runStackProject projectPath = do
@@ -136,8 +134,7 @@ runStackProject projectPath = do
       putStrLn ("Running " <> target <> "...")
       void $ runProcess @'InheritStreams ("stack exec " <> target)
     _ ->
-      throwError @(Error ann) $
-      ProjectError "No executable target was unambiguously found!"
+      throwError $ ProjectError "No executable target was unambiguously found!"
   where
     findExeTargets =
       foldl'

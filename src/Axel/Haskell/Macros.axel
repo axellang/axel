@@ -2,8 +2,6 @@
 
 (module Axel.Haskell.Macros)
 
-(importm Axel (applyInfix def))
-
 (import Axel.Haskell.Language (haskellOperatorSymbols haskellSyntaxSymbols isOperator))
 (importq Axel.Parse Parse (syntaxSymbols))
 
@@ -19,8 +17,13 @@
          (suffixedName
           (if {(T.pack suffix) T.isSuffixOf (T.pack oldName)}
             oldName
-            {oldName <> suffix})))
+            {oldName <> suffix}))
+         (symbolReplacementMap
+          (if (isOperator oldName)
+            haskellSyntaxSymbols
+            {haskellSyntaxSymbols <> haskellOperatorSymbols}
+            haskellSyntaxSymbols)))
      (T.unpack (foldl' (\ (acc {old , new}) (T.replace (T.singleton old) (T.pack new) acc))
                        (T.pack suffixedName)
                        (filter (\ ({sym , _}) {sym notElem Parse.syntaxSymbols})
-                               {haskellSyntaxSymbols <> haskellOperatorSymbols}))))))
+                               symbolReplacementMap))))))

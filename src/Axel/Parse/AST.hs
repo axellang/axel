@@ -1,27 +1,37 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
--- NOTE Because this file will be used as the header of auto-generated macro programs,
---      it can't have any project-specific dependencies (such as `Fix`).
 module Axel.Parse.AST where
 
-import Data.IORef (IORef, modifyIORef, newIORef, readIORef)
+import Axel.Utils.Maybe (foldMUntilNothing)
+import Axel.Utils.Recursion
+  ( ZipperRecursive(zipperBottomUpTraverse, zipperTopDownTraverse)
+  , ZipperTraverse
+  , bottomUpFmap
+  )
+import Axel.Utils.String (handleStringEscapes)
+import Axel.Utils.Zipper (unsafeDown, unsafeUp)
+
+import Control.Lens.TH (makePrisms)
+
+import Data.Data (Data)
+import Data.Generics.Uniplate.Data ()
+import Data.Generics.Uniplate.Zipper
+  ( Zipper
+  , fromZipper
+  , hole
+  , replaceHole
+  , right
+  , zipper
+  )
 import Data.Semigroup ((<>))
 
-import System.IO.Unsafe (unsafePerformIO)
-
-handleStringEscapes :: String -> String
-handleStringEscapes =
-  concatMap $ \case
-    '\\' -> "\\\\"
-    c -> [c]
-
--- ******************************
--- ** AST                      **
--- ******************************
 -- TODO `Expression` should probably be `Traversable`, use recursion schemes, etc.
 --      We should provide `toFix` and `fromFix` functions for macros to take advantage of.
 --      (Maybe all macros have the argument automatically `fromFix`-ed to make consumption simpler?)
@@ -31,65 +41,68 @@ data Expression ann
   | LiteralString ann String
   | SExpression ann [Expression ann]
   | Symbol ann String
-  deriving (Eq, Functor, Show)
+  deriving (Eq, Data, Functor, Show)
 
-bottomUpFmap ::
-     (Expression ann -> Expression ann) -> Expression ann -> Expression ann
-bottomUpFmap f x =
-  f $
-  case x of
-    LiteralChar _ _ -> x
-    LiteralInt _ _ -> x
-    LiteralString _ _ -> x
-    SExpression ann' xs -> SExpression ann' (map (bottomUpFmap f) xs)
-    Symbol _ _ -> x
+makePrisms ''Expression
 
-bottomUpTraverse ::
-     (Monad m)
-  => (Expression ann -> m (Expression ann))
+-- TODO Derive this automatically.
+getAnn :: Expression ann -> ann
+getAnn (LiteralChar ann _) = ann
+getAnn (LiteralInt ann _) = ann
+getAnn (LiteralString ann _) = ann
+getAnn (SExpression ann _) = ann
+getAnn (Symbol ann _) = ann
+
+instance (Data ann) => ZipperRecursive (Expression ann) where
+  zipperBottomUpTraverse :: forall m. ZipperTraverse m (Expression ann)
+  zipperBottomUpTraverse f = fmap fromZipper . go . zipper
+    where
+      go ::
+           Zipper (Expression ann) (Expression ann)
+        -> m (Zipper (Expression ann) (Expression ann))
+      go z = do
+        let recurse =
+              case hole z of
+                LiteralChar _ _ -> pure
+                LiteralInt _ _ -> pure
+                LiteralString _ _ -> pure
+                SExpression _ [] -> pure
+                SExpression _ _ ->
+                  fmap unsafeUp . foldMUntilNothing right go . unsafeDown
+                Symbol _ _ -> pure
+        z' <- recurse z
+        x <- f z'
+        pure $ replaceHole x z'
+  zipperTopDownTraverse :: forall m. ZipperTraverse m (Expression ann)
+  zipperTopDownTraverse f = fmap fromZipper . go . zipper
+    where
+      go ::
+           Zipper (Expression ann) (Expression ann)
+        -> m (Zipper (Expression ann) (Expression ann))
+      go z = do
+        x <- f z
+        let z' = replaceHole x z
+        let recurse =
+              case x of
+                LiteralChar _ _ -> pure
+                LiteralInt _ _ -> pure
+                LiteralString _ _ -> pure
+                SExpression _ [] -> pure
+                SExpression _ _ ->
+                  fmap unsafeUp . foldMUntilNothing right go . unsafeDown
+                Symbol _ _ -> pure
+        recurse z'
+
+bottomUpFmapSplicing ::
+     (Data ann)
+  => (Expression ann -> [Expression ann])
   -> Expression ann
-  -> m (Expression ann)
-bottomUpTraverse f x =
-  f =<<
-  case x of
-    LiteralChar _ _ -> pure x
-    LiteralInt _ _ -> pure x
-    LiteralString _ _ -> pure x
-    SExpression ann' xs -> SExpression ann' <$> traverse (bottomUpTraverse f) xs
-    Symbol _ _ -> pure x
+  -> Expression ann
+bottomUpFmapSplicing f =
+  bottomUpFmap $ \case
+    SExpression ann' xs -> SExpression ann' $ concatMap f xs
+    x -> x
 
-topDownFmap ::
-     (Expression ann -> Expression ann) -> Expression ann -> Expression ann
-topDownFmap f x =
-  case f x of
-    LiteralChar _ _ -> x
-    LiteralInt _ _ -> x
-    LiteralString _ _ -> x
-    SExpression ann' xs -> SExpression ann' (map (topDownFmap f) xs)
-    Symbol _ _ -> x
-
--- ******************************
--- ** Sourcemap                **
--- ******************************
-data SourcePosition =
-  SourcePosition
-    { line :: Int
-    , column :: Int
-    }
-  deriving (Eq, Show)
-
-renderSourcePosition :: SourcePosition -> String
-renderSourcePosition sourcePosition =
-  show (line sourcePosition) <> ":" <> show (column sourcePosition)
-
-data SourceMetadata
-  = AutoGenerated
-  | FromSource SourcePosition
-  deriving (Eq, Show)
-
--- ******************************
--- ** Internal                 **
--- ******************************
 toAxel :: Expression ann -> String
 toAxel (LiteralChar _ x) = ['{', x, '}']
 toAxel (LiteralInt _ x) = show x
@@ -105,71 +118,32 @@ toAxel (SExpression _ [Symbol _ "unquoteSplicing", x]) = "~@" <> toAxel x
 toAxel (SExpression _ xs) = "(" <> unwords (map toAxel xs) <> ")"
 toAxel (Symbol _ x) = x
 
--- ******************************
--- ** Quoting                  **
--- ******************************
--- TODO Derive these with Template Haskell (they're currently very brittle)
-quoteSourceMetadata :: SourceMetadata -> Expression SourceMetadata
-quoteSourceMetadata sm@AutoGenerated = Symbol sm "AST.AutoGenerated"
-quoteSourceMetadata sm@(FromSource sourcePosition) =
+-- TODO Derive this with Template Haskell (it's currently very brittle)
+quoteExpression :: (ann -> Expression ann) -> Expression ann -> Expression ann
+quoteExpression quoteAnn (LiteralChar ann x) =
   SExpression
-    sm
-    [ Symbol sm "AST.FromSource"
-    , SExpression
-        sm
-        [ Symbol sm "AST.SourcePosition"
-        , LiteralInt sm (line sourcePosition)
-        , LiteralInt sm (column sourcePosition)
-        ]
+    ann
+    [Symbol ann "AST.LiteralChar", quoteAnn ann, LiteralChar ann x]
+quoteExpression quoteAnn (LiteralInt ann x) =
+  SExpression ann [Symbol ann "AST.LiteralInt", quoteAnn ann, LiteralInt ann x]
+quoteExpression quoteAnn (LiteralString ann x) =
+  SExpression
+    ann
+    [Symbol ann "AST.LiteralString", quoteAnn ann, LiteralString ann x]
+quoteExpression quoteAnn (SExpression ann xs) =
+  SExpression
+    ann
+    [ Symbol ann "AST.SExpression"
+    , quoteAnn ann
+    , SExpression ann (Symbol ann "list" : map (quoteExpression quoteAnn) xs)
     ]
-
-quoteParseExpression :: Expression SourceMetadata -> Expression SourceMetadata
-quoteParseExpression (LiteralChar ann' x) =
+quoteExpression quoteAnn (Symbol ann x) =
   SExpression
-    ann'
-    [ Symbol ann' "AST.LiteralChar"
-    , quoteSourceMetadata ann'
-    , LiteralChar ann' x
+    ann
+    [ Symbol ann "AST.Symbol"
+    , quoteAnn ann
+    , LiteralString ann (handleStringEscapes x)
     ]
-quoteParseExpression (LiteralInt ann' x) =
-  SExpression
-    ann'
-    [Symbol ann' "AST.LiteralInt", quoteSourceMetadata ann', LiteralInt ann' x]
-quoteParseExpression (LiteralString ann' x) =
-  SExpression
-    ann'
-    [ Symbol ann' "AST.LiteralString"
-    , quoteSourceMetadata ann'
-    , LiteralString ann' x
-    ]
-quoteParseExpression (SExpression ann' xs) =
-  SExpression
-    ann'
-    [ Symbol ann' "AST.SExpression"
-    , quoteSourceMetadata ann'
-    , SExpression ann' (Symbol ann' "list" : map quoteParseExpression xs)
-    ]
-quoteParseExpression (Symbol ann' x) =
-  SExpression
-    ann'
-    [ Symbol ann' "AST.Symbol"
-    , quoteSourceMetadata ann'
-    , LiteralString ann' (handleStringEscapes x)
-    ]
-
--- ******************************
--- ** Macro definition         **
--- ******************************
-{-# NOINLINE gensymCounter #-}
-gensymCounter :: IORef Int
-gensymCounter = unsafePerformIO $ newIORef 0
-
-gensym :: IO (Expression SourceMetadata)
-gensym = do
-  suffix <- readIORef gensymCounter
-  let identifier = "aXEL_AUTOGENERATED_IDENTIFIER_" <> show suffix
-  modifyIORef gensymCounter succ
-  pure $ Symbol AutoGenerated identifier
 
 -- | This allows splice-unquoting of both `[Expression]`s and `SExpression`s,
 --   without requiring special syntax for each.
@@ -193,13 +167,3 @@ instance ToExpressionList (Expression ann) where
     error
       (toAxel x <>
        " cannot be splice-unquoted, because it is not an s-expression!")
-
-programToTopLevelExpressions :: Expression ann -> [Expression ann]
-programToTopLevelExpressions (SExpression _ (Symbol _ "begin":stmts)) = stmts
-programToTopLevelExpressions _ =
-  error "programToTopLevelExpressions must be passed a top-level program!"
-
-topLevelExpressionsToProgram ::
-     [Expression SourceMetadata] -> Expression SourceMetadata
-topLevelExpressionsToProgram stmts =
-  SExpression AutoGenerated (Symbol AutoGenerated "begin" : stmts)

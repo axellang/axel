@@ -10,10 +10,21 @@
 # Generalise map to fmap, ++ to <>
 # - group: {name: generalise, enabled: true}
 
+- modules:
+  - {name: Axel.Utils.Debug, within: []}
+  - {name: Debug.Trace, within: []}
+
 - functions:
   - {name: unsafePerformIO, within: [Axel.Parse.AST]}
+  - {name: undefined, within: []}
 
-- warn: {lhs: "head x", rhs: "Data.Maybe.fromJust (Axel.Utils.List.head' x)"}
+- warn: {lhs: "head x", rhs: "Axel.Utils.List.unsafeHead x"}
+- warn: {lhs: "fromJust (head' x)", rhs: "Axel.Utils.List.unsafeHead x"}
+
+- warn: {lhs: "fromJust (down x)", rhs: "Axel.Utils.Zipper.unsafeDown x"}
+- warn: {lhs: "fromJust (left x)", rhs: "Axel.Utils.Zipper.unsafeLeft x"}
+- warn: {lhs: "fromJust (right x)", rhs: "Axel.Utils.Zipper.unsafeRight x"}
+- warn: {lhs: "fromJust (up x)", rhs: "Axel.Utils.Zipper.unsafeUp x"}
 
 - warn: {lhs: "unsafeTee (show x)", rhs: "Axel.Utils.Debug.unsafeTeeS x"}
 - warn: {lhs: "unsafeTee' f (show x)", rhs: "Axel.Utils.Debug.unsafeTeeS' f x"}

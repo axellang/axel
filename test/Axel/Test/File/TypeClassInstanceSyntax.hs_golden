@@ -1,1 +1,2 @@
+import Axel.Parse.AST as AST
 instance (Eq ((->) a a)) where {(==) _ _ = False}
