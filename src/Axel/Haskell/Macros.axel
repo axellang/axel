@@ -21,8 +21,7 @@
          (symbolReplacementMap
           (if (isOperator oldName)
             haskellSyntaxSymbols
-            {haskellSyntaxSymbols <> haskellOperatorSymbols}
-            haskellSyntaxSymbols)))
+            {haskellSyntaxSymbols <> haskellOperatorSymbols})))
      (T.unpack (foldl' (\ (acc {old , new}) (T.replace (T.singleton old) (T.pack new) acc))
                        (T.pack suffixedName)
                        (filter (\ ({sym , _}) {sym notElem Parse.syntaxSymbols})

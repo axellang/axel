@@ -102,17 +102,20 @@ normalizeExpression expr@(Parse.SExpression _ items) =
               cases
        in ECaseBlock <$>
           (CaseBlock (Just expr) <$> normalizeExpression var <*> normalizedCases)
-    [Parse.Symbol _ "\\", Parse.SExpression _ args, body] ->
+    [Parse.Symbol _ "\\", Parse.SExpression _ args, body] -- TODO Fail if num args /= 2
+     ->
       let normalizedArguments = traverse normalizeExpression args
        in ELambda <$>
           (Lambda (Just expr) <$> normalizedArguments <*>
            normalizeExpression body)
-    [Parse.Symbol _ "if", cond, ifTrue, ifFalse] ->
+    [Parse.Symbol _ "if", cond, ifTrue, ifFalse] -- TODO Fail if num args /= 3
+     ->
       EIfBlock <$>
       (IfBlock (Just expr) <$> normalizeExpression cond <*>
        normalizeExpression ifTrue <*>
        normalizeExpression ifFalse)
-    [Parse.Symbol _ "let", Parse.SExpression _ bindings, body] ->
+    [Parse.Symbol _ "let", Parse.SExpression _ bindings, body] -- TODO Fail if num args /= 2
+     ->
       let normalizedBindings =
             traverse
               (\case
@@ -124,7 +127,8 @@ normalizeExpression expr@(Parse.SExpression _ items) =
        in ELetBlock <$>
           (LetBlock (Just expr) <$> normalizedBindings <*>
            normalizeExpression body)
-    [Parse.Symbol _ "raw", rawSource] ->
+    [Parse.Symbol _ "raw", rawSource] -- TODO Fail if num args /= 1
+     ->
       let normalizedRawSource =
             case rawSource of
               Parse.LiteralString _ x -> pure x
