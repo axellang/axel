@@ -1,19 +1,30 @@
+-- If this file compiles, the tests have passed.
+
 (importq Axel.Parse.AST AST all)
 (importq Axel.Sourcemap SM all)
 
-(def assertEq {(AST.Expression a) -> {(AST.Expression b) -> (SM.Expression)}}
+(def assertEq {(AST.Expression a) -> {(AST.Expression b) -> SM.Expression}}
  ((expr expected)
   (if {{unit <$ expr} == {unit <$ expected}}
     '(raw "{- Passed! -}")
     (error {(AST.toAxel expr) <> {" given, but " <> {(AST.toAxel expected) <> " expected!"}}}))))
 
+(def sym {String -> SM.Expression}
+     ((x) (AST.Symbol Nothing x)))
+
+(def sexp {(List SM.Expression) -> SM.Expression}
+     ((xs) (AST.SExpression Nothing xs)))
+
 (defmacro testQuasiquote
  (_
   (pure
-   [(assertEq `topLevelBasic (AST.Symbol Nothing "topLevelBasic"))
-    (assertEq `'topLevelQuote (AST.SExpression Nothing [(AST.Symbol Nothing "quote") (AST.Symbol Nothing "topLevelQuote")]))
-    (assertEq `(inFormBasic ~(AST.Symbol Nothing "inFormUnquote") ~@[(AST.Symbol Nothing "inFormSpliceUnquote1") (AST.Symbol Nothing "inFormSpliceUnquote2")] 'inFormQuote) (AST.SExpression Nothing [(AST.Symbol Nothing "inFormBasic") (AST.Symbol Nothing "inFormUnquote") (AST.Symbol Nothing "inFormSpliceUnquote1") (AST.Symbol Nothing "inFormSpliceUnquote2") (AST.SExpression Nothing [(AST.Symbol Nothing "quote") (AST.Symbol Nothing "inFormQuote")])]))])))
--- `((inForm2Basic ~inForm2Unquote ~@inForm2Splice 'inForm2Quote))
--- `(`(nestedQuasiquote))
+   [(assertEq `topLevelBasic
+              (sym "topLevelBasic"))
+    (assertEq `'topLevelQuote
+              (sexp [(sym "quote") (sym "topLevelQuote")]))
+    (assertEq `(\ inFormBasic ~(sym "inFormUnquote") ~@[(sym "inFormSpliceUnquote1") (sym "inFormSpliceUnquote2")] 'inFormQuote)
+              (sexp [(sym "\\") (sym "inFormBasic") (sym "inFormUnquote") (sym "inFormSpliceUnquote1") (sym "inFormSpliceUnquote2") (sexp [(sym "quote") (sym "inFormQuote")])]))
+    (assertEq `((inForm2Basic ~(sym "inForm2Unquote") ~@[(sym "inForm2SpliceUnquote1") (sym "inForm2SpliceUnquote2")] 'inForm2Quote))
+              (sexp [(sexp [(sym "inForm2Basic") (sym "inForm2Unquote") (sym "inForm2SpliceUnquote1") (sym "inForm2SpliceUnquote2") (sexp [(sym "quote") (sym "inForm2Quote")])])]))])))
 
 (testQuasiquote)

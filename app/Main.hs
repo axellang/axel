@@ -5,7 +5,7 @@ module Main where
 
 import Axel.Eff.App (AppEffs, runApp)
 import Axel.Eff.Console (putStrLn)
-import Axel.Haskell.File (convertFile', transpileFile')
+import Axel.Haskell.File (convertFileInPlace, transpileFileInPlace)
 import Axel.Haskell.Project (buildProject, runProject)
 import Axel.Haskell.Stack (axelStackageVersion)
 import Axel.Macros (ModuleInfo)
@@ -16,9 +16,9 @@ import qualified Data.Map as Map (empty)
 import Options.Applicative ((<**>), execParser, helper, info, progDesc)
 import Prelude hiding (putStrLn)
 
-app (Convert filePath) = (void (convertFile' filePath))
+app (Convert filePath) = (void (convertFileInPlace filePath))
 app (File filePath) =
-  (void ((evalState @ModuleInfo Map.empty) (transpileFile' filePath)))
+  (void ((evalState @ModuleInfo Map.empty) (transpileFileInPlace filePath)))
 app (Project) = ((>>) buildProject runProject)
 app (Version) = (putStrLn ((<>) "Axel version " axelStackageVersion))
 

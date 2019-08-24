@@ -25,4 +25,4 @@ runConsole =
     PutStr str -> Prelude.putStr str
 
 putStrLn :: (Member Console effs) => String -> Eff effs ()
-putStrLn str = putStr (str <> "\n")
+putStrLn = putStr . (<> "\n")

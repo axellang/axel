@@ -106,7 +106,7 @@ bottomUpFmapSplicing f =
 toAxel :: Expression ann -> String
 toAxel (LiteralChar _ x) = ['{', x, '}']
 toAxel (LiteralInt _ x) = show x
-toAxel (LiteralString _ xs) = "\"" <> xs <> "\""
+toAxel (LiteralString _ xs) = "\"" <> handleStringEscapes xs <> "\""
 toAxel (SExpression _ (Symbol _ "applyInfix":xs)) =
   "{" <> unwords (map toAxel xs) <> "}"
 toAxel (SExpression _ (Symbol _ "list":xs)) =
@@ -138,12 +138,7 @@ quoteExpression quoteAnn (SExpression ann xs) =
     , SExpression ann (Symbol ann "list" : map (quoteExpression quoteAnn) xs)
     ]
 quoteExpression quoteAnn (Symbol ann x) =
-  SExpression
-    ann
-    [ Symbol ann "AST.Symbol"
-    , quoteAnn ann
-    , LiteralString ann (handleStringEscapes x)
-    ]
+  SExpression ann [Symbol ann "AST.Symbol", quoteAnn ann, LiteralString ann x]
 
 -- | This allows splice-unquoting of both `[Expression]`s and `SExpression`s,
 --   without requiring special syntax for each.

@@ -103,7 +103,7 @@ transpileSource ::
 transpileSource filePath source =
   toHaskell . STopLevel . TopLevel Nothing <$>
   (parseSource (Just filePath) source >>=
-   processProgram @fileExpanderEffs (void . transpileFile') filePath)
+   processProgram @fileExpanderEffs (void . transpileFileInPlace) filePath)
 
 convertExtension :: String -> String -> FilePath -> FilePath
 convertExtension oldExt newExt axelPath =
@@ -119,14 +119,13 @@ axelPathToHaskellPath = convertExtension ".hs" ".axel"
 haskellPathToAxelPath :: FilePath -> FilePath
 haskellPathToAxelPath = convertExtension ".axel" ".hs"
 
--- | Convert a file in place.
-convertFile' ::
+convertFileInPlace ::
      ( LastMember IO effs
      , Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem] effs
      )
   => FilePath
   -> Eff effs FilePath
-convertFile' path = do
+convertFileInPlace path = do
   let newPath = haskellPathToAxelPath path
   void $ convertFile path newPath
   pure newPath
@@ -143,12 +142,11 @@ transpileFile path newPath = do
   FS.writeFile newPath (SM.raw newContents)
   modify @ModuleInfo $ Map.adjust (_2 ?~ newContents) path
 
--- | Transpile a file in place.
-transpileFile' ::
+transpileFileInPlace ::
      (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => FilePath
   -> Eff effs FilePath
-transpileFile' path = do
+transpileFileInPlace path = do
   moduleInfo <- gets @ModuleInfo $ Map.lookup path
   let alreadyCompiled =
         case moduleInfo of

@@ -18,7 +18,7 @@ import qualified Axel.Eff.Log as Effs (Log)
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (getResourcePath, newProjectTemplate)
 import qualified Axel.Eff.Resource as Effs (Resource)
-import Axel.Haskell.File (readModuleInfo, transpileFile')
+import Axel.Haskell.File (readModuleInfo, transpileFileInPlace)
 import Axel.Haskell.Stack
   ( addStackDependency
   , axelStackageId
@@ -62,7 +62,7 @@ transpileProject = do
   let axelFiles =
         filter (\filePath -> ".axel" `T.isSuffixOf` T.pack filePath) files
   moduleInfo <- readModuleInfo axelFiles
-  Effs.execState moduleInfo $ mapM transpileFile' axelFiles
+  Effs.execState moduleInfo $ mapM transpileFileInPlace axelFiles
 
 buildProject ::
      (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)

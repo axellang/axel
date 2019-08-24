@@ -7,7 +7,11 @@ import qualified Axel.Sourcemap as SM
 import Axel.Utils.Recursion (bottomUpFmap)
 import Control.Lens.Cons (snoc)
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef)
+import System.FilePath (takeFileName)
 import System.IO.Unsafe (unsafePerformIO)
+
+isPrelude :: FilePath -> Bool
+isPrelude = (== "Axel.axel") . takeFileName
 
 preludeMacros :: ([] String)
 preludeMacros = ["applyInfix", "defmacro", "def", "\\case", "syntaxPattern"]
