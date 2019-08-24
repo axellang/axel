@@ -3,7 +3,7 @@
 
 module Axel.Test.ParseSpec where
 
-import Axel.Error as Error
+import Axel.Eff.Error as Error
 import Axel.Parse
 import Axel.Parse.AST
 import Axel.Utils.String

@@ -20,22 +20,22 @@ data Log r where
 
 makeEffect ''Log
 
-runEffAsConsole :: (Member Console effs) => Eff (Log ': effs) ~> Eff effs
-runEffAsConsole =
+runLogAsConsole :: (Member Console effs) => Eff (Log ': effs) ~> Eff effs
+runLogAsConsole =
   interpret $ \case
     LogStr str -> putStr str
 
-runEffAsFS ::
+runLogAsFileSystem ::
      (Member FileSystem effs) => FilePath -> Eff (Log ': effs) a -> Eff effs a
-runEffAsFS logFilePath action = do
+runLogAsFileSystem logFilePath action = do
   writeFile logFilePath ""
   interpret
     (\case
        LogStr str -> appendFile logFilePath str)
     action
 
-ignoreEff :: Eff (Log ': effs) ~> Eff effs
-ignoreEff =
+ignoreLog :: Eff (Log ': effs) ~> Eff effs
+ignoreLog =
   interpret $ \case
     LogStr _ -> pure ()
 

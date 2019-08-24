@@ -32,7 +32,7 @@ import qualified System.Process.Typed as P
 
 $(singletons
     [d|
-  
+
   data StreamSpecification = CreateStreams
                            | InheritStreams
   |])
@@ -63,8 +63,8 @@ data Process r where
 
 makeEffect ''Process
 
-runEff :: (LastMember IO effs) => Eff (Process ': effs) ~> Eff effs
-runEff =
+runProcess :: (LastMember IO effs) => Eff (Process ': effs) ~> Eff effs
+runProcess =
   interpretM
     (\case
        GetArgs -> System.Environment.getArgs
@@ -75,11 +75,11 @@ runEff =
          pure (exitCode, B.unpack stdout, B.unpack stderr)
        RunProcessInheritingStreams cmd -> P.runProcess (P.shell cmd))
 
-runProcess ::
+execProcess ::
      forall (streamSpec :: StreamSpecification) effs. (Member Process effs)
   => String
   -> ProcessRunner streamSpec (Eff effs)
-runProcess cmd =
+execProcess cmd =
   case sing :: Sing streamSpec of
     SCreateStreams -> runProcessCreatingStreams cmd
     SInheritStreams -> runProcessInheritingStreams cmd

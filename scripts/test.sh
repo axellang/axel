@@ -5,4 +5,4 @@ set -o pipefail
 # and consume ridiculous amounts of memory and CPU.
 trap "killall axel-test ghc" EXIT
 
-stack test --fast --ghc-options "-g" --test-arguments "--hide-successes" "$@"
+stack test --fast --ghc-options "-g" --test-arguments "--hide-successes --num-threads 1" "$@"

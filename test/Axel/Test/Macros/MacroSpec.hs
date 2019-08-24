@@ -2,18 +2,12 @@
 
 module Axel.Test.Macros.MacroSpec where
 
-import Axel.Eff.Console as Console
+import Axel.Eff.App
 import Axel.Eff.FileSystem as FS
-import Axel.Eff.Ghci as Ghci
-import Axel.Eff.Log as Log
-import Axel.Eff.Process as Proc
-import Axel.Eff.Resource as Res
-import Axel.Error as Error
 import Axel.Haskell.File
 import Axel.Macros
 import Axel.Sourcemap as SM
 
-import Control.Monad.Freer as Effs
 import Control.Monad.Freer.State (evalState)
 
 import Data.ByteString.Lazy.Char8 as C
@@ -37,12 +31,5 @@ test_macroExpansion_golden = do
           (takeBaseName axelFile)
           hsFile
           (C.pack . SM.raw <$>
-           (Effs.runM .
-            Console.runEff .
-            Ghci.runEff .
-            evalState (M.empty :: ModuleInfo) .
-            Res.runEff .
-            Proc.runEff .
-            FS.runEff .
-            Error.unsafeRunEff @Error.Error . Console.runEff . Log.ignoreEff)
+           (runApp . evalState (M.empty :: ModuleInfo))
              (FS.readFile axelFile >>= transpileSource (takeBaseName axelFile)))

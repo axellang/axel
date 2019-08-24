@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1ecbe5333da2576f5483811c0e1d58ce6ddfce3e5e1f83ea7fb4398c8ec4a6de
+-- hash: 468fd744cc667744baea11f5854ce4edf6b843da6a6f44309998990bd96a2201
 
 name:           axel
 version:        0.0.11
@@ -49,7 +49,9 @@ library
       Axel
       Axel.AST
       Axel.Denormalize
+      Axel.Eff.App
       Axel.Eff.Console
+      Axel.Eff.Error
       Axel.Eff.FileSystem
       Axel.Eff.Ghci
       Axel.Eff.Lens
@@ -58,7 +60,6 @@ library
       Axel.Eff.Process
       Axel.Eff.Resource
       Axel.Eff.Restartable
-      Axel.Error
       Axel.Haskell.Convert
       Axel.Haskell.Error
       Axel.Haskell.File

@@ -44,7 +44,7 @@ import Axel.AST
   , TypeclassDefinition(TypeclassDefinition)
   , TypeclassInstance(TypeclassInstance)
   )
-import Axel.Error (Error(NormalizeError), unsafeIgnoreError)
+import Axel.Eff.Error (Error(NormalizeError), unsafeRunError)
 import qualified Axel.Parse.AST as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
@@ -52,6 +52,7 @@ import qualified Axel.Parse.AST as Parse
 import qualified Axel.Sourcemap as SM (Expression)
 
 import Control.Monad.Freer (Eff, Member, Members)
+import qualified Control.Monad.Freer as Effs (run)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 import Control.Monad.Freer.Reader (ask, local, runReader)
@@ -348,4 +349,5 @@ normalizeStatement expr =
 
 unsafeNormalizeStatement :: SM.Expression -> SMStatement
 unsafeNormalizeStatement =
-  unsafeIgnoreError @Error . runReader "" . withExprCtxt . normalizeStatement
+  Effs.run .
+  unsafeRunError @Error . runReader "" . withExprCtxt . normalizeStatement

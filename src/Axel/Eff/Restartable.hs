@@ -15,8 +15,8 @@ type Restartable a = Effs.Error a
 restart :: (Member (Restartable a) effs) => a -> Eff effs ()
 restart = throwError
 
-restartable :: a -> (a -> Eff (Restartable a ': effs) a) -> Eff effs a
-restartable x f =
+runRestartable :: a -> (a -> Eff (Restartable a ': effs) a) -> Eff effs a
+runRestartable x f =
   runError (f x) >>= \case
-    Left x' -> restartable x' f
+    Left x' -> runRestartable x' f
     Right x' -> pure x'

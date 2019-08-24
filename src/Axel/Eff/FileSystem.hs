@@ -42,8 +42,8 @@ data FileSystem a where
 
 makeEffect ''FileSystem
 
-runEff :: (LastMember IO effs) => Eff (FileSystem ': effs) ~> Eff effs
-runEff =
+runFileSystem :: (LastMember IO effs) => Eff (FileSystem ': effs) ~> Eff effs
+runFileSystem =
   interpretM
     (\case
        AppendFile path contents -> Prelude.appendFile path contents

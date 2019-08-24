@@ -5,13 +5,12 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Axel.Error where
+module Axel.Eff.Error where
 
 import Axel.Parse.AST (Expression, toAxel)
 
 import Control.Monad ((>=>))
 import Control.Monad.Freer (type (~>), Eff)
-import qualified Control.Monad.Freer as Effs (run)
 import Control.Monad.Freer.Error (runError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 
@@ -42,11 +41,5 @@ instance Show Error where
 fatal :: String -> String -> a
 fatal context message = error $ "[FATAL] " <> context <> " - " <> message
 
-unsafeRunEff :: (Show e) => Eff (Effs.Error e ': effs) ~> Eff effs
-unsafeRunEff = runError >=> either (errorWithoutStackTrace . show) pure -- TODO Don't(?) use `error(WithoutStackTrace)` directly
-
-unsafeIgnoreError :: (Show b) => Eff '[ Effs.Error b] a -> a
-unsafeIgnoreError x =
-  case Effs.run (runError x) of
-    Left err -> error $ show err
-    Right result -> result
+unsafeRunError :: (Show e) => Eff (Effs.Error e ': effs) ~> Eff effs
+unsafeRunError = runError >=> either (errorWithoutStackTrace . show) pure -- TODO Don't(?) use `error(WithoutStackTrace)` directly

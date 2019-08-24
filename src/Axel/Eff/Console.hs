@@ -19,8 +19,8 @@ data Console r where
 
 makeEffect ''Console
 
-runEff :: (LastMember IO effs) => Eff (Console ': effs) ~> Eff effs
-runEff =
+runConsole :: (LastMember IO effs) => Eff (Console ': effs) ~> Eff effs
+runConsole =
   interpretM $ \case
     PutStr str -> Prelude.putStr str
 

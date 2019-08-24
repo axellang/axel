@@ -14,6 +14,7 @@ import Prelude hiding (putStrLn)
 
 import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
+import Axel.Eff.Error (Error(ProjectError), fatal)
 import qualified Axel.Eff.FileSystem as FS
   ( readFile
   , withCurrentDirectory
@@ -23,10 +24,9 @@ import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import Axel.Eff.Process
   ( ProcessRunner
   , StreamSpecification(CreateStreams, InheritStreams)
-  , runProcess
+  , execProcess
   )
 import qualified Axel.Eff.Process as Effs (Process)
-import Axel.Error (Error(ProjectError), fatal)
 import Axel.Haskell.Error (processErrors)
 import Axel.Macros (ModuleInfo, getTranspiledFiles)
 
@@ -77,7 +77,7 @@ getStackProjectTargets ::
   -> Eff effs [Target]
 getStackProjectTargets projectPath =
   FS.withCurrentDirectory projectPath $ do
-    (_, _, stderr) <- runProcess @'CreateStreams "stack ide targets" ""
+    (_, _, stderr) <- execProcess @'CreateStreams "stack ide targets" ""
     pure $ lines stderr
 
 addStackDependency ::
@@ -104,7 +104,7 @@ buildStackProject moduleInfo projectPath = do
   putStrLn ("Building " <> takeFileName projectPath <> "...")
   result <-
     FS.withCurrentDirectory projectPath $
-    runProcess @'CreateStreams "stack build --ghc-options='-ddump-json'" ""
+    execProcess @'CreateStreams "stack build --ghc-options='-ddump-json'" ""
   case result of
     (ExitSuccess, _, _) -> pure ()
     (ExitFailure _, _, stderr) ->
@@ -117,7 +117,7 @@ createStackProject ::
      (Members '[ Effs.FileSystem, Effs.Process] effs) => String -> Eff effs ()
 createStackProject projectName = do
   void $
-    runProcess
+    execProcess
       @'CreateStreams
       ("stack new " <> projectName <> " new-template")
       ""
@@ -132,7 +132,7 @@ runStackProject projectPath = do
   case findExeTargets targets of
     [target] -> do
       putStrLn ("Running " <> target <> "...")
-      void $ runProcess @'InheritStreams ("stack exec " <> target)
+      void $ execProcess @'InheritStreams ("stack exec " <> target)
     _ ->
       throwError $ ProjectError "No executable target was unambiguously found!"
   where
@@ -152,7 +152,7 @@ setStackageResolver ::
   -> Eff effs ()
 setStackageResolver projectPath resolver =
   void $ FS.withCurrentDirectory projectPath $
-  runProcess @'CreateStreams ("stack config set resolver " <> resolver) ""
+  execProcess @'CreateStreams ("stack config set resolver " <> resolver) ""
 
 includeAxelArguments :: String
 includeAxelArguments =
@@ -164,7 +164,7 @@ compileFile ::
   -> ProcessRunner streamSpec (Eff effs)
 compileFile filePath =
   let cmd = unwords ["stack", "ghc", includeAxelArguments, "--", filePath]
-   in runProcess @streamSpec @effs cmd
+   in execProcess @streamSpec @effs cmd
 
 interpretFile ::
      forall (streamSpec :: StreamSpecification) effs. (Member Effs.Process effs)
@@ -172,4 +172,4 @@ interpretFile ::
   -> ProcessRunner streamSpec (Eff effs)
 interpretFile filePath =
   let cmd = unwords ["stack", "runghc", includeAxelArguments, "--", filePath]
-   in runProcess @streamSpec @effs cmd
+   in execProcess @streamSpec @effs cmd

@@ -25,8 +25,8 @@ data Resource a where
 
 makeEffect ''Resource
 
-runEff :: (LastMember IO effs) => Eff (Resource ': effs) ~> Eff effs
-runEff =
+runResource :: (LastMember IO effs) => Eff (Resource ': effs) ~> Eff effs
+runResource =
   interpretM
     (\case
        GetResourcePath (ResourceId resource) ->

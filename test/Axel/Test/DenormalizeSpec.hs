@@ -3,7 +3,7 @@
 module Axel.Test.DenormalizeSpec where
 
 import Axel.Denormalize
-import Axel.Error as Error
+import Axel.Eff.Error as Error
 import Axel.Normalize
 import Axel.Sourcemap as SM
 import qualified Axel.Test.ASTGen as ASTGen

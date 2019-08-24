@@ -16,9 +16,9 @@ import qualified Axel.AST as AST
 import Axel.Denormalize (denormalizeExpression, denormalizeStatement)
 import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
+import Axel.Eff.Error (Error(ConvertError), fatal)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (writeFile)
-import Axel.Error (Error(ConvertError), fatal)
 import qualified Axel.Parse.AST as Parse
 import Axel.Parse.AST (toAxel)
 import qualified Axel.Sourcemap as SM (Expression)

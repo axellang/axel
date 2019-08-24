@@ -7,9 +7,9 @@
 
 module Axel.Test.Haskell.StackSpec where
 
+import Axel.Eff.Error
 import Axel.Eff.FileSystem as FS
 import Axel.Eff.Process
-import Axel.Error
 import Axel.Haskell.Stack as Stack
 import Axel.Test.Eff.ConsoleMock as Mock
 import Axel.Test.Eff.FileSystemMock as Mock

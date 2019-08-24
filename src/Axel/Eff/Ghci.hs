@@ -21,8 +21,8 @@ data Ghci r where
 
 makeEffect ''Ghci
 
-runEff :: (LastMember IO effs) => Eff (Ghci ': effs) ~> Eff effs
-runEff =
+runGhci :: (LastMember IO effs) => Eff (Ghci ': effs) ~> Eff effs
+runGhci =
   interpretM $ \case
     Exec ghci command -> Ghci.exec ghci command
     Start -> fst <$> startGhci "ghci" Nothing mempty

@@ -5,6 +5,7 @@
 module Axel.Haskell.Project where
 
 import qualified Axel.Eff.Console as Effs (Console)
+import Axel.Eff.Error (Error)
 import Axel.Eff.FileSystem
   ( copyFile
   , getCurrentDirectory
@@ -17,7 +18,6 @@ import qualified Axel.Eff.Log as Effs (Log)
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (getResourcePath, newProjectTemplate)
 import qualified Axel.Eff.Resource as Effs (Resource)
-import Axel.Error (Error)
 import Axel.Haskell.File (readModuleInfo, transpileFile')
 import Axel.Haskell.Stack
   ( addStackDependency

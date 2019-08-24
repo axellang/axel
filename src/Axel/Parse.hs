@@ -7,8 +7,7 @@
 
 module Axel.Parse where
 
-import Axel.Error (Error(ParseError), unsafeIgnoreError)
-
+import Axel.Eff.Error (Error(ParseError), unsafeRunError)
 import Axel.Haskell.Language (haskellOperatorSymbols, haskellSyntaxSymbols)
 import Axel.Parse.AST
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
@@ -25,6 +24,7 @@ import Axel.Sourcemap
 import Axel.Utils.List (takeUntil)
 
 import Control.Monad.Freer (Eff, Member)
+import qualified Control.Monad.Freer as Effs (run)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 
@@ -178,7 +178,7 @@ parseMultiple filePath input =
 --   If multiple expressions are able to be parsed, only the first will be returned.
 unsafeParseSingle :: Maybe FilePath -> String -> SM.Expression
 unsafeParseSingle filePath =
-  head . unsafeIgnoreError @Error . parseMultiple filePath
+  head . Effs.run . unsafeRunError @Error . parseMultiple filePath
 
 stripComments :: String -> String
 stripComments = unlines . map cleanLine . lines

@@ -34,12 +34,9 @@ import Axel.AST
   , name
   )
 import Axel.Denormalize (denormalizeStatement)
+import Axel.Eff.Error (Error(MacroError), fatal)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
-import qualified Axel.Eff.FileSystem as FS
-  ( createDirectoryIfMissing
-  , withCurrentDirectory
-  , writeFile
-  )
+import qualified Axel.Eff.FileSystem as FS (createDirectoryIfMissing, writeFile)
 import qualified Axel.Eff.Ghci as Effs (Ghci)
 import qualified Axel.Eff.Ghci as Ghci (exec, start, stop)
 import Axel.Eff.Lens (view)
@@ -50,8 +47,7 @@ import Axel.Eff.Resource (readResource)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import qualified Axel.Eff.Resource as Res (macroScaffold)
 import qualified Axel.Eff.Restartable as Effs (Restartable)
-import Axel.Eff.Restartable (restart, restartable)
-import Axel.Error (Error(MacroError), fatal)
+import Axel.Eff.Restartable (restart, runRestartable)
 import Axel.Haskell.Macros (hygenisizeMacroName)
 import Axel.Normalize
   ( normalizeStatement
@@ -226,7 +222,8 @@ expandProgramExpr ::
   -> SM.Expression
   -> Eff effs SM.Expression
 expandProgramExpr expandFile programExpr =
-  restartable @SM.Expression programExpr $ Effs.evalState ([] :: [SMStatement]) .
+  runRestartable @SM.Expression programExpr $
+  Effs.evalState ([] :: [SMStatement]) .
   zipperTopDownTraverse
     (\zipper -> do
        when (isStatementFocused zipper) $
