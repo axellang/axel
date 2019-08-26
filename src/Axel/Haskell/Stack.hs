@@ -28,7 +28,7 @@ import Axel.Eff.Process
   )
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Haskell.Error (processErrors)
-import Axel.Macros (ModuleInfo, getTranspiledFiles)
+import Axel.Macros (ModuleInfo)
 
 import Control.Lens.Operators ((%~))
 import Control.Monad (void)
@@ -110,8 +110,7 @@ buildStackProject moduleInfo projectPath = do
     (ExitFailure _, _, stderr) ->
       throwError $
       ProjectError
-        ("Project failed to build.\n\n" <>
-         processErrors (getTranspiledFiles moduleInfo) stderr)
+        ("Project failed to build.\n\n" <> processErrors moduleInfo stderr)
 
 createStackProject ::
      (Members '[ Effs.FileSystem, Effs.Process] effs) => String -> Eff effs ()

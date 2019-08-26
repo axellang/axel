@@ -100,16 +100,7 @@ import qualified Language.Haskell.Ghcid as Ghci (Ghci)
 
 import System.FilePath ((<.>), (</>))
 
-type ModuleInfo = Map Identifier (FilePath, Maybe SM.Output)
-
-getTranspiledFiles :: ModuleInfo -> Map FilePath SM.Output
-getTranspiledFiles =
-  M.fromList .
-  filterMap
-    (\case
-       (_, Nothing) -> Nothing
-       (filePath, Just output) -> Just (filePath, output)) .
-  M.elems
+type ModuleInfo = Map FilePath (Identifier, Maybe SM.Output)
 
 type FileExpander effs
    = forall openEffs. (Members effs openEffs) =>

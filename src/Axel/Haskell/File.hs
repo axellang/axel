@@ -28,6 +28,7 @@ import Axel.Eff.Resource (readResource)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import qualified Axel.Eff.Resource as Res (astDefinition)
 import Axel.Haskell.Convert (convertFile)
+import Axel.Haskell.FilePath (axelPathToHaskellPath, haskellPathToAxelPath)
 import Axel.Haskell.Stack (interpretFile)
 import Axel.Macros (ModuleInfo, processProgram)
 import Axel.Normalize (normalizeStatement, withExprCtxt)
@@ -47,13 +48,12 @@ import Control.Monad.Freer.State (gets, modify)
 import qualified Control.Monad.Freer.State as Effs (State)
 
 import Data.Data (Data)
-import qualified Data.Map as Map (adjust, fromList, lookup)
-import Data.Maybe (catMaybes, fromMaybe)
+import qualified Data.Map as M (adjust, fromList, lookup)
+import Data.Maybe (catMaybes)
 import Data.Monoid (Alt(Alt))
 import Data.Semigroup ((<>))
-import qualified Data.Text as T (isSuffixOf, pack)
 
-import System.FilePath (stripExtension, takeFileName)
+import System.FilePath (takeFileName)
 
 convertList :: (Data ann) => Expression ann -> Expression ann
 convertList =
@@ -90,7 +90,7 @@ readModuleInfo axelFiles = do
                _ -> Nothing)
           exprs
       pure moduleDecl
-  pure $ Map.fromList $ catMaybes modules
+  pure $ M.fromList $ catMaybes modules
 
 transpileSource ::
      forall effs fileExpanderEffs.
@@ -104,20 +104,6 @@ transpileSource filePath source =
   toHaskell . STopLevel . TopLevel Nothing <$>
   (parseSource (Just filePath) source >>=
    processProgram @fileExpanderEffs (void . transpileFileInPlace) filePath)
-
-convertExtension :: String -> String -> FilePath -> FilePath
-convertExtension oldExt newExt axelPath =
-  let basePath =
-        if T.pack newExt `T.isSuffixOf` T.pack axelPath
-          then fromMaybe axelPath $ stripExtension newExt axelPath
-          else axelPath
-   in basePath <> oldExt
-
-axelPathToHaskellPath :: FilePath -> FilePath
-axelPathToHaskellPath = convertExtension ".hs" ".axel"
-
-haskellPathToAxelPath :: FilePath -> FilePath
-haskellPathToAxelPath = convertExtension ".axel" ".hs"
 
 convertFileInPlace ::
      ( LastMember IO effs
@@ -140,14 +126,14 @@ transpileFile path newPath = do
   newContents <- transpileSource path fileContents
   putStrLn $ path <> " => " <> newPath
   FS.writeFile newPath (SM.raw newContents)
-  modify @ModuleInfo $ Map.adjust (_2 ?~ newContents) path
+  modify @ModuleInfo $ M.adjust (_2 ?~ newContents) path
 
 transpileFileInPlace ::
      (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs)
   => FilePath
   -> Eff effs FilePath
 transpileFileInPlace path = do
-  moduleInfo <- gets @ModuleInfo $ Map.lookup path
+  moduleInfo <- gets @ModuleInfo $ M.lookup path
   let alreadyCompiled =
         case moduleInfo of
           Just (_, Just _) -> True

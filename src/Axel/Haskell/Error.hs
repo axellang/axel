@@ -6,6 +6,8 @@
 
 module Axel.Haskell.Error where
 
+import Axel.Haskell.FilePath (haskellPathToAxelPath)
+import Axel.Macros (ModuleInfo)
 import Axel.Sourcemap (SourcePosition(SourcePosition))
 import qualified Axel.Sourcemap as SM (Output(Output), findOriginalPosition)
 import Axel.Utils.Json (_Int)
@@ -17,7 +19,6 @@ import Control.Lens.Tuple (_1, _2)
 import qualified Data.Aeson as Json (Value, decode')
 import Data.Aeson.Lens (_String, key)
 import qualified Data.ByteString.Lazy.Char8 as BL (pack)
-import Data.Map (Map)
 import qualified Data.Map as M (lookup)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T (unpack)
@@ -27,6 +28,7 @@ data SourceSpan =
     { _start :: SourcePosition
     , _end :: SourcePosition
     }
+  deriving (Show)
 
 makeFieldsNoPrefix ''SourceSpan
 
@@ -35,21 +37,20 @@ data GhcError =
     { _message :: String
     , _transpiledSpan :: (FilePath, SourceSpan)
     }
+  deriving (Show)
 
 makeFieldsNoPrefix ''GhcError
 
-type TranspiledFilesInfo = Map FilePath SM.Output
+processErrors :: ModuleInfo -> String -> String
+processErrors moduleInfo stackOutput =
+  unlines $ map (processStackOutputLine moduleInfo) $ lines stackOutput
 
-processErrors :: TranspiledFilesInfo -> String -> String
-processErrors transpiledFiles stackOutput =
-  unlines $ map (processStackOutputLine transpiledFiles) $ lines stackOutput
+processStackOutputLine :: ModuleInfo -> String -> String
+processStackOutputLine moduleInfo line =
+  fromMaybe line (tryProcessGhcOutput moduleInfo line)
 
-processStackOutputLine :: TranspiledFilesInfo -> String -> String
-processStackOutputLine transpiledFiles line =
-  fromMaybe line (tryProcessGhcOutput transpiledFiles line)
-
-tryProcessGhcOutput :: TranspiledFilesInfo -> String -> Maybe String
-tryProcessGhcOutput transpiledFiles line = do
+tryProcessGhcOutput :: ModuleInfo -> String -> Maybe String
+tryProcessGhcOutput moduleInfo line = do
   let obj `viewStr` field = T.unpack <$> (obj ^? field . _String)
   jsonLine <- Json.decode' @Json.Value (BL.pack line)
   msg <- jsonLine `viewStr` key "doc"
@@ -64,13 +65,16 @@ tryProcessGhcOutput transpiledFiles line = do
                (jsonSpan ^? key "endCol" . _Int)
              filePath <- jsonSpan `viewStr` key "file"
              pure (filePath, SourceSpan startPosition endPosition)
-        toAxelError transpiledFiles $ GhcError msg sourceSpan
+        toAxelError moduleInfo $ GhcError msg sourceSpan
   pure $ fromMaybe msg maybeAxelError
 
-toAxelError :: TranspiledFilesInfo -> GhcError -> Maybe String
-toAxelError transpiledFiles ghcError = do
+toAxelError :: ModuleInfo -> GhcError -> Maybe String
+toAxelError moduleInfo ghcError = do
   SM.Output transpiledOutput <-
-    M.lookup (ghcError ^. transpiledSpan . _1) transpiledFiles
+    M.lookup
+      (haskellPathToAxelPath $ ghcError ^. transpiledSpan . _1)
+      moduleInfo >>=
+    snd
   let findPosition field =
         SM.findOriginalPosition
           transpiledOutput
