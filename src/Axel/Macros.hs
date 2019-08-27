@@ -39,7 +39,6 @@ import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (createDirectoryIfMissing, writeFile)
 import qualified Axel.Eff.Ghci as Effs (Ghci)
 import qualified Axel.Eff.Ghci as Ghci (exec, start, stop)
-import Axel.Eff.Lens (view)
 import qualified Axel.Eff.Log as Effs (Log)
 import Axel.Eff.Log (logStrLn)
 import qualified Axel.Eff.Process as Effs (Process)
@@ -77,11 +76,11 @@ import Axel.Utils.Zipper (unsafeLeft, unsafeUp)
 import Control.Lens (snoc)
 import Control.Lens.Extras (is)
 import Control.Lens.Operators ((%~), (^.), (^?))
-import Control.Lens.Tuple (_1, _2)
 import Control.Monad (guard, unless, when)
 import Control.Monad.Freer (Eff, Member, Members)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
+import Control.Monad.Freer.Reader (ask)
 import qualified Control.Monad.Freer.Reader as Effs (Reader, runReader)
 import Control.Monad.Freer.State (get, gets, modify)
 import qualified Control.Monad.Freer.State as Effs (State, evalState)
@@ -92,7 +91,7 @@ import Data.Hashable (hash)
 import Data.List (isPrefixOf, nub)
 import Data.List.Split (split, whenElt)
 import Data.Map (Map)
-import qualified Data.Map as M (elems, filter, fromList, toList)
+import qualified Data.Map as M (filter, toList)
 import Data.Maybe (isNothing)
 import Data.Semigroup ((<>))
 
@@ -102,26 +101,37 @@ import System.FilePath ((<.>), (</>))
 
 type ModuleInfo = Map FilePath (Identifier, Maybe SM.Output)
 
+type FunctionApplicationExpander effs
+   = forall openEffs. (Members effs openEffs) =>
+                        SM.Expression -> Eff openEffs (Maybe [SM.Expression])
+
 type FileExpander effs
    = forall openEffs. (Members effs openEffs) =>
                         FilePath -> Eff openEffs ()
 
 -- | Fully expand a program, and add macro definition type signatures.
 processProgram ::
-     forall fileExpanderEffs effs.
-     ( Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo] effs
-     , Members fileExpanderEffs (Effs.State [SMStatement] ': Effs.Restartable SM.Expression ': Effs.Reader ( Ghci.Ghci
-                                                                                                           , FilePath) ': effs)
+     forall fileExpanderEffs funAppExpanderEffs effs innerEffs.
+     ( innerEffs ~ (Effs.State [SMStatement] ': Effs.Restartable SM.Expression ': Effs.Reader Ghci.Ghci ': Effs.Reader FilePath ': effs)
+     , Members '[ Effs.Error Error, Effs.Ghci, Effs.State ModuleInfo] effs
+     , Members fileExpanderEffs innerEffs
+     , Members funAppExpanderEffs innerEffs
      )
-  => FileExpander fileExpanderEffs
+  => FunctionApplicationExpander funAppExpanderEffs
+  -> FileExpander fileExpanderEffs
   -> FilePath
   -> SM.Expression
   -> Eff effs [SMStatement]
-processProgram expandFile filePath program = do
+processProgram expandFunApp expandFile filePath program = do
   ghci <- Ghci.start
   newProgramExpr <-
-    Effs.runReader (ghci, filePath) $
-    expandProgramExpr @fileExpanderEffs expandFile program
+    Effs.runReader filePath $ Effs.runReader ghci $
+    expandProgramExpr
+      @funAppExpanderEffs
+      @fileExpanderEffs
+      expandFunApp
+      expandFile
+      program
   Ghci.stop ghci
   newStmts <-
     mapM
@@ -204,15 +214,17 @@ isStatementFocused zipper =
 -- | are found at the top level while the program tree is being traversed, they
 -- | will be added to the environment accessible to macros during expansion.
 expandProgramExpr ::
-     forall fileExpanderEffs effs.
-     ( Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo, Effs.Reader ( Ghci.Ghci
-                                                                                                                                          , FilePath)] effs
-     , Members fileExpanderEffs (Effs.State [SMStatement] ': Effs.Restartable SM.Expression ': effs)
+     forall funAppExpanderEffs fileExpanderEffs effs innerEffs.
+     ( innerEffs ~ (Effs.State [SMStatement] : Effs.Restartable SM.Expression ': effs)
+     , Members '[ Effs.Error Error, Effs.State ModuleInfo, Effs.Reader Ghci.Ghci, Effs.Reader FilePath] effs
+     , Members funAppExpanderEffs innerEffs
+     , Members fileExpanderEffs innerEffs
      )
-  => FileExpander fileExpanderEffs
+  => FunctionApplicationExpander funAppExpanderEffs
+  -> FileExpander fileExpanderEffs
   -> SM.Expression
   -> Eff effs SM.Expression
-expandProgramExpr expandFile programExpr =
+expandProgramExpr expandFunApp expandFile programExpr =
   runRestartable @SM.Expression programExpr $
   Effs.evalState ([] :: [SMStatement]) .
   zipperTopDownTraverse
@@ -229,7 +241,7 @@ expandProgramExpr expandFile programExpr =
                prevTopLevelExpr
        let expr = hole zipper
        when (is _SExpression expr) $ do
-         maybeNewExprs <- handleFunctionApplication expr
+         maybeNewExprs <- expandFunApp expr
          case maybeNewExprs of
            Just newExprs -> replaceExpr zipper newExprs >>= restart
            Nothing -> pure ()
@@ -237,7 +249,7 @@ expandProgramExpr expandFile programExpr =
 
 -- | Returns the full program expr (after the necessary substitution has been applied).
 replaceExpr ::
-     (Members '[ Effs.Error Error, Effs.Reader (Ghci.Ghci, FilePath)] effs)
+     (Members '[ Effs.Error Error, Effs.Reader FilePath] effs)
   => Zipper SM.Expression SM.Expression
   -> [SM.Expression]
   -> Eff effs SM.Expression
@@ -270,12 +282,12 @@ replaceExpr zipper newExprs =
         else pure newProgramExpr
 
 throwLoopError ::
-     (Members '[ Effs.Error Error, Effs.Reader (Ghci.Ghci, FilePath)] effs)
+     (Members '[ Effs.Error Error, Effs.Reader FilePath] effs)
   => SM.Expression
   -> [SM.Expression]
   -> Eff effs a
 throwLoopError oldExpr newExprs = do
-  filePath <- view @(Ghci.Ghci, FilePath) _2
+  filePath <- ask @FilePath
   throwError $
     MacroError
       filePath
@@ -288,15 +300,14 @@ throwLoopError oldExpr newExprs = do
 
 addStatementToMacroEnvironment ::
      forall fileExpanderEffs effs.
-     ( Members '[ Effs.Error Error, Effs.State ModuleInfo, Effs.Reader ( Ghci.Ghci
-                                                                       , FilePath), Effs.State [SMStatement]] effs
+     ( Members '[ Effs.Error Error, Effs.State ModuleInfo, Effs.Reader FilePath, Effs.State [SMStatement]] effs
      , Members fileExpanderEffs effs
      )
   => FileExpander fileExpanderEffs
   -> SM.Expression
   -> Eff effs ()
 addStatementToMacroEnvironment expandFile newExpr = do
-  filePath <- view @(Ghci.Ghci, FilePath) _2
+  filePath <- ask @FilePath
   stmt <- Effs.runReader filePath $ withExprCtxt $ normalizeStatement newExpr
   case stmt of
     SMacroImport macroImport ->
@@ -306,8 +317,7 @@ addStatementToMacroEnvironment expandFile newExpr = do
 
 -- | If a function application is a macro call, expand it.
 handleFunctionApplication ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo, Effs.Reader ( Ghci.Ghci
-                                                                                                                                         , FilePath), Effs.State [SMStatement]] effs)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo, Effs.Reader Ghci.Ghci, Effs.Reader FilePath, Effs.State [SMStatement]] effs)
   => SM.Expression
   -> Eff effs (Maybe [SM.Expression])
 handleFunctionApplication (Parse.SExpression _ (Parse.Symbol _ function:args)) = do
@@ -426,14 +436,13 @@ losslyReconstructMacroCall macroName args =
     (Parse.Symbol Nothing macroName : map (Nothing <$) args)
 
 expandMacroApplication ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.Reader ( Ghci.Ghci
-                                                                                                                  , FilePath), Effs.State [SMStatement]] effs)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.Reader Ghci.Ghci, Effs.Reader FilePath, Effs.State [SMStatement]] effs)
   => Identifier
   -> [SM.Expression]
   -> Eff effs [SM.Expression]
 expandMacroApplication macroName args = do
   logStrLn $ "Expanding: " <> toAxel (losslyReconstructMacroCall macroName args)
-  filePath' <- view @(Ghci.Ghci, FilePath) _2
+  filePath' <- ask @FilePath
   macroProgram <- generateMacroProgram filePath' macroName args
   newSource <- uncurry (evalMacro (macroName, args)) macroProgram
   logStrLn $ "Result: " <> newSource <> "\n\n"
@@ -445,8 +454,7 @@ isMacroDefinitionStatement _ = False
 
 evalMacro ::
      forall effs.
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Reader ( Ghci.Ghci
-                                                                                         , FilePath)] effs)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Reader Ghci.Ghci, Effs.Reader FilePath] effs)
   => (Identifier, [SM.Expression])
   -> String
   -> String
@@ -460,7 +468,7 @@ evalMacro (macroName, args) scaffold macroDefinitionAndEnvironment = do
   FS.writeFile
     macroDefinitionAndEnvironmentFileName
     macroDefinitionAndEnvironment
-  ghci <- view @(Ghci.Ghci, FilePath) _1
+  ghci <- ask @Ghci.Ghci
   loadResult <-
     Ghci.exec ghci $
     unwords [":l", scaffoldFileName, macroDefinitionAndEnvironmentFileName]
@@ -481,7 +489,7 @@ evalMacro (macroName, args) scaffold macroDefinitionAndEnvironment = do
     scaffoldModuleName = "AutogeneratedAxelScaffold"
     throwMacroError :: String -> Eff effs a
     throwMacroError msg = do
-      originalFilePath <- view @(Ghci.Ghci, FilePath) _2
+      originalFilePath <- ask @FilePath
       throwError @Error $
         MacroError
           originalFilePath
