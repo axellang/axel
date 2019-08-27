@@ -8,7 +8,7 @@ module Axel.Haskell.Error where
 
 import Axel.Haskell.FilePath (haskellPathToAxelPath)
 import Axel.Macros (ModuleInfo)
-import Axel.Sourcemap (SourcePosition(SourcePosition))
+import Axel.Sourcemap (SourcePosition(SourcePosition), renderSourcePosition)
 import qualified Axel.Sourcemap as SM (Output(Output), findOriginalPosition)
 import Axel.Utils.Json (_Int)
 
@@ -70,24 +70,30 @@ tryProcessGhcOutput moduleInfo line = do
 
 toAxelError :: ModuleInfo -> GhcError -> Maybe String
 toAxelError moduleInfo ghcError = do
-  SM.Output transpiledOutput <-
-    M.lookup
-      (haskellPathToAxelPath $ ghcError ^. transpiledSpan . _1)
-      moduleInfo >>=
-    snd
+  let axelPath = haskellPathToAxelPath $ ghcError ^. transpiledSpan . _1
+  SM.Output transpiledOutput <- M.lookup axelPath moduleInfo >>= snd
   let findPosition field =
         SM.findOriginalPosition
           transpiledOutput
           (ghcError ^. transpiledSpan . _2 . field)
-  origStartPosition <- findPosition start
-  origEndPosition <- findPosition end
+  origStartPosition <- findPosition start >>= id
+  maybeOrigEndPosition <- findPosition end
+  let positionNoRangeHint =
+        "at position " <> renderSourcePosition origStartPosition
+  let positionHint =
+        case maybeOrigEndPosition of
+          Just origEndPosition ->
+            let positionRangeHint =
+                  "from position " <> renderSourcePosition origStartPosition <>
+                  " to position " <>
+                  renderSourcePosition origEndPosition
+             in if origStartPosition == origEndPosition
+                  then positionNoRangeHint
+                  else positionRangeHint
+          Nothing -> positionNoRangeHint
   pure $ "\n\n\n\n" <> ghcError ^. message <>
-    "\n\nThis error message is in terms of the transpiled output.\nIn terms of the Axel code, however, I'm pretty sure this error is originally in the file '" <>
-    ghcError ^.
-    transpiledSpan .
-    _1 <>
-    "'.\nCheck from position " <>
-    show origStartPosition <>
-    " to position " <>
-    show origEndPosition <>
-    ".\n\n"
+    "\n\nThe above message is in terms of the generated Haskell.\nTry checking the file '" <>
+    axelPath <>
+    "', " <>
+    positionHint <>
+    ".\nIf the Axel code at that position doesn't seem related, something may have gone wrong during a macro expansion.\n\n"
