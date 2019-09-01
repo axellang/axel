@@ -15,7 +15,7 @@ import Axel.Eff.Lens (assign, modifying)
 import Axel.Eff.Loop (breakLoop)
 import qualified Axel.Eff.Loop as Effs (runLoop)
 import qualified Axel.Parse.AST as Parse
-  ( Expression(LiteralInt, SExpression, Symbol)
+  ( Expression(LiteralInt, LiteralString, SExpression, Symbol)
   )
 import Axel.Utils.Foldable (intercalate)
 import Axel.Utils.Tuple (Annotated, annotate, annotation, unannotate)
@@ -29,18 +29,25 @@ import qualified Control.Monad.Freer.State as Effs (evalState)
 
 import Data.Data (Data)
 
-data SourcePosition =
-  SourcePosition
+data Position =
+  Position
     { _line :: Int
     , _column :: Int
     }
   deriving (Data, Eq, Show)
 
-makeFieldsNoPrefix ''SourcePosition
+makeFieldsNoPrefix ''Position
+
+type SourcePosition = (FilePath, Position)
 
 renderSourcePosition :: SourcePosition -> String
-renderSourcePosition sourcePosition =
-  show (sourcePosition ^. line) <> ":" <> show (sourcePosition ^. column)
+renderSourcePosition (filePath, position) =
+  let filePath' =
+        if filePath == ""
+          then "<unknown>"
+          else filePath
+   in filePath' <> ":" <> show (position ^. line) <> ":" <>
+      show (position ^. column)
 
 type SourceMetadata = Maybe SourcePosition
 
@@ -118,31 +125,40 @@ renderBlock = surround CurlyBraces . delimit Semicolons
 --   Behavior is undefined if `column transPos == 0`.
 --   TODO Make algorithm functional (assuming this can be cleanly done so).
 findOriginalPosition ::
-     forall ann. [Annotated ann String] -> SourcePosition -> Maybe ann
+     forall ann. [Annotated ann String] -> Position -> Maybe ann
 findOriginalPosition output transPos =
   Effs.run $
-  Effs.evalState (SourcePosition {_line = 1, _column = 0}) $
+  Effs.evalState (Position {_line = 1, _column = 0}) $
   Effs.runLoop $ do
     forM_ output $ \chunk ->
       forM_ (unannotate chunk) $ \char -> do
         if char == '\n'
           then do
-            assign @SourcePosition column 0
-            modifying @SourcePosition line succ
-          else modifying @SourcePosition column succ
+            assign @Position column 0
+            modifying @Position line succ
+          else modifying @Position column succ
         get >>= \newSrcPos ->
           when (newSrcPos == transPos) $ breakLoop (Just $ chunk ^. annotation)
     pure Nothing
 
 -- TODO Derive this with Template Haskell (it's currently very brittle)
-quoteSourcePosition :: SourcePosition -> Expression
-quoteSourcePosition sourcePosition =
+quoteString :: String -> Expression
+quoteString = Parse.LiteralString Nothing
+
+-- TODO Derive this with Template Haskell (it's currently very brittle)
+quotePosition :: Position -> Expression
+quotePosition sourcePosition =
   Parse.SExpression
-    (Just sourcePosition)
-    [ Parse.Symbol (Just sourcePosition) "SM.SourcePosition"
-    , Parse.LiteralInt (Just sourcePosition) (sourcePosition ^. line)
-    , Parse.LiteralInt (Just sourcePosition) (sourcePosition ^. column)
+    Nothing
+    [ Parse.Symbol Nothing "SM.Position"
+    , Parse.LiteralInt Nothing (sourcePosition ^. line)
+    , Parse.LiteralInt Nothing (sourcePosition ^. column)
     ]
+
+-- TODO Derive this with Template Haskell (it's currently very brittle)
+quote2Tuple :: (a -> Expression, b -> Expression) -> (a, b) -> Expression
+quote2Tuple (quoterA, quoterB) (a, b) =
+  Parse.SExpression Nothing [Parse.Symbol Nothing ",", quoterA a, quoterB b]
 
 -- TODO Derive this with Template Haskell (it's currently very brittle)
 quoteMaybe :: (a -> Expression) -> Maybe a -> Expression
@@ -151,4 +167,4 @@ quoteMaybe quoter (Just x) =
   Parse.SExpression Nothing [Parse.Symbol Nothing "Just", quoter x]
 
 quoteSourceMetadata :: Maybe SourcePosition -> Expression
-quoteSourceMetadata = quoteMaybe quoteSourcePosition
+quoteSourceMetadata = quoteMaybe $ quote2Tuple (quoteString, quotePosition)

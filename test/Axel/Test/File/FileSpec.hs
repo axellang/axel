@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Axel.Test.File.FileSpec where
 
 import Axel.Eff.App

@@ -49,5 +49,5 @@ runGhci origState action = runState origState $ reinterpret go action
           pure mockResult
         Nothing ->
           throwInterpretError @GhciState "Exec" "No mock result available"
-    go Start = undefined
-    go (Stop _) = undefined
+    go Start = throwInterpretError @GhciState "Start" "Not implemented!"
+    go (Stop _) = throwInterpretError @GhciState "Stop" "Not implemented!"

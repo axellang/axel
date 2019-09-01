@@ -8,14 +8,14 @@ module Axel.Haskell.Error where
 
 import Axel.Haskell.FilePath (haskellPathToAxelPath)
 import Axel.Macros (ModuleInfo)
-import Axel.Sourcemap (SourcePosition(SourcePosition), renderSourcePosition)
+import Axel.Sourcemap (Position(Position), SourcePosition, renderSourcePosition)
 import qualified Axel.Sourcemap as SM (Output(Output), findOriginalPosition)
-import Axel.Utils.Debug
 import Axel.Utils.Json (_Int)
 
 import Control.Lens.Operators ((^.), (^?))
 import Control.Lens.TH (makeFieldsNoPrefix)
 import Control.Lens.Tuple (_1, _2)
+import Control.Monad (join)
 
 import qualified Data.Aeson as Json (Value, decode')
 import Data.Aeson.Lens (_String, key)
@@ -24,19 +24,10 @@ import qualified Data.Map as M (lookup)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T (unpack)
 
-data SourceSpan =
-  SourceSpan
-    { _start :: SourcePosition
-    , _end :: SourcePosition
-    }
-  deriving (Show)
-
-makeFieldsNoPrefix ''SourceSpan
-
 data GhcError =
   GhcError
     { _message :: String
-    , _transpiledSpan :: (FilePath, SourceSpan)
+    , _sourcePosition :: SourcePosition
     }
   deriving (Show)
 
@@ -55,40 +46,34 @@ tryProcessGhcOutput moduleInfo line = do
   let obj `viewStr` field = T.unpack <$> (obj ^? field . _String)
   jsonLine <- Json.decode' @Json.Value (BL.pack line)
   msg <- jsonLine `viewStr` key "doc"
-  jsonSpan <- jsonLine ^? key "span"
-  startPosition <-
-    SourcePosition <$> (jsonSpan ^? key "startLine" . _Int) <*>
-    (jsonSpan ^? key "startCol" . _Int)
-  endPosition <-
-    SourcePosition <$> (jsonSpan ^? key "endLine" . _Int) <*>
-    (jsonSpan ^? key "endCol" . _Int)
-  filePath <- jsonSpan `viewStr` key "file"
-  let sourceSpan = SourceSpan startPosition endPosition
-  let maybeAxelError =
-        toAxelError moduleInfo $ GhcError msg (filePath, sourceSpan)
-  let haskellError =
-        "\n\nAt position " <> filePath <> ":" <>
-        renderSourcePosition startPosition <>
-        ":\n" <>
-        msg <>
-        "\n\n"
-  pure $ [fromMaybe haskellError maybeAxelError]
+  pure $ fromMaybe ["\n" <> msg <> "\n"] $ do
+    jsonSpan <- jsonLine ^? key "span"
+    startPosition <-
+      Position <$> (jsonSpan ^? key "startLine" . _Int) <*>
+      (jsonSpan ^? key "startCol" . _Int)
+    filePath <- jsonSpan `viewStr` key "file"
+    let haskellSourcePosition = (filePath, startPosition)
+    let maybeAxelError =
+          toAxelError moduleInfo $ GhcError msg haskellSourcePosition
+    let haskellError =
+          "\nAt position " <> renderSourcePosition haskellSourcePosition <>
+          ":\n" <>
+          msg <>
+          "\n"
+    pure [fromMaybe haskellError maybeAxelError]
 
 toAxelError :: ModuleInfo -> GhcError -> Maybe String
 toAxelError moduleInfo ghcError = do
-  let haskellPath = ghcError ^. transpiledSpan . _1
-  let haskellPosition = ghcError ^. transpiledSpan . _2 . start
+  let haskellPath = ghcError ^. sourcePosition . _1
+  let haskellPosition = ghcError ^. sourcePosition . _2
   let axelPath = haskellPathToAxelPath haskellPath
-  let positionHint filePath startPos = do
-        pure $ "at " <> filePath <> ":" <> renderSourcePosition startPos
-  haskellPositionHint <- positionHint haskellPath haskellPosition
+  let positionHint startPos = "at " <> renderSourcePosition startPos
   SM.Output transpiledOutput <- M.lookup axelPath moduleInfo >>= snd
-  axelPosition <-
-    SM.findOriginalPosition transpiledOutput haskellPosition >>= id
-  axelPositionHint <- positionHint axelPath axelPosition
-  pure $ "\n\n" <> ghcError ^. message <>
+  axelSourcePosition <-
+    join $ SM.findOriginalPosition transpiledOutput haskellPosition
+  pure $ "\n" <> ghcError ^. message <>
     "\n\nThe above message is in terms of the generated Haskell, " <>
-    haskellPositionHint <>
+    positionHint (haskellPath, haskellPosition) <>
     ".\nTry checking " <>
-    axelPositionHint <>
-    ".\nIf the Axel code at that position doesn't seem related, something may have gone wrong during a macro expansion.\n\n"
+    positionHint axelSourcePosition <>
+    ".\nIf the Axel code at that position doesn't seem related, something may have gone wrong during a macro expansion.\n"

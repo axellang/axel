@@ -1,7 +1,6 @@
 module Axel.Test.MacrosSpec where
 
 import Axel.Macros
-import Axel.Parse
 import Axel.Parse.AST
 import qualified Axel.Sourcemap as SM
 import Axel.Utils.Zipper

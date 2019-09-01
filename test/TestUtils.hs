@@ -7,8 +7,12 @@
 
 module TestUtils where
 
+import Axel.Eff.Error
+import Axel.Parse
+import Axel.Sourcemap as SM
+
 import Control.Exception
-import Control.Monad.Freer
+import Control.Monad.Freer as Effs
 import Control.Monad.Freer.Error as Effs
 import Control.Monad.Freer.State as Effs
 
@@ -40,3 +44,10 @@ assertEqual msg expected actual =
     (case maybeSrcLoc of
        Just srcLoc -> "\n\nat: " <> show srcLoc
        Nothing -> "")
+
+-- | Will error at runtime if a parse error occurs.
+-- | If multiple expressions are able to be parsed, only the first will be returned.
+unsafeParseSingle :: Maybe FilePath -> String -> SM.Expression
+unsafeParseSingle filePath =
+  head .
+  Effs.run . unsafeRunError @Axel.Eff.Error.Error . parseMultiple filePath

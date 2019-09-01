@@ -13,6 +13,8 @@ import qualified Control.Monad.Freer.Error as Effs
 
 import Test.Tasty.Hspec
 
+import TestUtils
+
 {-# ANN module "HLint: ignore Redundant do" #-}
 
 parseSingle :: String -> Expression ()

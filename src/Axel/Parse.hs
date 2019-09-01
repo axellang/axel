@@ -7,7 +7,7 @@
 
 module Axel.Parse where
 
-import Axel.Eff.Error (Error(ParseError), unsafeRunError)
+import Axel.Eff.Error (Error(ParseError))
 import Axel.Haskell.Language (haskellOperatorSymbols, haskellSyntaxSymbols)
 import Axel.Parse.AST
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
@@ -17,61 +17,57 @@ import Axel.Parse.AST
   )
 import qualified Axel.Sourcemap as SM (Expression)
 import Axel.Sourcemap
-  ( SourcePosition(SourcePosition, _column, _line)
+  ( Position(Position, _column, _line)
+  , SourceMetadata
   , quoteSourceMetadata
   , wrapCompoundExpressions
   )
 import Axel.Utils.List (takeUntil)
 
 import Control.Monad.Freer (Eff, Member)
-import qualified Control.Monad.Freer as Effs (run)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 
-import Data.Functor.Identity (Identity)
 import Data.List ((\\))
 import Data.Maybe (fromMaybe)
 
-import Text.Parsec (ParsecT, Stream, (<|>), eof, parse, try)
+import Text.Parsec (Parsec, (<|>), eof, parse, try)
 import Text.Parsec.Char (alphaNum, char, digit, noneOf, oneOf, space, string)
 import Text.Parsec.Combinator (many1, optional)
 import Text.Parsec.Language (haskellDef)
-import Text.Parsec.Pos (sourceColumn, sourceLine)
+import Text.Parsec.Pos (sourceColumn, sourceLine, sourceName)
 import Text.Parsec.Prim (getPosition, many)
 import Text.Parsec.Token (makeTokenParser, stringLiteral)
 
-ann ::
-     (Monad m)
-  => (Maybe SourcePosition -> a -> b)
-  -> ParsecT s u m a
-  -> ParsecT s u m b
+ann :: (SourceMetadata -> a -> b) -> Parsec s u a -> Parsec s u b
 ann f x = do
   parsecPosition <- getPosition
   let sourcePosition =
-        SourcePosition
-          { _line = sourceLine parsecPosition
-          , _column = sourceColumn parsecPosition
-          }
+        ( sourceName parsecPosition
+        , Position
+            { _line = sourceLine parsecPosition
+            , _column = sourceColumn parsecPosition
+            })
   f (Just sourcePosition) <$> x
 
-parseReadMacro :: String -> String -> ParsecT String u Identity SM.Expression
+parseReadMacro :: String -> String -> Parsec String u SM.Expression
 parseReadMacro prefix wrapper = do
   expr <- string prefix *> expression
   ann SExpression (pure [Symbol Nothing wrapper, expr])
 
-any' :: (Stream s m Char) => ParsecT s u m Char
+any' :: Parsec String u Char
 any' = noneOf ""
 
-whitespace :: (Stream s m Char) => ParsecT s u m String
+whitespace :: Parsec String u String
 whitespace = many space
 
-literalChar :: (Stream s m Char) => ParsecT s u m SM.Expression
+literalChar :: Parsec String u SM.Expression
 literalChar = ann LiteralChar (string "#\\" *> any')
 
-literalInt :: (Stream s m Char) => ParsecT s u m SM.Expression
+literalInt :: Parsec String u SM.Expression
 literalInt = ann LiteralInt (read <$> many1 digit)
 
-literalList :: ParsecT String u Identity SM.Expression
+literalList :: Parsec String u SM.Expression
 literalList =
   ann
     SExpression
@@ -79,32 +75,32 @@ literalList =
   where
     item = try (whitespace *> expression) <|> expression
 
-literalString :: ParsecT String u Identity SM.Expression
+literalString :: Parsec String u SM.Expression
 literalString = ann LiteralString (stringLiteral (makeTokenParser haskellDef))
 
-quasiquotedExpression :: ParsecT String u Identity SM.Expression
+quasiquotedExpression :: Parsec String u SM.Expression
 quasiquotedExpression = parseReadMacro "`" "quasiquote"
 
-quotedExpression :: ParsecT String u Identity SM.Expression
+quotedExpression :: Parsec String u SM.Expression
 quotedExpression = parseReadMacro "'" "quote"
 
-sExpressionItem :: ParsecT String u Identity SM.Expression
+sExpressionItem :: Parsec String u SM.Expression
 sExpressionItem = try (whitespace *> expression) <|> expression
 
-sExpression :: ParsecT String u Identity SM.Expression
+sExpression :: Parsec String u SM.Expression
 sExpression = ann SExpression (char '(' *> many sExpressionItem <* char ')')
 
-infixSExpression :: ParsecT String u Identity SM.Expression
+infixSExpression :: Parsec String u SM.Expression
 infixSExpression =
   ann
     SExpression
     ((Symbol Nothing "applyInfix" :) <$>
      (char '{' *> many sExpressionItem <* char '}'))
 
-spliceUnquotedExpression :: ParsecT String u Identity SM.Expression
+spliceUnquotedExpression :: Parsec String u SM.Expression
 spliceUnquotedExpression = parseReadMacro "~@" "unquoteSplicing"
 
-symbol :: (Stream s Identity Char) => ParsecT s u Identity SM.Expression
+symbol :: Parsec String u SM.Expression
 symbol =
   ann
     Symbol
@@ -113,10 +109,10 @@ symbol =
         oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols) <|>
         oneOf (map fst haskellOperatorSymbols)))
 
-unquotedExpression :: ParsecT String u Identity SM.Expression
+unquotedExpression :: Parsec String u SM.Expression
 unquotedExpression = parseReadMacro "~" "unquote"
 
-expression :: ParsecT String u Identity SM.Expression
+expression :: Parsec String u SM.Expression
 expression =
   literalChar <|> literalInt <|> literalList <|> literalString <|>
   quotedExpression <|>
@@ -161,24 +157,19 @@ parseMultiple ::
   => Maybe FilePath
   -> String
   -> Eff effs [SM.Expression]
-parseMultiple filePath input =
-  either throwErr (pure . expandQuasiquotes) $ parse program "" input
+parseMultiple maybeFilePath input =
+  either throwErr (pure . expandQuasiquotes) $ parse program filePath input
   where
+    filePath = fromMaybe "" maybeFilePath
     program =
       many1 (optional whitespace *> expression <* optional whitespace) <* eof
-    throwErr = throwError @Error . ParseError (fromMaybe "" filePath) . show
+    throwErr = throwError @Error . ParseError filePath . show
     expandQuasiquotes =
       map $
       bottomUpFmapSplicing
         (\case
            SExpression _ (Symbol _ "quasiquote":xs') -> map expandQuasiquote xs'
            x -> [x])
-
--- | Will error at runtime if a parse error occurs.
---   If multiple expressions are able to be parsed, only the first will be returned.
-unsafeParseSingle :: Maybe FilePath -> String -> SM.Expression
-unsafeParseSingle filePath =
-  head . Effs.run . unsafeRunError @Error . parseMultiple filePath
 
 stripComments :: String -> String
 stripComments = unlines . map cleanLine . lines

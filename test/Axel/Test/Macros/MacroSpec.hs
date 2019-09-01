@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Axel.Test.Macros.MacroSpec where
 
 import Axel.Eff.App
