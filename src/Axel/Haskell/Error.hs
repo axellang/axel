@@ -46,7 +46,7 @@ tryProcessGhcOutput moduleInfo line = do
   let obj `viewStr` field = T.unpack <$> (obj ^? field . _String)
   jsonLine <- Json.decode' @Json.Value (BL.pack line)
   msg <- jsonLine `viewStr` key "doc"
-  pure $ fromMaybe ["\n" <> msg <> "\n"] $ do
+  pure $ fromMaybe [msg] $ do
     jsonSpan <- jsonLine ^? key "span"
     startPosition <-
       Position <$> (jsonSpan ^? key "startLine" . _Int) <*>
@@ -58,8 +58,7 @@ tryProcessGhcOutput moduleInfo line = do
     let haskellError =
           "\nAt position " <> renderSourcePosition haskellSourcePosition <>
           ":\n" <>
-          msg <>
-          "\n"
+          msg
     pure [fromMaybe haskellError maybeAxelError]
 
 toAxelError :: ModuleInfo -> GhcError -> Maybe String
@@ -76,4 +75,4 @@ toAxelError moduleInfo ghcError = do
     positionHint (haskellPath, haskellPosition) <>
     ".\nTry checking " <>
     positionHint axelSourcePosition <>
-    ".\nIf the Axel code at that position doesn't seem related, something may have gone wrong during a macro expansion.\n"
+    ".\nIf the Axel code at that position doesn't seem related, something may have gone wrong during a macro expansion."

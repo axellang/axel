@@ -34,6 +34,7 @@ import Axel.AST
   , name
   )
 import Axel.Denormalize (denormalizeStatement)
+import qualified Axel.Eff as Effs (Callback)
 import Axel.Eff.Error (Error(MacroError), fatal)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (createDirectoryIfMissing, writeFile)
@@ -100,13 +101,14 @@ import System.FilePath ((<.>), (</>), takeFileName)
 
 type ModuleInfo = Map FilePath (Identifier, Maybe SM.Output)
 
-type FunctionApplicationExpander effs
-   = forall openEffs. (Members effs openEffs) =>
-                        SM.Expression -> Eff openEffs (Maybe [SM.Expression])
+type FunctionApplicationExpanderArgs a = SM.Expression -> a
 
-type FileExpander effs
-   = forall openEffs. (Members effs openEffs) =>
-                        FilePath -> Eff openEffs ()
+type FunctionApplicationExpander effs
+   = Effs.Callback effs FunctionApplicationExpanderArgs (Maybe [SM.Expression])
+
+type FileExpanderArgs a = FilePath -> a
+
+type FileExpander effs = Effs.Callback effs FileExpanderArgs ()
 
 -- | Fully expand a program, and add macro definition type signatures.
 processProgram ::
