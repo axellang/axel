@@ -6,7 +6,7 @@ module Axel.Utils.String where
 import Control.Lens.Combinators (_head)
 import Control.Lens.Operators ((%~))
 
-import Data.Char (toUpper)
+import Data.Char (chr, ord, toUpper)
 import qualified Data.Text as T (pack, replace, unpack)
 
 import GHC.Exts (IsString(fromString))
@@ -34,3 +34,20 @@ handleStringEscapes =
   concatMap $ \case
     '\\' -> "\\\\"
     c -> [c]
+
+bold :: String -> String
+bold = map boldCharacter
+  where
+    boldRanges = [('a', 'z', '𝗮'), ('A', 'Z', '𝗔'), ('0', '9', '𝟬')]
+    boldDelta x =
+      foldl
+        (\acc (rangeStart, rangeEnd, boldStart) ->
+           if x `elem` [rangeStart .. rangeEnd]
+             then ord boldStart - ord rangeStart
+             else acc)
+        0
+        boldRanges
+    boldCharacter x = chr $ (+ boldDelta x) $ ord x
+
+indent :: Int -> String -> String
+indent width = unlines . map (replicate width ' ' <>) . lines

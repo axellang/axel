@@ -40,6 +40,7 @@ library:
   ghc-options: []
   dependencies:
   - aeson
+  - ansi-terminal
   - bytestring
   - containers
   - directory

@@ -11,6 +11,7 @@ import Axel.Macros (ModuleInfo)
 import Axel.Sourcemap (Position(Position), SourcePosition, renderSourcePosition)
 import qualified Axel.Sourcemap as SM (Output(Output), findOriginalPosition)
 import Axel.Utils.Json (_Int)
+import Axel.Utils.String (indent)
 
 import Control.Lens.Operators ((^.), (^?))
 import Control.Lens.TH (makeFieldsNoPrefix)
@@ -56,9 +57,10 @@ tryProcessGhcOutput moduleInfo line = do
     let maybeAxelError =
           toAxelError moduleInfo $ GhcError msg haskellSourcePosition
     let haskellError =
-          "\nAt position " <> renderSourcePosition haskellSourcePosition <>
-          ":\n" <>
-          msg
+          "\n" <> indent 4 msg <>
+          "The above message is in terms of the generated Haskell, at " <>
+          renderSourcePosition haskellSourcePosition <>
+          ".\nIt couldn't be mapped to an Axel location (did a macro lose a sourcemapping annotation along the way?).\n"
     pure [fromMaybe haskellError maybeAxelError]
 
 toAxelError :: ModuleInfo -> GhcError -> Maybe String
@@ -70,9 +72,9 @@ toAxelError moduleInfo ghcError = do
   SM.Output transpiledOutput <- M.lookup axelPath moduleInfo >>= snd
   axelSourcePosition <-
     join $ SM.findOriginalPosition transpiledOutput haskellPosition
-  pure $ "\n" <> ghcError ^. message <>
-    "\n\nThe above message is in terms of the generated Haskell, " <>
+  pure $ "\n" <> indent 4 (ghcError ^. message) <>
+    "The above message is in terms of the generated Haskell, " <>
     positionHint (haskellPath, haskellPosition) <>
     ".\nTry checking " <>
     positionHint axelSourcePosition <>
-    ".\nIf the Axel code at that position doesn't seem related, something may have gone wrong during a macro expansion."
+    ".\nIf the Axel code at that position doesn't seem related, something may have gone wrong during a macro expansion.\n"

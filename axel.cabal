@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: daeeb0b85a3b06e1eb069574d053e6f20f9d18d15610fbaddcacab7e079f9857
+-- hash: d6646d56e43144869b832959eb9aa25f69a65a5acd94eeae65a81accd8e0f236
 
 name:           axel
 version:        0.0.11
@@ -49,6 +49,7 @@ library
       Axel
       Axel.AST
       Axel.Denormalize
+      Axel.Eff
       Axel.Eff.App
       Axel.Eff.Console
       Axel.Eff.Error
@@ -97,6 +98,7 @@ library
     , tasty-discover:tasty-discover
   build-depends:
       aeson
+    , ansi-terminal
     , base
     , bytestring
     , containers
