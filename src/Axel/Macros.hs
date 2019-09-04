@@ -17,21 +17,28 @@ import Prelude hiding (putStrLn)
 
 import Axel (isPrelude, preludeMacros)
 import Axel.AST
-  ( Identifier
+  ( Expression(EFunctionApplication, EIdentifier, ERawExpression)
+  , FunctionApplication(FunctionApplication)
+  , FunctionDefinition(FunctionDefinition)
+  , Identifier
   , ImportSpecification(ImportAll)
   , MacroDefinition
   , MacroImport(MacroImport)
   , QualifiedImport(QualifiedImport)
   , SMStatement
-  , Statement(SMacroDefinition, SMacroImport, SModuleDeclaration,
-          SQualifiedImport, SRawStatement)
+  , Statement(SFunctionDefinition, SMacroDefinition, SMacroImport,
+          SMacroImport, SModuleDeclaration, SQualifiedImport, SRawStatement,
+          STypeSignature)
   , ToHaskell(toHaskell)
+  , TypeSignature(TypeSignature)
   , _SMacroDefinition
   , _SModuleDeclaration
   , functionDefinition
+  , getAnn
   , imports
   , moduleName
   , name
+  , statementsToProgram
   )
 import Axel.Denormalize (denormalizeStatement)
 import qualified Axel.Eff as Effs (Callback)
@@ -39,42 +46,39 @@ import Axel.Eff.Error (Error(MacroError), fatal)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (createDirectoryIfMissing, writeFile)
 import qualified Axel.Eff.Ghci as Effs (Ghci)
-import qualified Axel.Eff.Ghci as Ghci (exec, start, stop)
+import qualified Axel.Eff.Ghci as Ghci (enableJsonErrors, exec, start, stop)
 import qualified Axel.Eff.Log as Effs (Log)
 import Axel.Eff.Log (logStrLn)
 import qualified Axel.Eff.Process as Effs (Process)
-import Axel.Eff.Resource (readResource)
-import qualified Axel.Eff.Resource as Effs (Resource)
-import qualified Axel.Eff.Resource as Res (macroScaffold)
 import qualified Axel.Eff.Restartable as Effs (Restartable)
 import Axel.Eff.Restartable (restart, runRestartable)
+import Axel.Haskell.Error (processErrors)
+import Axel.Haskell.FilePath (haskellPathToAxelPath)
 import Axel.Haskell.Macros (hygenisizeMacroName)
 import Axel.Normalize
   ( normalizeStatement
+  , unsafeNormalizeExpression
   , unsafeNormalizeStatement
   , withExprCtxt
   )
 import Axel.Parse (parseMultiple)
-import Axel.Parse.AST
-  ( _SExpression
-  , bottomUpFmapSplicing
-  , quoteExpression
-  , toAxel
-  )
+import Axel.Parse.AST (_SExpression, bottomUpFmapSplicing, toAxel)
 import qualified Axel.Parse.AST as Parse (Expression(SExpression, Symbol))
 import Axel.Sourcemap
-  ( isCompoundExpressionWrapperHead
-  , quoteSourceMetadata
+  ( ModuleInfo
+  , SourceMetadata
+  , isCompoundExpressionWrapperHead
+  , quoteSMExpression
+  , renderSourcePosition
   , unwrapCompoundExpressions
   , wrapCompoundExpressions
   )
 import qualified Axel.Sourcemap as SM (Expression, Output, raw)
 import Axel.Utils.List (filterMap, filterMapOut, head')
 import Axel.Utils.Recursion (bottomUpFmap, zipperTopDownTraverse)
-import Axel.Utils.String (replace)
 import Axel.Utils.Zipper (unsafeLeft, unsafeUp)
 
-import Control.Lens (snoc)
+import Control.Lens (_1, snoc)
 import Control.Lens.Extras (is)
 import Control.Lens.Operators ((%~), (^.), (^?))
 import Control.Monad (guard, unless, when)
@@ -86,20 +90,18 @@ import qualified Control.Monad.Freer.Reader as Effs (Reader, runReader)
 import Control.Monad.Freer.State (get, gets, modify)
 import qualified Control.Monad.Freer.State as Effs (State, evalState)
 
+import Data.Function (on)
 import Data.Generics.Uniplate.Zipper (Zipper, fromZipper, hole, replaceHole, up)
 import Data.Hashable (hash)
-import Data.List (isPrefixOf, nub)
+import Data.List (intersperse, isPrefixOf, nub)
 import Data.List.Split (split, whenElt)
-import Data.Map (Map)
-import qualified Data.Map as M (filter, toList)
+import qualified Data.Map as M (filter, fromList, toList)
 import Data.Maybe (isNothing)
 import Data.Semigroup ((<>))
 
 import qualified Language.Haskell.Ghcid as Ghci (Ghci)
 
 import System.FilePath ((<.>), (</>), takeFileName)
-
-type ModuleInfo = Map FilePath (Identifier, Maybe SM.Output)
 
 type FunctionApplicationExpanderArgs a = SM.Expression -> a
 
@@ -125,6 +127,7 @@ processProgram ::
   -> Eff effs [SMStatement]
 processProgram expandFunApp expandFile filePath program = do
   ghci <- Ghci.start
+  Ghci.enableJsonErrors ghci
   newProgramExpr <-
     Effs.runReader filePath $ Effs.runReader ghci $
     expandProgramExpr
@@ -139,7 +142,10 @@ processProgram expandFunApp expandFile filePath program = do
       (Effs.runReader filePath . withExprCtxt . normalizeStatement)
       (unwrapCompoundExpressions newProgramExpr)
   let addAstImport =
-        insertImports [SRawStatement Nothing "import Axel.Parse.AST as AST"]
+        insertImports
+          [ SQualifiedImport $
+            QualifiedImport Nothing "Axel.Parse.AST" "AST" (ImportAll Nothing)
+          ]
   pure $ finalizeProgram $ addAstImport newStmts
 
 finalizeProgram :: [SMStatement] -> [SMStatement]
@@ -148,7 +154,7 @@ finalizeProgram stmts =
         bottomUpFmapSplicing
           (\case
              Parse.SExpression _ (Parse.Symbol _ "quote":xs) ->
-               map (quoteExpression quoteSourceMetadata) xs
+               map quoteSMExpression xs
              x -> [x])
       convertList =
         bottomUpFmap $ \case
@@ -318,13 +324,13 @@ addStatementToMacroEnvironment expandFile newExpr = do
 
 -- | If a function application is a macro call, expand it.
 handleFunctionApplication ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.State ModuleInfo, Effs.Reader Ghci.Ghci, Effs.Reader FilePath, Effs.State [SMStatement]] effs)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.State ModuleInfo, Effs.Reader Ghci.Ghci, Effs.Reader FilePath, Effs.State [SMStatement]] effs)
   => SM.Expression
   -> Eff effs (Maybe [SM.Expression])
-handleFunctionApplication (Parse.SExpression _ (Parse.Symbol _ function:args)) = do
-  shouldExpand <- isMacroCall function
+handleFunctionApplication (Parse.SExpression ann (Parse.Symbol _ functionName:args)) = do
+  shouldExpand <- isMacroCall functionName
   if shouldExpand
-    then Just <$> expandMacroApplication function args
+    then Just <$> expandMacroApplication ann functionName args
     else pure Nothing
 handleFunctionApplication _ = pure Nothing
 
@@ -364,12 +370,15 @@ mkMacroTypeSignature =
   SRawStatement Nothing .
   (<> " :: [AST.Expression SM.SourceMetadata] -> IO [AST.Expression SM.SourceMetadata]")
 
+macroDefAndEnvModuleName :: String
+macroDefAndEnvModuleName = "AutogeneratedAxelMacroDefinitionAndEnvironment"
+
 generateMacroProgram ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Resource, Effs.State [SMStatement]] effs)
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.State [SMStatement]] effs)
   => FilePath
   -> Identifier
   -> [SM.Expression]
-  -> Eff effs (String, String)
+  -> Eff effs (SM.Output, SM.Output)
 generateMacroProgram filePath' oldMacroName args = do
   let newMacroName = hygenisizeMacroName oldMacroName
   let mainFnName = "main_AXEL_AUTOGENERATED_FUNCTION_DEFINITION"
@@ -377,42 +386,77 @@ generateMacroProgram filePath' oldMacroName args = do
         [ mkMacroTypeSignature mainFnName
         , SRawStatement Nothing $ mainFnName <> " = " <> newMacroName
         ]
-  let header =
-        (if isPrelude filePath' -- We can't import the Axel prelude if we're actually compiling it
-           then []
-           else [SMacroImport $ MacroImport Nothing "Axel" preludeMacros]) <>
-        [ SQualifiedImport $
-          QualifiedImport Nothing "Axel.Parse.AST" "AST" (ImportAll Nothing)
-        , SQualifiedImport $
-          QualifiedImport Nothing "Axel.Sourcemap" "SM" (ImportAll Nothing)
-        , SQualifiedImport $
-          QualifiedImport
-            Nothing
-            "Unsafe.Coerce"
-            "Unsafe.Coerce_AXEL_AUTOGENERATED_IMPORT"
-            (ImportAll Nothing)
-        ]
-  let insertArgs =
-        let argsPlaceholder = "%%%ARGUMENTS%%%"
-         in replace argsPlaceholder (show args)
-  let renderStmts :: [SMStatement] -> String
-      renderStmts = unlines . map (SM.raw . toHaskell)
-  scaffold <- insertArgs <$> readResource Res.macroScaffold
+  let (header, scaffold) =
+        let mkModuleDecl = SModuleDeclaration Nothing
+            mkQualImport moduleName' alias =
+              SQualifiedImport $
+              QualifiedImport Nothing moduleName' alias (ImportAll Nothing)
+            mkMacroImport moduleName' macros =
+              SMacroImport $ MacroImport Nothing moduleName' macros
+            mkId identifier = EIdentifier Nothing identifier
+            mkQualId moduleName' identifier =
+              EIdentifier Nothing $ moduleName' <> "." <> identifier
+            mkTySig fnName ty = STypeSignature $ TypeSignature Nothing fnName ty
+            mkFnDef fnName args' body =
+              SFunctionDefinition $
+              FunctionDefinition Nothing fnName args' body []
+            mkFnApp fn args' =
+              EFunctionApplication $ FunctionApplication Nothing fn args'
+            mkRawExpr str = ERawExpression Nothing str
+            mkList xs =
+              mkFnApp (mkId "[") $ intersperse (mkRawExpr ",") xs <> [mkId "]"] -- This is VERY hacky, but it'll work without too much effort for now.
+         in ( (if isPrelude filePath' -- We can't import the Axel prelude if we're actually compiling it.
+                 then []
+                 else [mkMacroImport "Axel" preludeMacros]) <>
+              [ mkQualImport "Axel.Parse.AST" "AST"
+              , mkQualImport "Axel.Sourcemap" "SM"
+              , mkQualImport
+                  "Unsafe.Coerce"
+                  "Unsafe.Coerce_AXEL_AUTOGENERATED_IMPORT"
+              ]
+            , [ mkModuleDecl "AutogeneratedAxelScaffold"
+              , mkQualImport macroDefAndEnvModuleName macroDefAndEnvModuleName
+              , mkQualImport "Axel.Parse.AST" "AST"
+              , mkQualImport "Axel.Sourcemap" "SM"
+              , mkTySig "main" $ mkFnApp (mkId "IO") [mkId "()"]
+              , mkFnDef "main" [] $
+                mkFnApp
+                  (mkId ">>=")
+                  [ mkFnApp
+                      (mkQualId
+                         macroDefAndEnvModuleName
+                         "main_AXEL_AUTOGENERATED_FUNCTION_DEFINITION")
+                      [ mkList
+                          (map
+                             (unsafeNormalizeExpression . quoteSMExpression)
+                             args)
+                      ]
+                  , mkFnApp
+                      (mkId ".")
+                      [ mkId "putStrLn"
+                      , mkFnApp
+                          (mkId ".")
+                          [ mkId "unlines"
+                          , mkFnApp (mkId "map") [mkId "AST.toAxel"]
+                          ]
+                      ]
+                  ]
+              ])
   auxEnv <- get @[SMStatement]
   -- TODO If the file being transpiled has pragmas but no explicit module declaration,
   --      they will be erroneously included *after* the module declaration.
   --      Should we just require Axel files to have module declarations, or is there a
   --      less intrusive alternate solution?
   let macroDefAndEnv =
-        let moduleDecl =
-              SModuleDeclaration
-                Nothing
-                "AutogeneratedAxelMacroDefinitionAndEnvironment"
+        let moduleDecl = SModuleDeclaration Nothing macroDefAndEnvModuleName
             programStmts =
               replaceModuleDecl moduleDecl $ insertImports header $ auxEnv <>
               footer
-         in renderStmts $ finalizeProgram programStmts
-  pure (scaffold, macroDefAndEnv)
+         in finalizeProgram programStmts
+  pure $
+    uncurry
+      ((,) `on` toHaskell . statementsToProgram)
+      (scaffold, macroDefAndEnv)
   where
     replaceModuleDecl newModuleDecl stmts =
       if any (is _SModuleDeclaration) stmts
@@ -437,16 +481,17 @@ losslyReconstructMacroCall macroName args =
     (Parse.Symbol Nothing macroName : map (Nothing <$) args)
 
 expandMacroApplication ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Effs.Reader Ghci.Ghci, Effs.Reader FilePath, Effs.State [SMStatement]] effs)
-  => Identifier
+     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Reader Ghci.Ghci, Effs.Reader FilePath, Effs.State [SMStatement]] effs)
+  => SourceMetadata
+  -> Identifier
   -> [SM.Expression]
   -> Eff effs [SM.Expression]
-expandMacroApplication macroName args = do
+expandMacroApplication originalAnn macroName args = do
   logStrLn $ "Expanding: " <> toAxel (losslyReconstructMacroCall macroName args)
   filePath' <- ask @FilePath
   macroProgram <- generateMacroProgram filePath' macroName args
   (tempFilePath, newSource) <-
-    uncurry (evalMacro (macroName, args)) macroProgram
+    uncurry (evalMacro originalAnn macroName args) macroProgram
   logStrLn $ "Result: " <> newSource <> "\n\n"
   parseMultiple (Just tempFilePath) newSource
 
@@ -457,18 +502,27 @@ isMacroDefinitionStatement _ = False
 evalMacro ::
      forall effs.
      (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Reader Ghci.Ghci, Effs.Reader FilePath] effs)
-  => (Identifier, [SM.Expression])
-  -> String
-  -> String
+  => SourceMetadata
+  -> Identifier
+  -> [SM.Expression]
+  -> SM.Output
+  -> SM.Output
   -> Eff effs (FilePath, String)
-evalMacro (macroName, args) scaffold macroDefAndEnv = do
-  tmpDir <- getTempDirectory
-  let macroDefAndEnvFileName =
-        tmpDir </> "AutogeneratedAxelMacroDefinitionAndEnvironment.hs"
-  let scaffoldFileName = tmpDir </> scaffoldModuleName <.> "hs"
-  let resultFile = tmpDir </> "result.axel"
+evalMacro originalCallAnn macroName args scaffoldProgram macroDefAndEnvProgram = do
+  tempDir <- getTempDirectory
+  let macroDefAndEnvFileName = tempDir </> macroDefAndEnvModuleName <.> "hs"
+  let scaffoldFileName = tempDir </> scaffoldModuleName <.> "hs"
+  let resultFile = tempDir </> "result.axel"
   FS.writeFile scaffoldFileName scaffold
   FS.writeFile macroDefAndEnvFileName macroDefAndEnv
+  let moduleInfo =
+        M.fromList $
+        map
+          (_1 %~ haskellPathToAxelPath)
+          [ (scaffoldFileName, (scaffoldModuleName, Just scaffoldProgram))
+          , ( macroDefAndEnvFileName
+            , (macroDefAndEnvModuleName, Just macroDefAndEnvProgram))
+          ]
   ghci <- ask @Ghci.Ghci
   loadResult <-
     Ghci.exec ghci $ unwords [":l", scaffoldFileName, macroDefAndEnvFileName]
@@ -477,15 +531,19 @@ evalMacro (macroName, args) scaffold macroDefAndEnv = do
       result <- unlines <$> Ghci.exec ghci ":main"
       FS.writeFile resultFile $
         generateExpansionRecord
-          originalCallReconstruction
+          originalCallAnn
+          macroName
+          args
           result
           scaffoldFileName
           macroDefAndEnvFileName
       if any ("*** Exception:" `isPrefixOf`) (lines result)
         then throwMacroError result
         else pure (resultFile, result)
-    else throwMacroError (unlines loadResult)
+    else throwMacroError (processErrors moduleInfo $ unlines loadResult)
   where
+    macroDefAndEnv = SM.raw macroDefAndEnvProgram
+    scaffold = SM.raw scaffoldProgram
     getTempDirectory = do
       let uniqueId = hash $ scaffold <> macroDefAndEnv
       -- | When the hash is negative, our directory will be of the form `-123456789`.
@@ -497,22 +555,30 @@ evalMacro (macroName, args) scaffold macroDefAndEnv = do
       FS.createDirectoryIfMissing True dirName
       pure dirName
     scaffoldModuleName = "AutogeneratedAxelScaffold"
-    originalCallReconstruction = losslyReconstructMacroCall macroName args
-    throwMacroError :: String -> Eff effs a
     throwMacroError msg = do
       originalFilePath <- ask @FilePath
       throwError @Error $
-        MacroError originalFilePath originalCallReconstruction msg
+        MacroError
+          originalFilePath
+          (losslyReconstructMacroCall macroName args)
+          msg
 
 generateExpansionRecord ::
-     SM.Expression -> String -> FilePath -> FilePath -> String
-generateExpansionRecord originalCall result scaffoldFilePath macroDefAndEnvFilePath =
+     SourceMetadata
+  -> Identifier
+  -> [SM.Expression]
+  -> String
+  -> FilePath
+  -> FilePath
+  -> String
+generateExpansionRecord originalAnn macroName args result scaffoldFilePath macroDefAndEnvFilePath =
   unlines
     [ result
     , "-- This file is an autogenerated record of a macro call and expansion."
     , "-- It is (likely) not a valid Axel program, so you probably don't want to run it directly."
-    , "-- The beginning of this file contains the result of this macro invocation: " <>
-      toAxel originalCall
+    , "-- The beginning of this file contains the result of this macro invocation:"
+    , toAxel (losslyReconstructMacroCall macroName args) <> " -- at " <>
+      locationHint
     , "-- The macro call itself is transpiled in " <>
       takeFileName scaffoldFilePath <>
       "."
@@ -521,3 +587,8 @@ generateExpansionRecord originalCall result scaffoldFilePath macroDefAndEnvFileP
       takeFileName macroDefAndEnvFilePath <>
       "."
     ]
+  where
+    locationHint =
+      case originalAnn of
+        Just x -> renderSourcePosition x
+        Nothing -> "<unknown>"

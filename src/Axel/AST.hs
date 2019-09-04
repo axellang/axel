@@ -647,3 +647,6 @@ instance ToHaskell (TypeSynonym (Maybe SM.Expression)) where
     mkHaskell typeSynonym "type " <> toHaskell (typeSynonym ^. alias) <>
     mkHaskell typeSynonym " = " <>
     toHaskell (typeSynonym ^. definition)
+
+statementsToProgram :: [SMStatement] -> SMStatement
+statementsToProgram = STopLevel . TopLevel Nothing

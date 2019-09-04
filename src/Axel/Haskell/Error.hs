@@ -7,9 +7,14 @@
 module Axel.Haskell.Error where
 
 import Axel.Haskell.FilePath (haskellPathToAxelPath)
-import Axel.Macros (ModuleInfo)
-import Axel.Sourcemap (Position(Position), SourcePosition, renderSourcePosition)
+import Axel.Sourcemap
+  ( ModuleInfo
+  , Position(Position)
+  , SourcePosition
+  , renderSourcePosition
+  )
 import qualified Axel.Sourcemap as SM (Output(Output), findOriginalPosition)
+import Axel.Utils.Debug
 import Axel.Utils.Json (_Int)
 import Axel.Utils.String (indent)
 
@@ -69,7 +74,7 @@ toAxelError moduleInfo ghcError = do
   let haskellPosition = ghcError ^. sourcePosition . _2
   let axelPath = haskellPathToAxelPath haskellPath
   let positionHint startPos = "at " <> renderSourcePosition startPos
-  SM.Output transpiledOutput <- M.lookup axelPath moduleInfo >>= snd
+  SM.Output transpiledOutput <- M.lookup (unsafeTee axelPath) moduleInfo >>= snd
   axelSourcePosition <-
     join $ SM.findOriginalPosition transpiledOutput haskellPosition
   pure $ "\n" <> indent 4 (ghcError ^. message) <>

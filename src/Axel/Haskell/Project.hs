@@ -26,7 +26,7 @@ import Axel.Haskell.Stack
   , createStackProject
   , runStackProject
   )
-import Axel.Macros (ModuleInfo)
+import Axel.Sourcemap (ModuleInfo)
 
 import Control.Monad.Freer (Eff, Members)
 import qualified Control.Monad.Freer.Error as Effs (Error)

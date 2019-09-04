@@ -28,8 +28,7 @@ import Axel.Eff.Process
   )
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Haskell.Error (processErrors)
-import Axel.Macros (ModuleInfo)
-
+import Axel.Sourcemap (ModuleInfo)
 import Control.Lens.Operators ((%~))
 import Control.Monad (void)
 import Control.Monad.Freer (Eff, Member, Members)

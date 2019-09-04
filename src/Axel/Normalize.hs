@@ -31,6 +31,7 @@ import Axel.AST
   , RecordDefinition(RecordDefinition)
   , RecordType(RecordType)
   , RestrictedImport(RestrictedImport)
+  , SMExpression
   , SMStatement
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
           SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
@@ -168,6 +169,11 @@ normalizeExpression expr@(Parse.SExpression _ items) =
     [] -> pure $ EEmptySExpression (Just expr)
 normalizeExpression expr@(Parse.Symbol _ symbol) =
   pure $ EIdentifier (Just expr) symbol
+
+unsafeNormalizeExpression :: SM.Expression -> SMExpression
+unsafeNormalizeExpression =
+  Effs.run .
+  unsafeRunError @Error . runReader "" . withExprCtxt . normalizeExpression
 
 normalizeFunctionDefinition ::
      (Members '[ Effs.Error Error, Effs.Reader FilePath, Effs.Reader ExprCtxt] effs)

@@ -16,21 +16,18 @@ ghc-options:
 - -Wno-all-missed-specialisations
 - -Wno-implicit-prelude
 - -Wno-missed-specialisations
+- -Wno-missing-import-lists
 - -Wno-missing-export-lists
 - -Wno-missing-local-signatures
 - -Wno-monomorphism-restriction
 - -Wno-safe
 - -Wno-unsafe
 - -optP-Wno-nonportable-include-path # https://github.com/haskell/cabal/issues/4739
-# - -F -pgmF debug-pp
 build-tools:
-- debug:debug
 - hpack:hpack
 - tasty-discover:tasty-discover
 dependencies:
 - base
-- debug
-- freer-simple
 - hpack
 - tasty-discover
 data-files:
@@ -45,6 +42,7 @@ library:
   - containers
   - directory
   - filepath
+  - freer-simple
   - ghcid
   - hashable
   - haskell-src-exts
@@ -75,6 +73,7 @@ executables:
     dependencies:
     - axel
     - containers
+    - freer-simple
     - optparse-applicative
 tests:
   axel-test:
@@ -90,6 +89,7 @@ tests:
     - bytestring
     - containers
     - filepath
+    - freer-simple
     - hedgehog
     - lens
     - split

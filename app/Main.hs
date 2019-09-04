@@ -1,15 +1,15 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeApplications #-}
 module Main where
-import Axel.Parse.AST as AST
+import qualified Axel.Parse.AST as AST
 import Prelude hiding (putStrLn)
 import Axel.Eff.App(AppEffs,runApp)
 import Axel.Eff.Console(putStrLn)
 import Axel.Haskell.File(convertFileInPlace,transpileFileInPlace)
 import Axel.Haskell.Project(buildProject,runProject)
 import Axel.Haskell.Stack(axelStackageVersion)
-import Axel.Macros(ModuleInfo)
 import Axel.Parse.Args(Command(Convert,File,Project,Version),commandParser)
+import Axel.Sourcemap(ModuleInfo)
 import Control.Monad(void)
 import Control.Monad.Freer.State(evalState)
 import qualified Data.Map as Map(empty)

@@ -13,9 +13,9 @@ import Prelude hiding (putStrLn)
 
 import Axel.AST
   ( SMStatement
-  , Statement(SModuleDeclaration, STopLevel)
+  , Statement(SModuleDeclaration)
   , ToHaskell(toHaskell)
-  , TopLevel(TopLevel)
+  , statementsToProgram
   )
 import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
@@ -33,7 +33,7 @@ import qualified Axel.Eff.Restartable as Effs (Restartable)
 import Axel.Haskell.Convert (convertFile)
 import Axel.Haskell.FilePath (axelPathToHaskellPath, haskellPathToAxelPath)
 import Axel.Haskell.Stack (interpretFile)
-import Axel.Macros (ModuleInfo, handleFunctionApplication, processProgram)
+import Axel.Macros (handleFunctionApplication, processProgram)
 import Axel.Normalize (normalizeStatement, withExprCtxt)
 import Axel.Parse (parseSource)
 import Axel.Parse.AST (Expression(Symbol))
@@ -43,6 +43,7 @@ import qualified Axel.Sourcemap as SM
   , raw
   , unwrapCompoundExpressions
   )
+import Axel.Sourcemap (ModuleInfo)
 import Axel.Utils.Recursion (bottomUpFmap)
 
 import Control.Lens.Operators ((<&>), (?~))
@@ -114,7 +115,7 @@ transpileSource ::
   -> String
   -> Eff effs SM.Output
 transpileSource filePath source =
-  toHaskell . STopLevel . TopLevel Nothing <$>
+  toHaskell . statementsToProgram <$>
   (parseSource (Just filePath) source >>=
    processProgram
      @fileExpanderEffs

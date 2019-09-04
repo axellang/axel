@@ -16,6 +16,7 @@ import Axel.Eff.Loop (breakLoop)
 import qualified Axel.Eff.Loop as Effs (runLoop)
 import qualified Axel.Parse.AST as Parse
   ( Expression(LiteralInt, LiteralString, SExpression, Symbol)
+  , quoteExpression
   )
 import Axel.Utils.Foldable (intercalate)
 import Axel.Utils.Tuple (Annotated, annotate, annotation, unannotate)
@@ -28,6 +29,7 @@ import Control.Monad.Freer.State (get)
 import qualified Control.Monad.Freer.State as Effs (evalState)
 
 import Data.Data (Data)
+import Data.Map (Map)
 
 data Position =
   Position
@@ -168,3 +170,9 @@ quoteMaybe quoter (Just x) =
 
 quoteSourceMetadata :: Maybe SourcePosition -> Expression
 quoteSourceMetadata = quoteMaybe $ quote2Tuple (quoteString, quotePosition)
+
+quoteSMExpression :: Expression -> Expression
+quoteSMExpression = Parse.quoteExpression quoteSourceMetadata
+
+-- | Keys are the module file paths, and values are (the module name, the transpiled output).
+type ModuleInfo = Map FilePath (String, Maybe Output)

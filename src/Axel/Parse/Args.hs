@@ -1,5 +1,5 @@
 module Axel.Parse.Args where
-import Axel.Parse.AST as AST
+import qualified Axel.Parse.AST as AST
 import Data.Semigroup((<>))
 import Options.Applicative(Parser,argument,command,info,metavar,progDesc,str,subparser)
 data Command = Convert FilePath|File FilePath|Project |Version 

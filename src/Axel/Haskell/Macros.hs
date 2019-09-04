@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Axel.Haskell.Macros where
-import Axel.Parse.AST as AST
+import qualified Axel.Parse.AST as AST
 import Axel.Haskell.Language(haskellOperatorSymbols,haskellSyntaxSymbols,isOperator)
 import qualified Axel.Parse as Parse(syntaxSymbols)
 import Data.List(foldl')
