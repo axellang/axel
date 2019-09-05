@@ -393,7 +393,7 @@ generateMacroProgram filePath' oldMacroName args = do
               QualifiedImport Nothing moduleName' alias (ImportAll Nothing)
             mkMacroImport moduleName' macros =
               SMacroImport $ MacroImport Nothing moduleName' macros
-            mkId identifier = EIdentifier Nothing identifier
+            mkId = EIdentifier Nothing
             mkQualId moduleName' identifier =
               EIdentifier Nothing $ moduleName' <> "." <> identifier
             mkTySig fnName ty = STypeSignature $ TypeSignature Nothing fnName ty
@@ -402,12 +402,10 @@ generateMacroProgram filePath' oldMacroName args = do
               FunctionDefinition Nothing fnName args' body []
             mkFnApp fn args' =
               EFunctionApplication $ FunctionApplication Nothing fn args'
-            mkRawExpr str = ERawExpression Nothing str
+            mkRawExpr = ERawExpression Nothing
             mkList xs =
               mkFnApp (mkId "[") $ intersperse (mkRawExpr ",") xs <> [mkId "]"] -- This is VERY hacky, but it'll work without too much effort for now.
-         in ( (if isPrelude filePath' -- We can't import the Axel prelude if we're actually compiling it.
-                 then []
-                 else [mkMacroImport "Axel" preludeMacros]) <>
+         in ( [mkMacroImport "Axel" preludeMacros | not $ isPrelude filePath'] <> -- We can't import the Axel prelude if we're actually compiling it.
               [ mkQualImport "Axel.Parse.AST" "AST"
               , mkQualImport "Axel.Sourcemap" "SM"
               , mkQualImport

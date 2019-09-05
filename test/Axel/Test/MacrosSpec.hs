@@ -7,7 +7,7 @@ import Axel.Utils.Zipper
 
 import Data.Generics.Uniplate.Zipper
 
-import Test.Tasty.Hspec
+import Test.Tasty.Hspec hiding (focus)
 
 import TestUtils
 
@@ -28,13 +28,13 @@ spec_Macros = do
             mapM_
               (\focus ->
                  assertEqual
-                   ("Failure at " <> toAxel (hole $ focus z) <>
+                   ("Failure at " <>
+                    toAxel (hole $ focus z) <>
                     "\n\n\t Context:\thole (focus z)\t\t== " <>
                     toAxel (hole $ focus z) <>
                     "\n\t\t\thole <$> up (focus z)\t== " <>
                     show (toAxel . hole <$> up (focus z)) <>
-                    "\n\t\t\tfromZipper z\t\t== " <>
-                    toAxel (fromZipper z))
+                    "\n\t\t\tfromZipper z\t\t== " <> toAxel (fromZipper z))
                    expected
                    (isStatementFocused $ focus z))
       testFocusers

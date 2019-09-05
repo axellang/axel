@@ -1,3 +1,0 @@
-import Axel.Parse.AST as AST
-main :: (IO ())
-main  = (pure ())

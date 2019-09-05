@@ -1,4 +1,4 @@
-import Axel.Parse.AST as AST
+import qualified Axel.Parse.AST as AST
 import Quux
 import Foo
 import Bar(foo,bar,Baz(baz))

@@ -1,4 +1,4 @@
-import Axel.Parse.AST as AST
+import qualified Axel.Parse.AST as AST
 data Foo = Foo {foo :: Int,bar :: String}
 foo :: Foo
 foo  = (Foo {foo = 1,bar = "test"})

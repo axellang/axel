@@ -1,11 +1,14 @@
+{-# LANGUAGE GADTs #-}
+
 module Axel.Test.ASTGen where
 
 import qualified Axel.AST as AST
 import qualified Axel.Sourcemap as SM
 
-import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
+
+import TestUtils
 
 genIdentifier :: (MonadGen m) => m AST.Identifier
 genIdentifier = Gen.string (Range.linear 1 5) Gen.alpha

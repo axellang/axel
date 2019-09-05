@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 35bb83719c7c9f1eb2f42bdd46b50310d7426e804e39986c96f1dd0b61ebd177
+-- hash: 6cdc724c94594384a55a9cfc42ffde020330f0b49bbad59f1003426afa3ac897
 
 name:           axel
 version:        0.0.11
@@ -152,6 +152,7 @@ test-suite axel-test
   other-modules:
       Axel.Test.ASTGen
       Axel.Test.DenormalizeSpec
+      Axel.Test.Eff.AppMock
       Axel.Test.Eff.ConsoleMock
       Axel.Test.Eff.ConsoleSpec
       Axel.Test.Eff.FileSystemMock
@@ -160,15 +161,14 @@ test-suite axel-test
       Axel.Test.Eff.ProcessMock
       Axel.Test.Eff.ResourceMock
       Axel.Test.Eff.ResourceSpec
-      Axel.Test.File.FileSpec
       Axel.Test.Haskell.StackSpec
-      Axel.Test.Macros.MacroSpec
       Axel.Test.MacrosSpec
       Axel.Test.NormalizeSpec
       Axel.Test.Parse.ASTGen
       Axel.Test.Parse.ASTSpec
       Axel.Test.ParseSpec
       Axel.Test.SourcemapSpec
+      Axel.Test.Transpilation.TranspilationSpec
       Axel.Test.Utils.ListSpec
       Axel.Test.Utils.MaybeSpec
       TestUtils

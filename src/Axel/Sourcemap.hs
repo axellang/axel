@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -48,8 +47,8 @@ renderSourcePosition (filePath, position) =
         if filePath == ""
           then "<unknown>"
           else filePath
-   in filePath' <> ":" <> show (position ^. line) <> ":" <>
-      show (position ^. column)
+   in filePath' <>
+      ":" <> show (position ^. line) <> ":" <> show (position ^. column)
 
 type SourceMetadata = Maybe SourcePosition
 

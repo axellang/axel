@@ -1,11 +1,14 @@
+{-# LANGUAGE GADTs #-}
+
 module Axel.Test.Parse.ASTGen where
 
 import qualified Axel.Parse.AST as AST
 import qualified Axel.Sourcemap as SM
 
-import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
+
+import TestUtils
 
 genExpression :: (MonadGen m) => m SM.Expression
 genExpression =

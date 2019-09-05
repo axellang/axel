@@ -1,2 +1,2 @@
-import Axel.Parse.AST as AST
+import qualified Axel.Parse.AST as AST
 data (Bar a b) = Foo (a Int)|Bar b String|Baz 

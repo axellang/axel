@@ -15,9 +15,9 @@ import Control.Monad.Freer (type (~>), Eff, runM)
 import qualified Control.Monad.Freer.Error as Effs (Error)
 
 type AppEffs
-   = Eff '[ Log, Console, Effs.Error Error, FileSystem, Ghci, Process, Resource, IO]
+   = '[ Log, Console, Effs.Error Error, FileSystem, Ghci, Process, Resource, IO]
 
-runApp :: AppEffs ~> IO
+runApp :: Eff AppEffs ~> IO
 runApp =
   runM .
   runResource .

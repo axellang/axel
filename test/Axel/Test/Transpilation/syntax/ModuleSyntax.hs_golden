@@ -1,0 +1,3 @@
+module Test.Main where
+import qualified Axel.Parse.AST as AST
+foo  = ()
