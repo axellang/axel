@@ -34,7 +34,6 @@ import Axel.AST
   , _SMacroDefinition
   , _SModuleDeclaration
   , functionDefinition
-  , getAnn
   , imports
   , moduleName
   , name

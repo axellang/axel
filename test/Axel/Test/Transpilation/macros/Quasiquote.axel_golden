@@ -6,7 +6,7 @@
 (def assertEq {(AST.Expression a) -> {(AST.Expression b) -> SM.Expression}}
  ((expr expected)
   (if {{unit <$ expr} == {unit <$ expected}}
-    '(raw "{- Passed! -}")
+    '(raw "-- Passed!")
     (error {(AST.toAxel expr) <> {" given, but " <> {(AST.toAxel expected) <> " expected!"}}}))))
 
 (def sym {String -> SM.Expression}

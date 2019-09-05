@@ -22,8 +22,8 @@ import Axel.Sourcemap
   , quoteSourceMetadata
   , wrapCompoundExpressions
   )
-import Axel.Utils.List (takeUntil)
 
+import Control.Monad (void)
 import Control.Monad.Freer (Eff, Member)
 import Control.Monad.Freer.Error (throwError)
 import qualified Control.Monad.Freer.Error as Effs (Error)
@@ -31,12 +31,21 @@ import qualified Control.Monad.Freer.Error as Effs (Error)
 import Data.List ((\\))
 import Data.Maybe (fromMaybe)
 
-import Text.Parsec (Parsec, (<|>), eof, parse, try)
-import Text.Parsec.Char (alphaNum, char, digit, noneOf, oneOf, space, string)
-import Text.Parsec.Combinator (many1, optional)
+import Text.Parsec (Parsec, (<|>), parse)
+import Text.Parsec.Char
+  ( alphaNum
+  , anyChar
+  , char
+  , digit
+  , newline
+  , oneOf
+  , space
+  , string
+  )
+import Text.Parsec.Combinator (eof, many1, manyTill)
 import Text.Parsec.Language (haskellDef)
 import Text.Parsec.Pos (sourceColumn, sourceLine, sourceName)
-import Text.Parsec.Prim (getPosition, many)
+import Text.Parsec.Prim (getPosition, many, skipMany, try)
 import Text.Parsec.Token (makeTokenParser, stringLiteral)
 
 ann :: (SourceMetadata -> a -> b) -> Parsec s u a -> Parsec s u b
@@ -55,14 +64,14 @@ parseReadMacro prefix wrapper = do
   expr <- string prefix *> expression
   ann SExpression (pure [Symbol Nothing wrapper, expr])
 
-any' :: Parsec String u Char
-any' = noneOf ""
+eol :: Parsec String u ()
+eol = try (void newline) <|> eof
 
-whitespace :: Parsec String u String
-whitespace = many space
+ignored :: Parsec String u ()
+ignored = skipMany $ try comment <|> void space
 
 literalChar :: Parsec String u SM.Expression
-literalChar = ann LiteralChar (string "#\\" *> any')
+literalChar = ann LiteralChar (string "#\\" *> anyChar)
 
 literalInt :: Parsec String u SM.Expression
 literalInt = ann LiteralInt (read <$> many1 digit)
@@ -71,9 +80,8 @@ literalList :: Parsec String u SM.Expression
 literalList =
   ann
     SExpression
-    ((Symbol Nothing "list" :) <$> (char '[' *> many item <* char ']'))
-  where
-    item = try (whitespace *> expression) <|> expression
+    ((Symbol Nothing "list" :) <$>
+     (char '[' *> many sExpressionItem <* char ']'))
 
 literalString :: Parsec String u SM.Expression
 literalString = ann LiteralString (stringLiteral (makeTokenParser haskellDef))
@@ -85,7 +93,7 @@ quotedExpression :: Parsec String u SM.Expression
 quotedExpression = parseReadMacro "'" "quote"
 
 sExpressionItem :: Parsec String u SM.Expression
-sExpressionItem = try (whitespace *> expression) <|> expression
+sExpressionItem = ignored *> expression <* ignored
 
 sExpression :: Parsec String u SM.Expression
 sExpression = ann SExpression (char '(' *> many sExpressionItem <* char ')')
@@ -105,22 +113,27 @@ symbol =
   ann
     Symbol
     (many1
-       (alphaNum <|> oneOf "'_" <|>
-        oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols) <|>
+       (try alphaNum <|> try (oneOf "'_") <|>
+        try (oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols)) <|>
         oneOf (map fst haskellOperatorSymbols)))
 
 unquotedExpression :: Parsec String u SM.Expression
 unquotedExpression = parseReadMacro "~" "unquote"
 
+comment :: Parsec String u ()
+comment =
+  try (string "--" *> eol) <|>
+  void (string "-- " *> manyTill (void anyChar) eol)
+
 expression :: Parsec String u SM.Expression
 expression =
-  literalChar <|> literalInt <|> literalList <|> literalString <|>
-  quotedExpression <|>
-  quasiquotedExpression <|>
+  try literalChar <|> try literalInt <|> try literalList <|> try literalString <|>
+  try quotedExpression <|>
+  try quasiquotedExpression <|>
   try spliceUnquotedExpression <|>
-  unquotedExpression <|>
-  sExpression <|>
-  infixSExpression <|>
+  try unquotedExpression <|>
+  try sExpression <|>
+  try infixSExpression <|>
   symbol
 
 -- Adapted from Appendix A of "Quasiquotation in Lisp" by Alan Bawden.
@@ -161,8 +174,7 @@ parseMultiple maybeFilePath input =
   either throwErr (pure . expandQuasiquotes) $ parse program filePath input
   where
     filePath = fromMaybe "" maybeFilePath
-    program =
-      many1 (optional whitespace *> expression <* optional whitespace) <* eof
+    program = many1 (ignored *> expression <* ignored) <* eol
     throwErr = throwError @Error . ParseError filePath . show
     expandQuasiquotes =
       map $
@@ -171,19 +183,13 @@ parseMultiple maybeFilePath input =
            SExpression _ (Symbol _ "quasiquote":xs') -> map expandQuasiquote xs'
            x -> [x])
 
-stripComments :: String -> String
-stripComments = unlines . map cleanLine . lines
-  where
-    cleanLine = takeUntil "--"
-
 parseSource ::
      (Member (Effs.Error Error) effs)
   => Maybe FilePath
   -> String
   -> Eff effs SM.Expression
 parseSource filePath input = do
-  statements <- parseMultiple filePath $ stripComments input
-  pure $ wrapCompoundExpressions statements
+  wrapCompoundExpressions <$> parseMultiple filePath input
 
 syntaxSymbols :: String
 syntaxSymbols = "()[]{}"

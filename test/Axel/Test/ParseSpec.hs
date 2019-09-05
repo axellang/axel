@@ -103,6 +103,8 @@ spec_Parse = do
             [s|
 (foo 1 2 3) -- This is a comment
 -- Another comment! (bar x y z)
+(end of line comment) --
+(butThis-->IsASingleSymbol)
 |]
       let result =
             SExpression
@@ -115,6 +117,14 @@ spec_Parse = do
                   , LiteralInt () 2
                   , LiteralInt () 3
                   ]
+              , SExpression
+                  ()
+                  [ Symbol () "end"
+                  , Symbol () "of"
+                  , Symbol () "line"
+                  , Symbol () "comment"
+                  ]
+              , SExpression () [Symbol () "butThis-->IsASingleSymbol"]
               ]
       case Eff.run . Effs.runError @Error.Error $ parseSource Nothing input of
         Left err -> expectationFailure $ show err
