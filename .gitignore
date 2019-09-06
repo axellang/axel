@@ -34,3 +34,5 @@ flycheck_*.hs
 
 ctags
 TAGS
+
+.stack-work-profile

@@ -1,6 +1,6 @@
 module Axel.Utils.Maybe where
 
-import qualified Control.Monad.Freer as Effs (run)
+import Data.Functor.Identity (runIdentity)
 
 foldMUntilNothing :: (Monad m) => (a -> Maybe a) -> (a -> m a) -> a -> m a
 foldMUntilNothing move modify x = do
@@ -10,4 +10,5 @@ foldMUntilNothing move modify x = do
     Just moved -> foldMUntilNothing move modify moved
 
 foldUntilNothing :: (a -> Maybe a) -> (a -> a) -> a -> a
-foldUntilNothing move modify = Effs.run . foldMUntilNothing move (pure . modify)
+foldUntilNothing move modify =
+  runIdentity . foldMUntilNothing move (pure . modify)

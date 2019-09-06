@@ -23,12 +23,19 @@ ghc-options:
 - -Wno-safe
 - -Wno-unsafe
 - -optP-Wno-nonportable-include-path # https://github.com/haskell/cabal/issues/4739
+# Polysemy https://github.com/polysemy-research/polysemy#necessary-language-extensions
+- -fplugin=Polysemy.Plugin
+- -O2
+- -flate-specialise
+- -fspecialise-aggressively
 build-tools:
 - hpack:hpack
 - tasty-discover:tasty-discover
 dependencies:
 - base
 - hpack
+- polysemy
+- polysemy-plugin
 - tasty-discover
 data-files:
 - resources/**/*
@@ -42,7 +49,6 @@ library:
   - containers
   - directory
   - filepath
-  - freer-simple
   - ghcid
   - hashable
   - haskell-src-exts
@@ -73,7 +79,6 @@ executables:
     dependencies:
     - axel
     - containers
-    - freer-simple
     - optparse-applicative
 tests:
   axel-test:
@@ -83,13 +88,11 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -Wno-missing-import-lists
     dependencies:
     - axel
     - bytestring
     - containers
     - filepath
-    - freer-simple
     - hedgehog
     - lens
     - split

@@ -23,12 +23,12 @@ import Axel.Utils.Tuple (Annotated, annotate, annotation, unannotate)
 import Control.Lens.Operators ((^.))
 import Control.Lens.TH (makeFieldsNoPrefix, makeWrapped)
 import Control.Monad (forM_, when)
-import qualified Control.Monad.Freer as Effs (run)
-import Control.Monad.Freer.State (get)
-import qualified Control.Monad.Freer.State as Effs (evalState)
 
 import Data.Data (Data)
 import Data.Map (Map)
+
+import qualified Polysemy as Sem
+import qualified Polysemy.State as Sem
 
 data Position =
   Position
@@ -128,8 +128,8 @@ renderBlock = surround CurlyBraces . delimit Semicolons
 findOriginalPosition ::
      forall ann. [Annotated ann String] -> Position -> Maybe ann
 findOriginalPosition output transPos =
-  Effs.run $
-  Effs.evalState (Position {_line = 1, _column = 0}) $
+  Sem.run $
+  Sem.evalState (Position {_line = 1, _column = 0}) $
   Effs.runLoop $ do
     forM_ output $ \chunk ->
       forM_ (unannotate chunk) $ \char -> do
@@ -138,7 +138,7 @@ findOriginalPosition output transPos =
             assign @Position column 0
             modifying @Position line succ
           else modifying @Position column succ
-        get >>= \newSrcPos ->
+        Sem.get >>= \newSrcPos ->
           when (newSrcPos == transPos) $ breakLoop (Just $ chunk ^. annotation)
     pure Nothing
 

@@ -7,6 +7,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -20,9 +21,10 @@ import Axel.Eff.FileSystem as Effs
 import Axel.Eff.Process as Effs
 
 import Control.Lens
-import Control.Monad.Freer as Eff
-import Control.Monad.Freer.Error as Effs
-import Control.Monad.Freer.State as Effs
+
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
+import qualified Polysemy.State as Sem
 
 import Data.Functor
 
@@ -31,7 +33,7 @@ import System.Exit
 import TestUtils
 
 newtype ProcessResult effs =
-  ProcessResult ((ExitCode, Maybe (String, String)), Eff effs ())
+  ProcessResult ((ExitCode, Maybe (String, String)), Sem.Sem effs ())
 
 -- | We are pretending that all `ProcessResult`s are unique no matter what, for simplicity's sake.
 instance Eq (ProcessResult effs) where
@@ -62,46 +64,39 @@ mkProcessState mockArgs mockResults =
     }
 
 runProcess ::
-     forall effs a. (Members '[ Effs.Error String, Effs.FileSystem] effs)
+     forall effs a. (Sem.Members '[ Sem.Error String, Effs.FileSystem] effs)
   => ProcessState effs
-  -> Eff (Effs.Process ': effs) a
-  -> Eff effs (a, ProcessState effs)
-runProcess origProcessState = runState origProcessState . reinterpret go
+  -> Sem.Sem (Effs.Process ': effs) a
+  -> Sem.Sem effs (ProcessState effs, a)
+runProcess origProcessState = Sem.runState origProcessState . Sem.reinterpret go
   where
-    go :: Process ~> Eff (Effs.State (ProcessState effs) ': effs)
-    go GetArgs = gets @(ProcessState effs) (^. procMockArgs)
+    go :: Process m a' -> Sem.Sem (Sem.State (ProcessState effs) ': effs) a'
+    go GetArgs = Sem.gets (^. procMockArgs)
     go (RunProcessCreatingStreams cmd stdin) = do
-      modify @(ProcessState effs) $ procExecutionLog %~ (|> (cmd, Just stdin))
-      gets @(ProcessState effs) (uncons . (^. procMockResults)) >>= \case
+      Sem.modify $ procExecutionLog %~ (|> (cmd, Just stdin))
+      Sem.gets (uncons . (^. procMockResults)) >>= \case
         Just (ProcessResult (mockResult, fsAction), newMockResults) -> do
-          modify @(ProcessState effs) $ procMockResults .~ newMockResults
+          Sem.modify $ procMockResults .~ newMockResults
           case mockResult of
             (exitCode, Just (stdout, stderr)) ->
-              raise fsAction $> (exitCode, stdout, stderr)
+              Sem.raise fsAction $> (exitCode, stdout, stderr)
             _ ->
               throwInterpretError
-                @(ProcessState effs)
                 "RunProcess"
                 ("Wrong type for mock result: " <> show mockResult)
-        Nothing ->
-          throwInterpretError
-            @(ProcessState effs)
-            "RunProcess"
-            "No mock result available"
+        Nothing -> throwInterpretError "RunProcess" "No mock result available"
     go (RunProcessInheritingStreams cmd) = do
-      modify @(ProcessState effs) $ procExecutionLog %~ (|> (cmd, Nothing))
-      gets @(ProcessState effs) (uncons . (^. procMockResults)) >>= \case
+      Sem.modify $ procExecutionLog %~ (|> (cmd, Nothing))
+      Sem.gets (uncons . (^. procMockResults)) >>= \case
         Just (ProcessResult (mockResult, fsAction), newMockResults) -> do
-          modify @(ProcessState effs) $ procMockResults .~ newMockResults
+          Sem.modify $ procMockResults .~ newMockResults
           case mockResult of
-            (exitCode, Nothing) -> raise fsAction $> exitCode
+            (exitCode, Nothing) -> Sem.raise fsAction $> exitCode
             _ ->
               throwInterpretError
-                @(ProcessState effs)
                 "RunProcessInheritingStreams"
                 ("Wrong type for mock result: " <> show mockResult)
         Nothing ->
           throwInterpretError
-            @(ProcessState effs)
             "RunProcessInheritingStreams"
             "No mock result available"

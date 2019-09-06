@@ -14,9 +14,8 @@ import qualified Axel.Eff.Resource as Effs
 import Axel.Haskell.File
 import Axel.Sourcemap as SM
 
-import qualified Control.Monad.Freer as Effs
-import Control.Monad.Freer (type (~>), Eff)
-import Control.Monad.Freer.State (evalState)
+import qualified Polysemy as Sem
+import qualified Polysemy.State as Sem
 
 import Data.ByteString.Lazy.Char8 as C hiding (readFile)
 
@@ -27,9 +26,9 @@ import System.FilePath
 import Test.Tasty
 import Test.Tasty.Golden
 
-runApp :: Eff AppEffs ~> IO
+runApp :: Sem.Sem AppEffs a -> IO a
 runApp =
-  Effs.runM .
+  Sem.runM .
   Effs.runResource .
   Effs.runProcess .
   Effs.runGhci .
@@ -47,7 +46,7 @@ test_transpilation_golden = do
             axelSource <- readFile axelFile
             output <-
               runApp $
-              evalState (M.empty :: ModuleInfo) $
+              Sem.evalState (M.empty :: ModuleInfo) $
               transpileSource (takeBaseName axelFile) axelSource
             let newSource = C.pack $ SM.raw output
             pure newSource

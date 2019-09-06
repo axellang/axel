@@ -2,8 +2,8 @@
 
 module Axel.Eff where
 
-import Control.Monad.Freer (Eff, Members)
+import Polysemy (Members, Sem)
 
 type Callback effs fn a
    = forall openEffs. (Members effs openEffs) =>
-                        fn (Eff openEffs a)
+                        fn (Sem openEffs a)

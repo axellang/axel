@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE GADTs #-}
 
 -- NOTE Inspired by `fused-effects-lens`.
 module Axel.Eff.Lens where
@@ -17,61 +17,71 @@ import Control.Lens
   , set
   )
 import qualified Control.Lens.Getter as Lens (view, views)
-import Control.Monad.Freer (Eff, Member)
-import Control.Monad.Freer.Reader (asks)
-import qualified Control.Monad.Freer.Reader as Effs (Reader)
-import qualified Control.Monad.Freer.State as Effs (State)
-import Control.Monad.Freer.State (gets, modify)
 
 import Data.Profunctor.Unsafe (Profunctor(( #. )))
 
+import qualified Polysemy as Sem
+import qualified Polysemy.Reader as Sem
+import qualified Polysemy.State as Sem
+
 {-# INLINE view #-}
-view :: (Member (Effs.Reader s) effs) => Getting a s a -> Eff effs a
-view l = asks $ getConst #. l Const
+view :: (Sem.Member (Sem.Reader s) effs) => Getting a s a -> Sem.Sem effs a
+view l = Sem.asks $ getConst #. l Const
 
 {-# INLINE views #-}
 views ::
-     (Member (Effs.Reader s) effs)
+     (Sem.Member (Sem.Reader s) effs)
   => LensLike' (Const r) s a
   -> (a -> r)
-  -> Eff effs r
-views l f = asks $ getConst #. l (Const #. f)
+  -> Sem.Sem effs r
+views l f = Sem.asks $ getConst #. l (Const #. f)
 
 {-# INLINE use #-}
-use :: (Member (Effs.State s) effs) => Getting a s a -> Eff effs a
-use = gets . Lens.view
+use :: (Sem.Member (Sem.State s) effs) => Getting a s a -> Sem.Sem effs a
+use = Sem.gets . Lens.view
 
 {-# INLINE uses #-}
 uses ::
-     (Member (Effs.State s) effs)
+     (Sem.Member (Sem.State s) effs)
   => LensLike' (Const r) s a
   -> (a -> r)
-  -> Eff effs r
-uses l f = gets $ Lens.views l f
+  -> Sem.Sem effs r
+uses l f = Sem.gets $ Lens.views l f
 
 {-# INLINE assign #-}
-assign :: (Member (Effs.State s) effs) => ASetter s s a b -> b -> Eff effs ()
-assign l b = modify $ set l b
+assign ::
+     (Sem.Member (Sem.State s) effs) => ASetter s s a b -> b -> Sem.Sem effs ()
+assign l b = Sem.modify $ set l b
 
 infixr 4 .=
 
 {-# INLINE (.=) #-}
-(.=) :: (Member (Effs.State s) effs) => ASetter s s a b -> b -> Eff effs ()
+(.=) ::
+     (Sem.Member (Sem.State s) effs) => ASetter s s a b -> b -> Sem.Sem effs ()
 (.=) = assign
 
 {-# INLINE modifying #-}
 modifying ::
-     (Member (Effs.State s) effs) => ASetter s s a b -> (a -> b) -> Eff effs ()
-modifying l f = modify $ over l f
+     (Sem.Member (Sem.State s) effs)
+  => ASetter s s a b
+  -> (a -> b)
+  -> Sem.Sem effs ()
+modifying l f = Sem.modify $ over l f
 
 infixr 4 %=
 
 {-# INLINE (%=) #-}
 (%=) ::
-     (Member (Effs.State s) effs) => ASetter s s a b -> (a -> b) -> Eff effs ()
+     (Sem.Member (Sem.State s) effs)
+  => ASetter s s a b
+  -> (a -> b)
+  -> Sem.Sem effs ()
 (%=) = modifying
 
 {-# INLINE (<>=) #-}
 (<>=) ::
-     (Member (Effs.State s) effs, Monoid a) => ASetter' s a -> a -> Eff effs ()
-l <>= a = modify $ l <>~ a
+     (Sem.Member (Sem.State s) effs, Monoid a)
+  => ASetter' s a
+  -> a
+  -> Sem.Sem effs ()
+l <>= a = Sem.modify $ l <>~ a

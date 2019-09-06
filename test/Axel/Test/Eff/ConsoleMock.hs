@@ -13,9 +13,10 @@ module Axel.Test.Eff.ConsoleMock where
 import Axel.Eff.Console as Effs
 
 import Control.Lens
-import Control.Monad.Freer
-import Control.Monad.Freer.Error as Effs
-import Control.Monad.Freer.State as Effs
+
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
+import qualified Polysemy.State as Sem
 
 import TestUtils
 
@@ -31,13 +32,13 @@ mkConsoleState :: ConsoleState
 mkConsoleState = ConsoleState {_consoleOutput = ""}
 
 runConsole ::
-     forall effs a. (Member (Effs.Error String) effs)
+     forall effs a. (Sem.Member (Sem.Error String) effs)
   => ConsoleState
-  -> Eff (Effs.Console ': effs) a
-  -> Eff effs (a, ConsoleState)
-runConsole origState action = runState origState $ reinterpret go action
+  -> Sem.Sem (Effs.Console ': effs) a
+  -> Sem.Sem effs (ConsoleState, a)
+runConsole origState action = Sem.runState origState $ Sem.reinterpret go action
   where
-    go :: Console b -> Eff (Effs.State ConsoleState ': effs) b
+    go :: Console m b -> Sem.Sem (Sem.State ConsoleState ': effs) b
     go GetTerminalSize =
-      throwInterpretError @ConsoleState "GetTerminalSize" "Not implemented!"
-    go (PutStr str) = modify @ConsoleState $ consoleOutput %~ (<> str)
+      throwInterpretError "GetTerminalSize" "Not implemented!"
+    go (PutStr str) = Sem.modify $ consoleOutput %~ (<> str)

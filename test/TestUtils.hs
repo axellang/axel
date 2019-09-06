@@ -14,30 +14,32 @@ import Axel.Parse
 import Axel.Sourcemap as SM
 
 import Control.Exception
-import Control.Monad.Freer as Effs
-import Control.Monad.Freer.Error as Effs
-import Control.Monad.Freer.State as Effs
+
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
+import qualified Polysemy.State as Sem
 
 import Data.Functor.Identity (Identity)
 
 import Hedgehog hiding (MonadGen)
-import qualified Hedgehog as Hedgehog
+import qualified Hedgehog
 
 import Test.Tasty.HUnit as HUnit
 
 throwInterpretError ::
-     forall s effs a. (Members '[ Effs.Error String, Effs.State s] effs, Show s)
+     forall s effs a.
+     (Sem.Members '[ Sem.Error String, Sem.State s] effs, Show s)
   => String
   -> String
-  -> Eff effs a
+  -> Sem.Sem effs a
 throwInterpretError actionName message = do
   errorMsg <-
-    gets @s $ \ctxt ->
+    Sem.gets $ \ctxt ->
       "\n----------\nACTION\t" <>
       actionName <>
       "\n\nMESSAGE\t" <>
       message <> "\n\nSTATE\t" <> show ctxt <> "\n----------\n"
-  throwError errorMsg
+  Sem.throw errorMsg
 
 unwrapRight :: (Show b) => Either b a -> a
 unwrapRight (Right x) = x
@@ -59,8 +61,7 @@ assertEqual msg expected actual =
 -- | If multiple expressions are able to be parsed, only the first will be returned.
 unsafeParseSingle :: Maybe FilePath -> String -> SM.Expression
 unsafeParseSingle filePath =
-  head .
-  Effs.run . unsafeRunError @Axel.Eff.Error.Error . parseMultiple filePath
+  head . Sem.run . unsafeRunError @Axel.Eff.Error.Error . parseMultiple filePath
 
 -- NOTE Workaround until https://github.com/hedgehogqa/haskell-hedgehog/commit/de401e949526951fdff87ef02fc75f13e8e22dfe
 --      is publicly released.

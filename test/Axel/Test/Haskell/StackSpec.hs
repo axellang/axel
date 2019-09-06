@@ -16,10 +16,11 @@ import Axel.Test.Eff.FileSystemMock as Mock
 import Axel.Test.Eff.ProcessMock as Mock
 
 import Control.Lens
-import Control.Monad.Freer as Eff
-import qualified Control.Monad.Freer.Error as Effs
 
 import qualified Data.Map as M
+
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
 
 import System.Exit
 
@@ -46,9 +47,9 @@ spec_Stack = do
             Mock.File
               "package.yaml"
               "dependencies:\n- foo-1.2.3.4\n- asdf-5.6.7\n"
-      case Eff.run . Effs.runError . Mock.runFileSystem origFSState $ action of
+      case Sem.run . Sem.runError . Mock.runFileSystem origFSState $ action of
         Left err -> expectationFailure err
-        Right ((), result) -> result `shouldBe` expectedFSState
+        Right (result, ()) -> result `shouldBe` expectedFSState
   describe "buildStackProject" $ do
     it "builds a Stack project" $ do
       let action = Stack.buildStackProject M.empty "project/foo"
@@ -66,14 +67,14 @@ spec_Stack = do
             procState ^. Mock.procExecutionLog `shouldBe`
               [("stack build --ghc-options='-ddump-json'", Just "")]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
-      case Eff.run . Effs.runError @Error . Effs.runError @String .
+      case Sem.run . Sem.runError @Error . Sem.runError @String .
            Mock.runFileSystem origFSState .
            Mock.runProcess origProcState .
            Mock.runConsole origConsoleState $
            action of
         Left err -> expectationFailure $ show err
         Right (Left err) -> expectationFailure err
-        Right (Right (((x, consoleState), procState), fsState)) ->
+        Right (Right (fsState, (procState, (consoleState, x)))) ->
           expectation x (consoleState, fsState, procState)
   describe "createStackProject" $ do
     it "creates a new Stack project" $ do
@@ -97,13 +98,13 @@ spec_Stack = do
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
             fsState ^. Mock.fsRoot . at "newProject" . _Just . Mock.fsPath `shouldBe`
               "newProject"
-      case Eff.run . Effs.runError @Error . Effs.runError @String .
+      case Sem.run . Sem.runError @Error . Sem.runError @String .
            Mock.runFileSystem origFSState .
            Mock.runProcess origProcState $
            action of
         Left err -> expectationFailure $ show err
         Right (Left err) -> expectationFailure err
-        Right (Right ((x, procState), fsState)) ->
+        Right (Right (fsState, (procState, x))) ->
           expectation x (fsState, procState)
   describe "runStackProject" $ do
     it "runs a Stack project" $ do
@@ -127,14 +128,14 @@ spec_Stack = do
               [("stack ide targets", Just ""), ("stack exec foo-exe", Nothing)]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` "/"
             consoleState ^. Mock.consoleOutput `shouldBe` "Running foo-exe...\n"
-      case Eff.run . Effs.runError @Error . Effs.runError @String .
+      case Sem.run . Sem.runError @Error . Sem.runError @String .
            Mock.runFileSystem origFSState .
            Mock.runProcess origProcState .
            Mock.runConsole origConsoleState $
            action of
         Left err -> expectationFailure $ show err
         Right (Left err) -> expectationFailure err
-        Right (Right (((x, consoleState), procState), fsState)) ->
+        Right (Right (fsState, (procState, (consoleState, x)))) ->
           expectation x (consoleState, fsState, procState)
   describe "compileFile" $ do
     it "compiles a file with GHC" $ do
@@ -153,11 +154,11 @@ spec_Stack = do
                   " -- projectFoo/app/Main.hs"
                 , Just "")
               ]
-      case Eff.run . Effs.runError @String . Mock.runFileSystem origFSState .
+      case Sem.run . Sem.runError @String . Mock.runFileSystem origFSState .
            Mock.runProcess origProcState $
            action of
         Left err -> expectationFailure err
-        Right (((_, stdout, _), procState), fsState) ->
+        Right (fsState, (procState, (_, stdout, _))) ->
           expectation stdout (procState, fsState)
   describe "interpretFile" $ do
     it "interprets a file with GHC" $ do
@@ -177,9 +178,9 @@ spec_Stack = do
                   " -- projectFoo/app/Main.hs"
                 , Just "")
               ]
-      case Eff.run . Effs.runError @String . Mock.runFileSystem origFSState .
+      case Sem.run . Sem.runError @String . Mock.runFileSystem origFSState .
            Mock.runProcess origProcState $
            action of
         Left err -> expectationFailure err
-        Right (((_, stdout, _), procState), fsState) ->
+        Right (fsState, (procState, (_, stdout, _))) ->
           expectation stdout (procState, fsState)

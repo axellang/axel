@@ -16,12 +16,13 @@ module Axel.Test.Eff.FileSystemMock where
 import Axel.Eff.FileSystem as Effs
 
 import Control.Lens hiding (children)
-import Control.Monad.Freer
-import Control.Monad.Freer.Error as Effs
-import Control.Monad.Freer.State as Effs
 
 import Data.List.Split
 import Data.Maybe
+
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
+import qualified Polysemy.State as Sem
 
 import System.FilePath
 
@@ -173,18 +174,20 @@ absifyPath relativePath currentDirectory =
     dropLeadingSlash xs = xs
 
 absify ::
-     (Member (Effs.State FileSystemState) effs) => FilePath -> Eff effs FilePath
+     (Sem.Member (Sem.State FileSystemState) effs)
+  => FilePath
+  -> Sem.Sem effs FilePath
 absify relativePath =
-  absifyPath relativePath <$> gets @FileSystemState (^. fsCurrentDirectory)
+  absifyPath relativePath <$> Sem.gets (^. fsCurrentDirectory)
 
 runFileSystem ::
-     forall effs a. (Member (Effs.Error String) effs)
+     forall effs a. (Sem.Member (Sem.Error String) effs)
   => FileSystemState
-  -> Eff (Effs.FileSystem ': effs) a
-  -> Eff effs (a, FileSystemState)
-runFileSystem origState = runState origState . reinterpret go
+  -> Sem.Sem (Effs.FileSystem ': effs) a
+  -> Sem.Sem effs (FileSystemState, a)
+runFileSystem origState = Sem.runState origState . Sem.reinterpret go
   where
-    go :: FileSystem ~> Eff (Effs.State FileSystemState ': effs)
+    go :: FileSystem m a' -> Sem.Sem (Sem.State FileSystemState ': effs) a'
     go (AppendFile relativePath addedContents) = do
       oldContents <- go $ ReadFile relativePath
       let newContents = oldContents <> addedContents
@@ -194,14 +197,13 @@ runFileSystem origState = runState origState . reinterpret go
       go $ WriteFile contents dest
     go (CreateDirectoryIfMissing createParents relativePath) = do
       path <- absify relativePath
-      parentNode <- gets @FileSystemState (^. fsRoot . at (takeDirectory path))
+      parentNode <- Sem.gets (^. fsRoot . at (takeDirectory path))
       case parentNode of
         Just _ ->
-          modify @FileSystemState $ fsRoot . at path ?~
-          Directory (takeFileName path) []
+          Sem.modify $ fsRoot . at path ?~ Directory (takeFileName path) []
         Nothing ->
           if createParents
-            then modify @FileSystemState $ fsRoot %~ \origRoot ->
+            then Sem.modify $ fsRoot %~ \origRoot ->
                    fst
                      (foldl
                         (\(root, segments) pathSegment ->
@@ -221,15 +223,15 @@ runFileSystem origState = runState origState . reinterpret go
                    ("Missing parents for directory: " <> path)
     go (DoesDirectoryExist relativePath) = do
       path <- absify relativePath
-      directoryNode <- gets @FileSystemState (^. fsRoot . at path)
+      directoryNode <- Sem.gets (^. fsRoot . at path)
       pure $
         case directoryNode of
           Just (Directory _ _) -> True
           _ -> False
-    go GetCurrentDirectory = gets @FileSystemState (^. fsCurrentDirectory)
+    go GetCurrentDirectory = Sem.gets (^. fsCurrentDirectory)
     go (GetDirectoryContents relativePath) = do
       path <- absify relativePath
-      directoryNode <- gets @FileSystemState (^. fsRoot . at path)
+      directoryNode <- Sem.gets (^. fsRoot . at path)
       case directoryNode of
         Just (Directory _ children) -> pure $ map (^. fsPath) children
         _ ->
@@ -238,14 +240,14 @@ runFileSystem origState = runState origState . reinterpret go
             "getDirectoryContents"
             ("No such directory: " <> path)
     go GetTemporaryDirectory = do
-      tempCounter <- gets @FileSystemState (^. fsTempCounter)
-      modify @FileSystemState $ fsTempCounter %~ (+ 1)
+      tempCounter <- Sem.gets (^. fsTempCounter)
+      Sem.modify $ fsTempCounter %~ (+ 1)
       let tempDirName = "/tmp" </> show tempCounter
       go $ CreateDirectoryIfMissing True tempDirName
       pure tempDirName
     go (ReadFile relativePath) = do
       path <- absify relativePath
-      fileNode <- gets @FileSystemState (^. fsRoot . at path)
+      fileNode <- Sem.gets (^. fsRoot . at path)
       case fileNode of
         Just (File _ contents) -> pure contents
         _ ->
@@ -255,8 +257,8 @@ runFileSystem origState = runState origState . reinterpret go
             ("No such file: " <> path)
     go (RemoveFile relativePath) = do
       path <- absify relativePath
-      gets @FileSystemState (deleteNode (splitDirectories path) . (^. fsRoot)) >>= \case
-        Just newRoot -> modify @FileSystemState $ fsRoot .~ newRoot
+      Sem.gets (deleteNode (splitDirectories path) . (^. fsRoot)) >>= \case
+        Just newRoot -> Sem.modify $ fsRoot .~ newRoot
         Nothing ->
           throwInterpretError
             @FileSystemState
@@ -264,8 +266,7 @@ runFileSystem origState = runState origState . reinterpret go
             ("No such file: " <> path)
     go (SetCurrentDirectory relativePath) = do
       path <- absify relativePath
-      modify @FileSystemState $ fsCurrentDirectory .~ path
+      Sem.modify $ fsCurrentDirectory .~ path
     go (WriteFile relativePath contents) = do
       path <- absify relativePath
-      modify @FileSystemState $ fsRoot . at path ?~
-        File (takeFileName path) contents
+      Sem.modify $ fsRoot . at path ?~ File (takeFileName path) contents

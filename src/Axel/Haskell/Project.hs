@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Axel.Haskell.Project where
@@ -28,21 +29,21 @@ import Axel.Haskell.Stack
   )
 import Axel.Sourcemap (ModuleInfo)
 
-import Control.Monad.Freer (Eff, Members)
-import qualified Control.Monad.Freer.Error as Effs (Error)
-import qualified Control.Monad.Freer.State as Effs (execState)
-
 import Data.Semigroup ((<>))
 import qualified Data.Text as T (isSuffixOf, pack)
+
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
+import qualified Polysemy.State as Sem
 
 import System.FilePath ((</>))
 
 type ProjectPath = FilePath
 
 newProject ::
-     Members '[ Effs.FileSystem, Effs.Process, Effs.Resource] effs
+     Sem.Members '[ Effs.FileSystem, Effs.Process, Effs.Resource] effs
   => String
-  -> Eff effs ()
+  -> Sem.Sem effs ()
 newProject projectName = do
   createStackProject projectName
   addStackDependency axelStackageId projectName
@@ -55,24 +56,24 @@ newProject projectName = do
   mapM_ copyAxel ["Setup", "app" </> "Main", "src" </> "Lib", "test" </> "Spec"]
 
 transpileProject ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
-  => Eff effs ModuleInfo
+     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
+  => Sem.Sem effs ModuleInfo
 transpileProject = do
   files <- concat <$> mapM getDirectoryContentsRec ["app", "src", "test"]
   let axelFiles =
         filter (\filePath -> ".axel" `T.isSuffixOf` T.pack filePath) files
   moduleInfo <- readModuleInfo axelFiles
-  Effs.execState moduleInfo $ mapM transpileFileInPlace axelFiles
+  fst <$> Sem.runState moduleInfo (mapM transpileFileInPlace axelFiles)
 
 buildProject ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
-  => Eff effs ()
+     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
+  => Sem.Sem effs ()
 buildProject = do
   projectPath <- getCurrentDirectory
   transpiledFiles <- transpileProject
   buildStackProject transpiledFiles projectPath
 
 runProject ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
-  => Eff effs ()
+     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
+  => Sem.Sem effs ()
 runProject = getCurrentDirectory >>= runStackProject

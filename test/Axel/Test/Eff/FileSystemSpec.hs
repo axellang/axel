@@ -4,8 +4,9 @@ import qualified Axel.Eff.FileSystem as FS
 import qualified Axel.Test.Eff.FileSystemMock as Mock
 
 import Control.Lens
-import Control.Monad.Freer as Eff
-import Control.Monad.Freer.Error
+
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
 
 import System.FilePath
 
@@ -29,9 +30,9 @@ spec_FileSystem = do
                   ]
               ]
       let expected = ["dir1/file1", "dir1/dir2/file2"]
-      case Eff.run . runError . Mock.runFileSystem origState $ action of
+      case Sem.run . Sem.runError . Mock.runFileSystem origState $ action of
         Left err -> expectationFailure err
-        Right result -> result `shouldBe` (expected, origState)
+        Right result -> result `shouldBe` (origState, expected)
   describe "withCurrentDirectory" $ do
     it "changes the directory and resets it afterwards" $ do
       let action = do
@@ -52,9 +53,9 @@ spec_FileSystem = do
              Mock.File "insideDir" "insideDirContents") &
             (Mock.fsRoot . at "outsideDir" ?~
              Mock.File "outsideDir" "outsideDirContents")
-      case Eff.run . runError . Mock.runFileSystem origState $ action of
+      case Sem.run . Sem.runError . Mock.runFileSystem origState $ action of
         Left err -> expectationFailure err
-        Right result -> result `shouldBe` ((), expected)
+        Right result -> result `shouldBe` (expected, ())
   describe "withTemporaryDirectory" $ do
     it
       "creates a temporary directory and resets the current directory afterwards" $ do
@@ -71,6 +72,6 @@ spec_FileSystem = do
             (Mock.fsRoot . at "tmp/1" ?~
              Mock.Directory "1" [Mock.File "insideTemp1" "insideTemp1Contents"]) &
             (Mock.fsTempCounter .~ 2)
-      case Eff.run . runError . Mock.runFileSystem origState $ action of
+      case Sem.run . Sem.runError . Mock.runFileSystem origState $ action of
         Left err -> expectationFailure err
-        Right result -> result `shouldBe` ((), expected)
+        Right result -> result `shouldBe` (expected, ())

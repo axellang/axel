@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -11,8 +13,8 @@ import Prelude hiding (readFile, writeFile)
 import qualified Prelude (writeFile)
 
 import Control.Monad (forM)
-import Control.Monad.Freer (type (~>), Eff, LastMember, Member, interpretM)
-import Control.Monad.Freer.TH (makeEffect)
+
+import qualified Polysemy as Sem
 
 import qualified System.Directory
   ( copyFile
@@ -27,41 +29,48 @@ import qualified System.Directory
 import System.FilePath ((</>))
 import qualified System.IO.Strict as S (readFile)
 
-data FileSystem a where
-  AppendFile :: String -> FilePath -> FileSystem ()
-  CopyFile :: FilePath -> FilePath -> FileSystem ()
-  CreateDirectoryIfMissing :: Bool -> FilePath -> FileSystem ()
-  DoesDirectoryExist :: FilePath -> FileSystem Bool
-  GetCurrentDirectory :: FileSystem FilePath
-  GetDirectoryContents :: FilePath -> FileSystem [FilePath]
-  GetTemporaryDirectory :: FileSystem FilePath
-  ReadFile :: FilePath -> FileSystem String
-  RemoveFile :: FilePath -> FileSystem ()
-  SetCurrentDirectory :: FilePath -> FileSystem ()
-  WriteFile :: String -> FilePath -> FileSystem ()
+data FileSystem m a where
+  AppendFile :: String -> FilePath -> FileSystem m ()
+  CopyFile :: FilePath -> FilePath -> FileSystem m ()
+  CreateDirectoryIfMissing :: Bool -> FilePath -> FileSystem m ()
+  DoesDirectoryExist :: FilePath -> FileSystem m Bool
+  GetCurrentDirectory :: FileSystem m FilePath
+  GetDirectoryContents :: FilePath -> FileSystem m [FilePath]
+  GetTemporaryDirectory :: FileSystem m FilePath
+  ReadFile :: FilePath -> FileSystem m String
+  RemoveFile :: FilePath -> FileSystem m ()
+  SetCurrentDirectory :: FilePath -> FileSystem m ()
+  WriteFile :: String -> FilePath -> FileSystem m ()
 
-makeEffect ''FileSystem
+Sem.makeSem ''FileSystem
 
-runFileSystem :: (LastMember IO effs) => Eff (FileSystem ': effs) ~> Eff effs
+runFileSystem ::
+     (Sem.Member (Sem.Embed IO) effs)
+  => Sem.Sem (FileSystem ': effs) a
+  -> Sem.Sem effs a
 runFileSystem =
-  interpretM
+  Sem.interpret
     (\case
-       AppendFile path contents -> Prelude.appendFile path contents
-       CopyFile src dest -> System.Directory.copyFile src dest
+       AppendFile path contents -> Sem.embed $ Prelude.appendFile path contents
+       CopyFile src dest -> Sem.embed $ System.Directory.copyFile src dest
        CreateDirectoryIfMissing createParentDirs path ->
+         Sem.embed $
          System.Directory.createDirectoryIfMissing createParentDirs path
-       DoesDirectoryExist path -> System.Directory.doesDirectoryExist path
-       GetCurrentDirectory -> System.Directory.getCurrentDirectory
-       GetDirectoryContents path -> System.Directory.getDirectoryContents path
-       GetTemporaryDirectory -> System.Directory.getTemporaryDirectory
-       ReadFile path -> S.readFile path
-       RemoveFile path -> System.Directory.removeFile path
-       SetCurrentDirectory path -> System.Directory.setCurrentDirectory path
-       WriteFile path contents -> Prelude.writeFile path contents)
+       DoesDirectoryExist path ->
+         Sem.embed $ System.Directory.doesDirectoryExist path
+       GetCurrentDirectory -> Sem.embed System.Directory.getCurrentDirectory
+       GetDirectoryContents path ->
+         Sem.embed $ System.Directory.getDirectoryContents path
+       GetTemporaryDirectory -> Sem.embed System.Directory.getTemporaryDirectory
+       ReadFile path -> Sem.embed $ S.readFile path
+       RemoveFile path -> Sem.embed $ System.Directory.removeFile path
+       SetCurrentDirectory path ->
+         Sem.embed $ System.Directory.setCurrentDirectory path
+       WriteFile path contents -> Sem.embed $ Prelude.writeFile path contents)
 
 -- Adapted from http://book.realworldhaskell.org/read/io-case-study-a-library-for-searching-the-filesystem.html.
 getDirectoryContentsRec ::
-     (Member FileSystem effs) => FilePath -> Eff effs [FilePath]
+     (Sem.Member FileSystem effs) => FilePath -> Sem.Sem effs [FilePath]
 getDirectoryContentsRec dir = do
   names <- getDirectoryContents dir
   let properNames = filter (`notElem` [".", ".."]) names
@@ -75,7 +84,10 @@ getDirectoryContentsRec dir = do
   pure $ concat paths
 
 withCurrentDirectory ::
-     (Member FileSystem effs) => FilePath -> Eff effs a -> Eff effs a
+     (Sem.Member FileSystem effs)
+  => FilePath
+  -> Sem.Sem effs a
+  -> Sem.Sem effs a
 withCurrentDirectory directory f = do
   originalDirectory <- getCurrentDirectory
   setCurrentDirectory directory
@@ -84,5 +96,7 @@ withCurrentDirectory directory f = do
   pure result
 
 withTemporaryDirectory ::
-     (Member FileSystem effs) => (FilePath -> Eff effs a) -> Eff effs a
+     (Sem.Member FileSystem effs)
+  => (FilePath -> Sem.Sem effs a)
+  -> Sem.Sem effs a
 withTemporaryDirectory action = getTemporaryDirectory >>= action

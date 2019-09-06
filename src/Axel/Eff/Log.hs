@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -12,32 +14,35 @@ import Prelude hiding (appendFile, putStr, writeFile)
 import Axel.Eff.Console (Console, putStr)
 import Axel.Eff.FileSystem (FileSystem, appendFile, writeFile)
 
-import Control.Monad.Freer (type (~>), Eff, Member, interpret)
-import Control.Monad.Freer.TH (makeEffect)
+import qualified Polysemy as Sem
 
-data Log r where
-  LogStr :: String -> Log ()
+data Log m a where
+  LogStr :: String -> Log m ()
 
-makeEffect ''Log
+Sem.makeSem ''Log
 
-runLogAsConsole :: (Member Console effs) => Eff (Log ': effs) ~> Eff effs
+runLogAsConsole ::
+     (Sem.Member Console effs) => Sem.Sem (Log ': effs) a -> Sem.Sem effs a
 runLogAsConsole =
-  interpret $ \case
+  Sem.interpret $ \case
     LogStr str -> putStr str
 
 runLogAsFileSystem ::
-     (Member FileSystem effs) => FilePath -> Eff (Log ': effs) a -> Eff effs a
+     (Sem.Member FileSystem effs)
+  => FilePath
+  -> Sem.Sem (Log ': effs) a
+  -> Sem.Sem effs a
 runLogAsFileSystem logFilePath action = do
   writeFile logFilePath ""
-  interpret
+  Sem.interpret
     (\case
        LogStr str -> appendFile logFilePath str)
     action
 
-ignoreLog :: Eff (Log ': effs) ~> Eff effs
+ignoreLog :: Sem.Sem (Log ': effs) a -> Sem.Sem effs a
 ignoreLog =
-  interpret $ \case
+  Sem.interpret $ \case
     LogStr _ -> pure ()
 
-logStrLn :: (Member Log effs) => String -> Eff effs ()
+logStrLn :: (Sem.Member Log effs) => String -> Sem.Sem effs ()
 logStrLn str = logStr (str <> "\n")

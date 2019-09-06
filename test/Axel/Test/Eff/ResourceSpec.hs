@@ -6,8 +6,8 @@ import Axel.Eff.Resource as Res
 import Axel.Test.Eff.FileSystemMock as Mock
 import Axel.Test.Eff.ResourceMock as Mock
 
-import Control.Monad.Freer as Eff
-import qualified Control.Monad.Freer.Error as Effs
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
 
 import Test.Tasty.Hspec
 
@@ -25,8 +25,8 @@ spec_Resource =
                   [Mock.Directory "resGroup1" [Mock.File "res1" "res1Contents"]]
               ]
       let expected = "res1Contents"
-      case Eff.run .
-           Effs.runError . Mock.runFileSystem origFSState . Mock.runResource $
+      case Sem.run .
+           Sem.runError . Mock.runFileSystem origFSState . Mock.runResource $
            action of
         Left err -> expectationFailure err
-        Right result -> result `shouldBe` (expected, origFSState)
+        Right result -> result `shouldBe` (origFSState, expected)

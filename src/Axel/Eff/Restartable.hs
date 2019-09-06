@@ -1,22 +1,22 @@
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.Restartable where
 
-import Control.Monad.Freer (Eff, Member)
-import Control.Monad.Freer.Error (runError, throwError)
-import qualified Control.Monad.Freer.Error as Effs (Error)
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
 
-type Restartable a = Effs.Error a
+type Restartable = Sem.Error
 
-restart :: (Member (Restartable a) effs) => a -> Eff effs ()
-restart = throwError
+restart :: (Sem.Member (Restartable a) effs) => a -> Sem.Sem effs ()
+restart = Sem.throw
 
-runRestartable :: a -> (a -> Eff (Restartable a ': effs) a) -> Eff effs a
+runRestartable ::
+     a -> (a -> Sem.Sem (Restartable a ': effs) a) -> Sem.Sem effs a
 runRestartable x f =
-  runError (f x) >>= \case
+  Sem.runError (f x) >>= \case
     Left x' -> runRestartable x' f
     Right x' -> pure x'

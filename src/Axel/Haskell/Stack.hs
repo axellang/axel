@@ -31,9 +31,6 @@ import Axel.Haskell.Error (processErrors)
 import Axel.Sourcemap (ModuleInfo)
 import Control.Lens.Operators ((%~))
 import Control.Monad (void)
-import Control.Monad.Freer (Eff, Member, Members)
-import Control.Monad.Freer.Error (throwError)
-import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Data.Aeson.Lens (_Array, key)
 import qualified Data.ByteString.Char8 as B (pack, unpack)
@@ -45,6 +42,9 @@ import Data.Version (showVersion)
 import qualified Data.Yaml as Yaml (Value(String), decodeEither', encode)
 
 import Paths_axel (version)
+
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
 
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
 import System.FilePath (takeFileName)
@@ -71,16 +71,19 @@ axelStackageId :: StackageId
 axelStackageId = "axel"
 
 getStackProjectTargets ::
-     (Members '[ Effs.FileSystem, Effs.Process] effs)
+     (Sem.Members '[ Effs.FileSystem, Effs.Process] effs)
   => ProjectPath
-  -> Eff effs [Target]
+  -> Sem.Sem effs [Target]
 getStackProjectTargets projectPath =
   FS.withCurrentDirectory projectPath $ do
     (_, _, stderr) <- execProcess @'CreateStreams "stack ide targets" ""
     pure $ lines stderr
 
 addStackDependency ::
-     (Member Effs.FileSystem effs) => StackageId -> ProjectPath -> Eff effs ()
+     (Sem.Member Effs.FileSystem effs)
+  => StackageId
+  -> ProjectPath
+  -> Sem.Sem effs ()
 addStackDependency dependencyId projectPath =
   FS.withCurrentDirectory projectPath $ do
     let packageConfigPath = "package.yaml"
@@ -95,10 +98,10 @@ addStackDependency dependencyId projectPath =
       Left _ -> fatal "addStackDependency" "0001"
 
 buildStackProject ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
+     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
   => ModuleInfo
   -> ProjectPath
-  -> Eff effs ()
+  -> Sem.Sem effs ()
 buildStackProject moduleInfo projectPath = do
   putStrLn ("Building " <> takeFileName projectPath <> "...")
   result <-
@@ -107,12 +110,14 @@ buildStackProject moduleInfo projectPath = do
   case result of
     (ExitSuccess, _, _) -> pure ()
     (ExitFailure _, _, stderr) ->
-      throwError $
+      Sem.throw $
       ProjectError
         ("Project failed to build.\n\n" <> processErrors moduleInfo stderr)
 
 createStackProject ::
-     (Members '[ Effs.FileSystem, Effs.Process] effs) => String -> Eff effs ()
+     (Sem.Members '[ Effs.FileSystem, Effs.Process] effs)
+  => String
+  -> Sem.Sem effs ()
 createStackProject projectName = do
   void $
     execProcess
@@ -122,9 +127,9 @@ createStackProject projectName = do
   setStackageResolver projectName stackageResolverWithAxel
 
 runStackProject ::
-     (Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem, Effs.Process] effs)
+     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
   => ProjectPath
-  -> Eff effs ()
+  -> Sem.Sem effs ()
 runStackProject projectPath = do
   targets <- getStackProjectTargets projectPath
   case findExeTargets targets of
@@ -132,7 +137,7 @@ runStackProject projectPath = do
       putStrLn ("Running " <> target <> "...")
       void $ execProcess @'InheritStreams ("stack exec " <> target)
     _ ->
-      throwError $ ProjectError "No executable target was unambiguously found!"
+      Sem.throw $ ProjectError "No executable target was unambiguously found!"
   where
     findExeTargets =
       foldl'
@@ -144,10 +149,10 @@ runStackProject projectPath = do
         []
 
 setStackageResolver ::
-     (Members '[ Effs.FileSystem, Effs.Process] effs)
+     (Sem.Members '[ Effs.FileSystem, Effs.Process] effs)
   => ProjectPath
   -> StackageResolver
-  -> Eff effs ()
+  -> Sem.Sem effs ()
 setStackageResolver projectPath resolver =
   void $ FS.withCurrentDirectory projectPath $
   execProcess @'CreateStreams ("stack config set resolver " <> resolver) ""
@@ -157,17 +162,19 @@ includeAxelArguments =
   unwords ["--resolver", stackageResolverWithAxel, "--package", axelStackageId]
 
 compileFile ::
-     forall (streamSpec :: StreamSpecification) effs. (Member Effs.Process effs)
+     forall (streamSpec :: StreamSpecification) effs.
+     (Sem.Member Effs.Process effs)
   => FilePath
-  -> ProcessRunner streamSpec (Eff effs)
+  -> ProcessRunner streamSpec (Sem.Sem effs)
 compileFile filePath =
   let cmd = unwords ["stack", "ghc", includeAxelArguments, "--", filePath]
    in execProcess @streamSpec @effs cmd
 
 interpretFile ::
-     forall (streamSpec :: StreamSpecification) effs. (Member Effs.Process effs)
+     forall (streamSpec :: StreamSpecification) effs.
+     (Sem.Member Effs.Process effs)
   => FilePath
-  -> ProcessRunner streamSpec (Eff effs)
+  -> ProcessRunner streamSpec (Sem.Sem effs)
 interpretFile filePath =
   let cmd = unwords ["stack", "runghc", includeAxelArguments, "--", filePath]
    in execProcess @streamSpec @effs cmd

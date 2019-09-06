@@ -4,6 +4,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
@@ -12,8 +13,7 @@
 
 module Axel.Eff.Process where
 
-import Control.Monad.Freer (type (~>), Eff, LastMember, Member, interpretM)
-import Control.Monad.Freer.TH (makeEffect)
+import qualified Polysemy as Sem
 
 import qualified Data.ByteString.Lazy.Char8 as B (pack, unpack)
 import Data.Kind (Type)
@@ -55,30 +55,33 @@ type ProcessRunner (streamSpec :: StreamSpecification) (f :: Type -> Type)
    = (SingI streamSpec) =>
        ProcessRunner' streamSpec f
 
-data Process r where
-  GetArgs :: Process [String]
+data Process m a where
+  GetArgs :: Process m [String]
   RunProcessCreatingStreams
-    :: String -> String -> Process (ExitCode, String, String)
-  RunProcessInheritingStreams :: String -> Process ExitCode
+    :: String -> String -> Process m (ExitCode, String, String)
+  RunProcessInheritingStreams :: String -> Process m ExitCode
 
-makeEffect ''Process
+Sem.makeSem ''Process
 
-runProcess :: (LastMember IO effs) => Eff (Process ': effs) ~> Eff effs
+runProcess ::
+     (Sem.Member (Sem.Embed IO) effs)
+  => Sem.Sem (Process ': effs) a
+  -> Sem.Sem effs a
 runProcess =
-  interpretM
-    (\case
-       GetArgs -> System.Environment.getArgs
-       RunProcessCreatingStreams cmd stdin -> do
-         let stdinStream = P.byteStringInput (B.pack stdin)
-         let config = P.setStdin stdinStream $ P.shell cmd
-         (exitCode, stdout, stderr) <- P.readProcess config
-         pure (exitCode, B.unpack stdout, B.unpack stderr)
-       RunProcessInheritingStreams cmd -> P.runProcess (P.shell cmd))
+  Sem.interpret $ \case
+    GetArgs -> Sem.embed System.Environment.getArgs
+    RunProcessCreatingStreams cmd stdin ->
+      Sem.embed $ do
+        let stdinStream = P.byteStringInput (B.pack stdin)
+        let config = P.setStdin stdinStream $ P.shell cmd
+        (exitCode, stdout, stderr) <- P.readProcess config
+        pure (exitCode, B.unpack stdout, B.unpack stderr)
+    RunProcessInheritingStreams cmd -> Sem.embed $ P.runProcess (P.shell cmd)
 
 execProcess ::
-     forall (streamSpec :: StreamSpecification) effs. (Member Process effs)
+     forall (streamSpec :: StreamSpecification) effs. (Sem.Member Process effs)
   => String
-  -> ProcessRunner streamSpec (Eff effs)
+  -> ProcessRunner streamSpec (Sem.Sem effs)
 execProcess cmd =
   case sing :: Sing streamSpec of
     SCreateStreams -> runProcessCreatingStreams cmd

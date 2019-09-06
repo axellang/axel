@@ -1,8 +1,8 @@
--- TODO Use `throwError` instead of `error`
+-- TODO Integrate with the effects system used everywhere else (convert `error` to `throwError`, etc.)
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC
   -Wno-incomplete-patterns -Wno-incomplete-uni-patterns #-}
@@ -29,9 +29,9 @@ import Axel.Utils.Tuple (flattenAnnotations, unannotated)
 import Control.Category ((>>>))
 import Control.Lens.Extras (is)
 import Control.Lens.Operators ((%~), (^.))
-import Control.Monad.Freer (Eff, LastMember, Members, sendM)
-import Control.Monad.Freer.Error (throwError)
-import qualified Control.Monad.Freer.Error as Effs (Error)
+
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
 
 import qualified Data.List.NonEmpty as NE (toList)
 
@@ -573,18 +573,18 @@ contextToExprs (Just (HSE.CxTuple _ assts)) = map toExpr assts
 contextToExprs (Just (HSE.CxEmpty _)) = []
 
 convertFile ::
-     ( LastMember IO effs
-     , Members '[ Effs.Console, Effs.Error Error, Effs.FileSystem] effs
+     ( Sem.Member (Sem.Embed IO) effs
+     , Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem] effs
      )
   => FilePath
   -> FilePath
-  -> Eff effs String
+  -> Sem.Sem effs String
 convertFile path newPath = do
   parsedModule <-
-    sendM (HSE.parseFile path) >>=
+    Sem.embed (HSE.parseFile path) >>=
     (\case
        HSE.ParseOk parsedModule -> pure parsedModule
-       HSE.ParseFailed _ err -> throwError @Error $ ConvertError path err)
+       HSE.ParseFailed _ err -> Sem.throw $ ConvertError path err)
   putStrLn $ "Writing " <> newPath <> "..."
   let newContents =
         unlines $ map toAxel $ groupFunctionDefinitions $ toStmts parsedModule

@@ -10,11 +10,12 @@ module Axel.Test.Eff.ResourceMock where
 
 import Axel.Eff.Resource as Effs
 
-import Control.Monad.Freer
+import qualified Polysemy as Sem
 
 import System.FilePath
 
-runResource :: forall effs a. Eff (Effs.Resource ': effs) a -> Eff effs a
+runResource ::
+     forall effs a. Sem.Sem (Effs.Resource ': effs) a -> Sem.Sem effs a
 runResource =
-  interpret $ \case
+  Sem.interpret $ \case
     GetResourcePath (ResourceId resourceId) -> pure ("resources" </> resourceId)

@@ -8,9 +8,9 @@ import Axel.Normalize
 import Axel.Sourcemap as SM
 import qualified Axel.Test.Parse.ASTGen as Parse.ASTGen
 
-import Control.Monad.Freer as Eff
-import qualified Control.Monad.Freer.Error as Effs
-import qualified Control.Monad.Freer.Reader as Effs
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
+import qualified Polysemy.Reader as Sem
 
 import Hedgehog
 
@@ -23,7 +23,7 @@ hprop_denormalizeExpression_is_the_inverse_of_normalizeExpression =
     expr ===
       denormalizeExpression
         (unwrapRight $
-         Eff.run .
-         Effs.runError @Error.Error .
-         Effs.runReader "" . Effs.runReader ([] :: [SM.Expression]) $
+         Sem.run .
+         Sem.runError @Error.Error .
+         Sem.runReader "" . Sem.runReader ([] :: [SM.Expression]) $
          normalizeExpression expr)

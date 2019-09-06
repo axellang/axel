@@ -81,13 +81,6 @@ import Control.Lens (_1, snoc)
 import Control.Lens.Extras (is)
 import Control.Lens.Operators ((%~), (^.), (^?))
 import Control.Monad (guard, unless, when)
-import Control.Monad.Freer (Eff, Member, Members)
-import Control.Monad.Freer.Error (throwError)
-import qualified Control.Monad.Freer.Error as Effs (Error)
-import Control.Monad.Freer.Reader (ask)
-import qualified Control.Monad.Freer.Reader as Effs (Reader, runReader)
-import Control.Monad.Freer.State (get, gets, modify)
-import qualified Control.Monad.Freer.State as Effs (State, evalState)
 
 import Data.Function (on)
 import Data.Generics.Uniplate.Zipper (Zipper, fromZipper, hole, replaceHole, up)
@@ -99,6 +92,11 @@ import Data.Maybe (isNothing)
 import Data.Semigroup ((<>))
 
 import qualified Language.Haskell.Ghcid as Ghci (Ghci)
+
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
+import qualified Polysemy.Reader as Sem
+import qualified Polysemy.State as Sem
 
 import System.FilePath ((<.>), (</>), takeFileName)
 
@@ -114,21 +112,21 @@ type FileExpander effs = Effs.Callback effs FileExpanderArgs ()
 -- | Fully expand a program, and add macro definition type signatures.
 processProgram ::
      forall fileExpanderEffs funAppExpanderEffs effs innerEffs.
-     ( innerEffs ~ (Effs.State [SMStatement] ': Effs.Restartable SM.Expression ': Effs.Reader Ghci.Ghci ': Effs.Reader FilePath ': effs)
-     , Members '[ Effs.Error Error, Effs.Ghci, Effs.State ModuleInfo] effs
-     , Members fileExpanderEffs innerEffs
-     , Members funAppExpanderEffs innerEffs
+     ( innerEffs ~ (Sem.State [SMStatement] ': Effs.Restartable SM.Expression ': Sem.Reader Ghci.Ghci ': Sem.Reader FilePath ': effs)
+     , Sem.Members '[ Sem.Error Error, Effs.Ghci, Sem.State ModuleInfo] effs
+     , Sem.Members fileExpanderEffs innerEffs
+     , Sem.Members funAppExpanderEffs innerEffs
      )
   => FunctionApplicationExpander funAppExpanderEffs
   -> FileExpander fileExpanderEffs
   -> FilePath
   -> SM.Expression
-  -> Eff effs [SMStatement]
+  -> Sem.Sem effs [SMStatement]
 processProgram expandFunApp expandFile filePath program = do
   ghci <- Ghci.start
   Ghci.enableJsonErrors ghci
   newProgramExpr <-
-    Effs.runReader filePath $ Effs.runReader ghci $
+    Sem.runReader filePath $ Sem.runReader ghci $
     expandProgramExpr
       @funAppExpanderEffs
       @fileExpanderEffs
@@ -138,7 +136,7 @@ processProgram expandFunApp expandFile filePath program = do
   Ghci.stop ghci
   newStmts <-
     mapM
-      (Effs.runReader filePath . withExprCtxt . normalizeStatement)
+      (Sem.runReader filePath . withExprCtxt . normalizeStatement)
       (unwrapCompoundExpressions newProgramExpr)
   let addAstImport =
         insertImports
@@ -175,7 +173,9 @@ finalizeProgram stmts =
       macroTySigs
 
 isMacroImported ::
-     (Member (Effs.State [SMStatement]) effs) => Identifier -> Eff effs Bool
+     (Sem.Member (Sem.State [SMStatement]) effs)
+  => Identifier
+  -> Sem.Sem effs Bool
 isMacroImported macroName = do
   let isFromPrelude = macroName `elem` preludeMacros
   isImportedDirectly <-
@@ -183,19 +183,18 @@ isMacroImported macroName = do
       (\case
          SMacroImport macroImport -> macroName `elem` macroImport ^. imports
          _ -> False) <$>
-    get @[SMStatement]
+    Sem.get
   pure $ isFromPrelude || isImportedDirectly
 
 ensureCompiledDependency ::
      forall fileExpanderEffs effs.
-     (Member (Effs.State ModuleInfo) effs, Members fileExpanderEffs effs)
+     (Sem.Member (Sem.State ModuleInfo) effs, Sem.Members fileExpanderEffs effs)
   => FileExpander fileExpanderEffs
   -> MacroImport (Maybe SM.Expression)
-  -> Eff effs ()
+  -> Sem.Sem effs ()
 ensureCompiledDependency expandFile macroImport = do
   moduleInfo <-
-    gets
-      @ModuleInfo
+    Sem.gets
       (M.filter (\(moduleId', _) -> moduleId' == macroImport ^. moduleName))
   case head' $ M.toList moduleInfo of
     Just (dependencyFilePath, (_, transpiledOutput)) ->
@@ -221,18 +220,18 @@ isStatementFocused zipper =
 -- | will be added to the environment accessible to macros during expansion.
 expandProgramExpr ::
      forall funAppExpanderEffs fileExpanderEffs effs innerEffs.
-     ( innerEffs ~ (Effs.State [SMStatement] : Effs.Restartable SM.Expression ': effs)
-     , Members '[ Effs.Error Error, Effs.State ModuleInfo, Effs.Reader Ghci.Ghci, Effs.Reader FilePath] effs
-     , Members funAppExpanderEffs innerEffs
-     , Members fileExpanderEffs innerEffs
+     ( innerEffs ~ (Sem.State [SMStatement] : Effs.Restartable SM.Expression ': effs)
+     , Sem.Members '[ Sem.Error Error, Sem.State ModuleInfo, Sem.Reader Ghci.Ghci, Sem.Reader FilePath] effs
+     , Sem.Members funAppExpanderEffs innerEffs
+     , Sem.Members fileExpanderEffs innerEffs
      )
   => FunctionApplicationExpander funAppExpanderEffs
   -> FileExpander fileExpanderEffs
   -> SM.Expression
-  -> Eff effs SM.Expression
+  -> Sem.Sem effs SM.Expression
 expandProgramExpr expandFunApp expandFile programExpr =
   runRestartable @SM.Expression programExpr $
-  Effs.evalState ([] :: [SMStatement]) .
+  Sem.evalState ([] :: [SMStatement]) .
   zipperTopDownTraverse
     (\zipper -> do
        when (isStatementFocused zipper) $
@@ -255,10 +254,10 @@ expandProgramExpr expandFunApp expandFile programExpr =
 
 -- | Returns the full program expr (after the necessary substitution has been applied).
 replaceExpr ::
-     (Members '[ Effs.Error Error, Effs.Reader FilePath] effs)
+     (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath] effs)
   => Zipper SM.Expression SM.Expression
   -> [SM.Expression]
-  -> Eff effs SM.Expression
+  -> Sem.Sem effs SM.Expression
 replaceExpr zipper newExprs =
   let programExpr = fromZipper zipper
       oldExpr = hole zipper
@@ -288,13 +287,13 @@ replaceExpr zipper newExprs =
         else pure newProgramExpr
 
 throwLoopError ::
-     (Members '[ Effs.Error Error, Effs.Reader FilePath] effs)
+     (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath] effs)
   => SM.Expression
   -> [SM.Expression]
-  -> Eff effs a
+  -> Sem.Sem effs a
 throwLoopError oldExpr newExprs = do
-  filePath <- ask @FilePath
-  throwError $
+  filePath <- Sem.ask
+  Sem.throw $
     MacroError
       filePath
       oldExpr
@@ -306,26 +305,26 @@ throwLoopError oldExpr newExprs = do
 
 addStatementToMacroEnvironment ::
      forall fileExpanderEffs effs.
-     ( Members '[ Effs.Error Error, Effs.State ModuleInfo, Effs.Reader FilePath, Effs.State [SMStatement]] effs
-     , Members fileExpanderEffs effs
+     ( Sem.Members '[ Sem.Error Error, Sem.State ModuleInfo, Sem.Reader FilePath, Sem.State [SMStatement]] effs
+     , Sem.Members fileExpanderEffs effs
      )
   => FileExpander fileExpanderEffs
   -> SM.Expression
-  -> Eff effs ()
+  -> Sem.Sem effs ()
 addStatementToMacroEnvironment expandFile newExpr = do
-  filePath <- ask @FilePath
-  stmt <- Effs.runReader filePath $ withExprCtxt $ normalizeStatement newExpr
+  filePath <- Sem.ask
+  stmt <- Sem.runReader filePath $ withExprCtxt $ normalizeStatement newExpr
   case stmt of
     SMacroImport macroImport ->
       ensureCompiledDependency @fileExpanderEffs expandFile macroImport
     _ -> pure ()
-  modify @[SMStatement] (`snoc` stmt)
+  Sem.modify @[SMStatement] (`snoc` stmt)
 
 -- | If a function application is a macro call, expand it.
 handleFunctionApplication ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.State ModuleInfo, Effs.Reader Ghci.Ghci, Effs.Reader FilePath, Effs.State [SMStatement]] effs)
+     (Sem.Members '[ Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Sem.State ModuleInfo, Sem.Reader Ghci.Ghci, Sem.Reader FilePath, Sem.State [SMStatement]] effs)
   => SM.Expression
-  -> Eff effs (Maybe [SM.Expression])
+  -> Sem.Sem effs (Maybe [SM.Expression])
 handleFunctionApplication (Parse.SExpression ann (Parse.Symbol _ functionName:args)) = do
   shouldExpand <- isMacroCall functionName
   if shouldExpand
@@ -334,7 +333,9 @@ handleFunctionApplication (Parse.SExpression ann (Parse.Symbol _ functionName:ar
 handleFunctionApplication _ = pure Nothing
 
 isMacroCall ::
-     (Member (Effs.State [SMStatement]) effs) => Identifier -> Eff effs Bool
+     (Sem.Member (Sem.State [SMStatement]) effs)
+  => Identifier
+  -> Sem.Sem effs Bool
 isMacroCall function = do
   localDefs <- lookupMacroDefinitions function
   let isDefinedLocally = not $ null localDefs
@@ -342,16 +343,16 @@ isMacroCall function = do
   pure $ isImported || isDefinedLocally
 
 lookupMacroDefinitions ::
-     (Member (Effs.State [SMStatement]) effs)
+     (Sem.Member (Sem.State [SMStatement]) effs)
   => Identifier
-  -> Eff effs [MacroDefinition (Maybe SM.Expression)]
+  -> Sem.Sem effs [MacroDefinition (Maybe SM.Expression)]
 lookupMacroDefinitions identifier =
   filterMap
     (\stmt -> do
        macroDef <- stmt ^? _SMacroDefinition
        guard $ identifier == (macroDef ^. functionDefinition . name)
        pure macroDef) <$>
-  get @[SMStatement]
+  Sem.get
 
 hygenisizeMacroDefinition :: MacroDefinition ann -> MacroDefinition ann
 hygenisizeMacroDefinition = functionDefinition . name %~ hygenisizeMacroName
@@ -373,11 +374,11 @@ macroDefAndEnvModuleName :: String
 macroDefAndEnvModuleName = "AutogeneratedAxelMacroDefinitionAndEnvironment"
 
 generateMacroProgram ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.State [SMStatement]] effs)
+     (Sem.Members '[ Sem.Error Error, Effs.FileSystem, Sem.State [SMStatement]] effs)
   => FilePath
   -> Identifier
   -> [SM.Expression]
-  -> Eff effs (SM.Output, SM.Output)
+  -> Sem.Sem effs (SM.Output, SM.Output)
 generateMacroProgram filePath' oldMacroName args = do
   let newMacroName = hygenisizeMacroName oldMacroName
   let mainFnName = "main_AXEL_AUTOGENERATED_FUNCTION_DEFINITION"
@@ -439,7 +440,7 @@ generateMacroProgram filePath' oldMacroName args = do
                       ]
                   ]
               ])
-  auxEnv <- get @[SMStatement]
+  auxEnv <- Sem.get @[SMStatement]
   -- TODO If the file being transpiled has pragmas but no explicit module declaration,
   --      they will be erroneously included *after* the module declaration.
   --      Should we just require Axel files to have module declarations, or is there a
@@ -478,14 +479,14 @@ losslyReconstructMacroCall macroName args =
     (Parse.Symbol Nothing macroName : map (Nothing <$) args)
 
 expandMacroApplication ::
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Reader Ghci.Ghci, Effs.Reader FilePath, Effs.State [SMStatement]] effs)
+     (Sem.Members '[ Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Sem.Reader Ghci.Ghci, Sem.Reader FilePath, Sem.State [SMStatement]] effs)
   => SourceMetadata
   -> Identifier
   -> [SM.Expression]
-  -> Eff effs [SM.Expression]
+  -> Sem.Sem effs [SM.Expression]
 expandMacroApplication originalAnn macroName args = do
   logStrLn $ "Expanding: " <> toAxel (losslyReconstructMacroCall macroName args)
-  filePath' <- ask @FilePath
+  filePath' <- Sem.ask @FilePath
   macroProgram <- generateMacroProgram filePath' macroName args
   (tempFilePath, newSource) <-
     uncurry (evalMacro originalAnn macroName args) macroProgram
@@ -498,13 +499,13 @@ isMacroDefinitionStatement _ = False
 
 evalMacro ::
      forall effs.
-     (Members '[ Effs.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Effs.Reader Ghci.Ghci, Effs.Reader FilePath] effs)
+     (Sem.Members '[ Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Process, Sem.Reader Ghci.Ghci, Sem.Reader FilePath] effs)
   => SourceMetadata
   -> Identifier
   -> [SM.Expression]
   -> SM.Output
   -> SM.Output
-  -> Eff effs (FilePath, String)
+  -> Sem.Sem effs (FilePath, String)
 evalMacro originalCallAnn macroName args scaffoldProgram macroDefAndEnvProgram = do
   tempDir <- getTempDirectory
   let macroDefAndEnvFileName = tempDir </> macroDefAndEnvModuleName <.> "hs"
@@ -520,7 +521,7 @@ evalMacro originalCallAnn macroName args scaffoldProgram macroDefAndEnvProgram =
           , ( macroDefAndEnvFileName
             , (macroDefAndEnvModuleName, Just macroDefAndEnvProgram))
           ]
-  ghci <- ask @Ghci.Ghci
+  ghci <- Sem.ask @Ghci.Ghci
   loadResult <-
     Ghci.exec ghci $ unwords [":l", scaffoldFileName, macroDefAndEnvFileName]
   if "Ok, two modules loaded." `elem` loadResult
@@ -553,8 +554,8 @@ evalMacro originalCallAnn macroName args scaffoldProgram macroDefAndEnvProgram =
       pure dirName
     scaffoldModuleName = "AutogeneratedAxelScaffold"
     throwMacroError msg = do
-      originalFilePath <- ask @FilePath
-      throwError @Error $
+      originalFilePath <- Sem.ask @FilePath
+      Sem.throw $
         MacroError
           originalFilePath
           (losslyReconstructMacroCall macroName args)

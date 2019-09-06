@@ -8,9 +8,9 @@ import Axel.Normalize
 import Axel.Sourcemap as SM
 import qualified Axel.Test.ASTGen as ASTGen
 
-import Control.Monad.Freer as Eff
-import Control.Monad.Freer.Error (runError)
-import Control.Monad.Freer.Reader (runReader)
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
+import qualified Polysemy.Reader as Sem
 
 import Hedgehog
 
@@ -25,10 +25,10 @@ hprop_normalizeExpression_is_the_inverse_of_denormalizeExpression =
     expr <- forAll ASTGen.genExpression
     expr =$=
       unwrapRight
-        (Eff.run $
-         runError @Error.Error $
-         runReader "" $
-         runReader ([] :: [SM.Expression]) $
+        (Sem.run $
+         Sem.runError @Error.Error $
+         Sem.runReader "" $
+         Sem.runReader ([] :: [SM.Expression]) $
          normalizeExpression (denormalizeExpression expr))
 
 hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement :: Property
@@ -37,8 +37,8 @@ hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement =
     stmt <- forAll ASTGen.genStatement
     stmt =$=
       unwrapRight
-        (Eff.run $
-         runError @Error.Error $
-         runReader "" $
-         runReader ([] :: [SM.Expression]) $
+        (Sem.run $
+         Sem.runError @Error.Error $
+         Sem.runReader "" $
+         Sem.runReader ([] :: [SM.Expression]) $
          normalizeStatement (denormalizeStatement stmt))

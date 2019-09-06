@@ -8,9 +8,7 @@
 
 module Axel.Utils.Recursion where
 
-import Control.Monad.Freer (Eff)
-import qualified Control.Monad.Freer as Effs (run)
-
+import Data.Functor.Identity (Identity, runIdentity)
 import Data.Generics.Uniplate.Zipper (Zipper, hole)
 
 exhaustM :: (Eq a, Monad m) => (a -> m a) -> a -> m a
@@ -28,8 +26,8 @@ type Traverse m a
 
 type Fmap a = (a -> a) -> a -> a
 
-mkFmapFromTraverse :: Traverse (Eff '[]) a -> Fmap a
-mkFmapFromTraverse traverseFn f = Effs.run . traverseFn (pure . f)
+mkFmapFromTraverse :: Traverse Identity a -> Fmap a
+mkFmapFromTraverse traverseFn f = runIdentity . traverseFn (pure . f)
 
 class Recursive a where
   bottomUpTraverse :: Traverse m a
@@ -39,7 +37,7 @@ bottomUpFmap :: (Recursive a) => Fmap a
 bottomUpFmap = mkFmapFromTraverse bottomUpTraverse
 
 topDownFmap :: (Recursive a) => Fmap a
-topDownFmap f = Effs.run . topDownTraverse (pure . f)
+topDownFmap f = runIdentity . topDownTraverse (pure . f)
 
 -- TODO Remove dependencies on `Monad` in favor of `Applicative`
 --      (which is all that `traverse` requires).
@@ -60,7 +58,7 @@ instance (ZipperRecursive a) => Recursive a where
   topDownTraverse f = zipperTopDownTraverse (f . hole)
 
 zipperBottomUpFmap :: (ZipperRecursive a) => (Zipper a a -> a) -> a -> a
-zipperBottomUpFmap f = Effs.run . zipperBottomUpTraverse (pure . f)
+zipperBottomUpFmap f = runIdentity . zipperBottomUpTraverse (pure . f)
 
 zipperTopDownFmap :: (ZipperRecursive a) => (Zipper a a -> a) -> a -> a
-zipperTopDownFmap f = Effs.run . zipperTopDownTraverse (pure . f)
+zipperTopDownFmap f = runIdentity . zipperTopDownTraverse (pure . f)

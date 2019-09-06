@@ -2,31 +2,33 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.Ghci where
 
 import Control.Monad (void)
-import Control.Monad.Freer (type (~>), Eff, LastMember, Member, interpretM)
-import Control.Monad.Freer.TH (makeEffect)
+
+import Polysemy (Embed, Member, Sem, embed, interpret, makeSem)
 
 import Language.Haskell.Ghcid (startGhci, stopGhci)
 import qualified Language.Haskell.Ghcid as Ghci (Ghci, exec)
 
-data Ghci r where
-  Exec :: Ghci.Ghci -> String -> Ghci [String]
-  Start :: Ghci Ghci.Ghci
-  Stop :: Ghci.Ghci -> Ghci ()
+data Ghci m a where
+  Exec :: Ghci.Ghci -> String -> Ghci m [String]
+  Start :: Ghci m Ghci.Ghci
+  Stop :: Ghci.Ghci -> Ghci m ()
 
-makeEffect ''Ghci
+makeSem ''Ghci
 
-runGhci :: (LastMember IO effs) => Eff (Ghci ': effs) ~> Eff effs
+runGhci :: (Member (Embed IO) effs) => Sem (Ghci ': effs) a -> Sem effs a
 runGhci =
-  interpretM $ \case
-    Exec ghci command -> Ghci.exec ghci command
-    Start -> fst <$> startGhci "ghci" Nothing mempty
-    Stop ghci -> stopGhci ghci
+  interpret $ \case
+    Exec ghci command -> embed $ Ghci.exec ghci command
+    Start -> embed $ fst <$> startGhci "ghci" Nothing mempty
+    Stop ghci -> embed $ stopGhci ghci
 
-enableJsonErrors :: (Member Ghci effs) => Ghci.Ghci -> Eff effs ()
+enableJsonErrors :: (Member Ghci effs) => Ghci.Ghci -> Sem effs ()
 enableJsonErrors ghci = void $ exec ghci ":set -ddump-json"

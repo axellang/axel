@@ -5,8 +5,8 @@ module Axel.Test.Eff.ConsoleSpec where
 import qualified Axel.Eff.Console as Console
 import qualified Axel.Test.Eff.ConsoleMock as Mock
 
-import Control.Monad.Freer as Eff
-import Control.Monad.Freer.Error as Effs
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
 
 import Test.Tasty.Hspec
 
@@ -23,5 +23,5 @@ spec_Console =
       let expected = Mock.ConsoleState {Mock._consoleOutput = "line1\nline2\n"}
       let result =
             unwrapRight $
-            Eff.run . Effs.runError @String . Mock.runConsole origState $ action
-      result `shouldBe` ((), expected)
+            Sem.run . Sem.runError @String . Mock.runConsole origState $ action
+      result `shouldBe` (expected, ())

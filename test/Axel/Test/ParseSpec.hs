@@ -3,13 +3,12 @@
 
 module Axel.Test.ParseSpec where
 
-import Axel.Eff.Error as Error
 import Axel.Parse
 import Axel.Parse.AST
 import Axel.Utils.String
 
-import Control.Monad.Freer as Eff
-import qualified Control.Monad.Freer.Error as Effs
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
 
 import Test.Tasty.Hspec
 
@@ -94,7 +93,7 @@ spec_Parse = do
                 ()
                 [Symbol () "bar", Symbol () "x", Symbol () "y", Symbol () "z"]
             ]
-      case Eff.run . Effs.runError @Error.Error $ parseMultiple Nothing input of
+      case Sem.run . Sem.runError $ parseMultiple Nothing input of
         Left err -> expectationFailure $ show err
         Right x -> map (() <$) x `shouldBe` result
   describe "parseSource" $ do
@@ -126,6 +125,6 @@ spec_Parse = do
                   ]
               , SExpression () [Symbol () "butThis-->IsASingleSymbol"]
               ]
-      case Eff.run . Effs.runError @Error.Error $ parseSource Nothing input of
+      case Sem.run . Sem.runError $ parseSource Nothing input of
         Left err -> expectationFailure $ show err
         Right x -> () <$ x `shouldBe` result

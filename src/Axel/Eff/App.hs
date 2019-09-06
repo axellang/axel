@@ -11,15 +11,15 @@ import Axel.Eff.Log (Log, runLogAsFileSystem)
 import Axel.Eff.Process (Process, runProcess)
 import Axel.Eff.Resource (Resource, runResource)
 
-import Control.Monad.Freer (type (~>), Eff, runM)
-import qualified Control.Monad.Freer.Error as Effs (Error)
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
 
 type AppEffs
-   = '[ Log, Console, Effs.Error Error, FileSystem, Ghci, Process, Resource, IO]
+   = '[ Log, Console, Sem.Error Error, FileSystem, Ghci, Process, Resource, Sem.Embed IO]
 
-runApp :: Eff AppEffs ~> IO
+runApp :: Sem.Sem AppEffs a -> IO a
 runApp =
-  runM .
+  Sem.runM .
   runResource .
   runProcess .
   runGhci .

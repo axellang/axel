@@ -14,9 +14,9 @@ module Axel.Test.Eff.GhciMock where
 import Axel.Eff.Ghci as Effs
 
 import Control.Lens
-import Control.Monad.Freer
-import Control.Monad.Freer.Error as Effs
-import Control.Monad.Freer.State as Effs
+import Polysemy
+import Polysemy.Error as Effs
+import Polysemy.State as Effs
 
 import TestUtils
 
@@ -35,11 +35,11 @@ mkGhciState = GhciState []
 runGhci ::
      forall effs a. (Member (Effs.Error String) effs)
   => GhciState
-  -> Eff (Effs.Ghci ': effs) a
-  -> Eff effs (a, GhciState)
+  -> Sem (Effs.Ghci ': effs) a
+  -> Sem effs (GhciState, a)
 runGhci origState action = runState origState $ reinterpret go action
   where
-    go :: Ghci b -> Eff (Effs.State GhciState ': effs) b
+    go :: Ghci m b -> Sem (Effs.State GhciState ': effs) b
     go (Exec _ command) = do
       modify @GhciState $ ghciExecutionLog %~ (|> command)
       gets @GhciState (uncons . (^. ghciMockResults)) >>= \case

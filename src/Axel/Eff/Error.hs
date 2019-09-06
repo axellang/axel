@@ -3,6 +3,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.Error where
@@ -10,11 +12,11 @@ module Axel.Eff.Error where
 import Axel.Parse.AST (Expression, toAxel)
 
 import Control.Monad ((>=>))
-import Control.Monad.Freer (type (~>), Eff)
-import Control.Monad.Freer.Error (runError)
-import qualified Control.Monad.Freer.Error as Effs (Error)
 
 import Data.Semigroup ((<>))
+
+import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
 
 data Error where
   ConvertError :: FilePath -> String -> Error
@@ -41,5 +43,5 @@ instance Show Error where
 fatal :: String -> String -> a
 fatal context message = error $ "[FATAL] " <> context <> " - " <> message
 
-unsafeRunError :: (Show e) => Eff (Effs.Error e ': effs) ~> Eff effs
-unsafeRunError = runError >=> either (errorWithoutStackTrace . show) pure -- TODO Don't(?) use `error(WithoutStackTrace)` directly
+unsafeRunError :: (Show e) => Sem.Sem (Sem.Error e ': effs) a -> Sem.Sem effs a
+unsafeRunError = Sem.runError >=> either (errorWithoutStackTrace . show) pure -- TODO Don't(?) use `error(WithoutStackTrace)` directly
