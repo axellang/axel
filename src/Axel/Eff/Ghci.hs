@@ -11,24 +11,43 @@ module Axel.Eff.Ghci where
 
 import Control.Monad (void)
 
-import Polysemy (Embed, Member, Sem, embed, interpret, makeSem)
+import qualified Polysemy as Sem
+import qualified Polysemy.Reader as Sem
 
 import Language.Haskell.Ghcid (startGhci, stopGhci)
-import qualified Language.Haskell.Ghcid as Ghci (Ghci, exec)
+import qualified Language.Haskell.Ghcid as Ghci
 
 data Ghci m a where
   Exec :: Ghci.Ghci -> String -> Ghci m [String]
   Start :: Ghci m Ghci.Ghci
   Stop :: Ghci.Ghci -> Ghci m ()
 
-makeSem ''Ghci
+Sem.makeSem ''Ghci
 
-runGhci :: (Member (Embed IO) effs) => Sem (Ghci ': effs) a -> Sem effs a
+runGhci ::
+     (Sem.Member (Sem.Embed IO) effs)
+  => Sem.Sem (Ghci ': effs) a
+  -> Sem.Sem effs a
 runGhci =
-  interpret $ \case
-    Exec ghci command -> embed $ Ghci.exec ghci command
-    Start -> embed $ fst <$> startGhci "ghci" Nothing mempty
-    Stop ghci -> embed $ stopGhci ghci
+  Sem.interpret $ \case
+    Exec ghci command -> Sem.embed $ Ghci.exec ghci command
+    Start -> Sem.embed $ fst <$> startGhci "stack repl --no-load" Nothing mempty
+    Stop ghci -> Sem.embed $ stopGhci ghci
 
-enableJsonErrors :: (Member Ghci effs) => Ghci.Ghci -> Sem effs ()
+addFiles ::
+     (Sem.Member Ghci effs) => Ghci.Ghci -> [FilePath] -> Sem.Sem effs [String]
+addFiles ghci filePaths = exec ghci $ ":add " <> unwords filePaths -- TODO What if a file path contains a space?
+
+enableJsonErrors :: (Sem.Member Ghci effs) => Ghci.Ghci -> Sem.Sem effs ()
 enableJsonErrors ghci = void $ exec ghci ":set -ddump-json"
+
+withGhci ::
+     (Sem.Member Ghci effs)
+  => Sem.Sem (Sem.Reader Ghci.Ghci ': effs) a
+  -> Sem.Sem effs a
+withGhci x = do
+  ghci <- start
+  enableJsonErrors ghci
+  result <- Sem.runReader ghci x
+  stop ghci
+  pure result

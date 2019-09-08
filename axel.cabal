@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 02eb56c7e3847de6387a3dd322f45cc761d4d5786775d4ef3e337c2267e03de8
+-- hash: c339883fca353f6069173f7e3f6ff56f25869caa1f8922fde891181fb557d3d5
 
 name:           axel
 version:        0.0.11
@@ -60,6 +60,7 @@ library
       Axel.Eff.Log
       Axel.Eff.Loop
       Axel.Eff.Process
+      Axel.Eff.Random
       Axel.Eff.Resource
       Axel.Eff.Restartable
       Axel.Haskell.Convert
@@ -104,9 +105,10 @@ library
     , containers
     , directory
     , filepath
+    , freer-simple
     , ghcid
-    , hashable
     , haskell-src-exts
+    , hedgehog
     , hpack
     , lens
     , lens-aeson
@@ -116,15 +118,23 @@ library
     , polysemy-plugin
     , process
     , profunctors
+    , random
     , regex-pcre
     , singletons
     , split
     , strict
+    , tasty
     , tasty-discover
+    , tasty-golden
+    , tasty-hedgehog
+    , tasty-hspec
+    , tasty-hunit
     , template-haskell
     , text
+    , transformers
     , typed-process
     , uniplate
+    , uuid
     , vector
     , yaml
   default-language: Haskell2010
@@ -140,14 +150,46 @@ executable axel
       hpack:hpack
     , tasty-discover:tasty-discover
   build-depends:
-      axel
+      aeson
+    , ansi-terminal
+    , axel
     , base
+    , bytestring
     , containers
+    , directory
+    , filepath
+    , freer-simple
+    , ghcid
+    , haskell-src-exts
+    , hedgehog
     , hpack
+    , lens
+    , lens-aeson
     , optparse-applicative
+    , parsec
     , polysemy
     , polysemy-plugin
+    , process
+    , profunctors
+    , random
+    , regex-pcre
+    , singletons
+    , split
+    , strict
+    , tasty
     , tasty-discover
+    , tasty-golden
+    , tasty-hedgehog
+    , tasty-hspec
+    , tasty-hunit
+    , template-haskell
+    , text
+    , transformers
+    , typed-process
+    , uniplate
+    , uuid
+    , vector
+    , yaml
   default-language: Haskell2010
 
 test-suite axel-test
@@ -184,23 +226,44 @@ test-suite axel-test
       hpack:hpack
     , tasty-discover:tasty-discover
   build-depends:
-      axel
+      aeson
+    , ansi-terminal
+    , axel
     , base
     , bytestring
     , containers
+    , directory
     , filepath
+    , freer-simple
+    , ghcid
+    , haskell-src-exts
     , hedgehog
     , hpack
     , lens
+    , lens-aeson
+    , optparse-applicative
+    , parsec
     , polysemy
     , polysemy-plugin
+    , process
+    , profunctors
+    , random
+    , regex-pcre
+    , singletons
     , split
+    , strict
     , tasty
     , tasty-discover
     , tasty-golden
     , tasty-hedgehog
     , tasty-hspec
     , tasty-hunit
+    , template-haskell
+    , text
     , transformers
+    , typed-process
     , uniplate
+    , uuid
+    , vector
+    , yaml
   default-language: Haskell2010

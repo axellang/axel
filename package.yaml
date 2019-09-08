@@ -32,42 +32,51 @@ build-tools:
 - hpack:hpack
 - tasty-discover:tasty-discover
 dependencies:
+- aeson
+- ansi-terminal
 - base
+- bytestring
+- containers
+- directory
+- filepath
+- freer-simple
+- ghcid
+- haskell-src-exts
+- hedgehog
 - hpack
+- lens
+- lens-aeson
+- optparse-applicative
+- parsec
 - polysemy
 - polysemy-plugin
+- process
+- profunctors
+- random
+- regex-pcre
+- singletons
+- split
+- strict
+- tasty
 - tasty-discover
+- tasty-golden
+- tasty-hedgehog
+- tasty-hspec
+- tasty-hunit
+- template-haskell
+- text
+- transformers
+- typed-process
+- uniplate
+- uuid
+- vector
+- yaml
 data-files:
 - resources/**/*
 library:
   source-dirs: src
   ghc-options: []
-  dependencies:
-  - aeson
-  - ansi-terminal
-  - bytestring
-  - containers
-  - directory
-  - filepath
-  - ghcid
-  - hashable
-  - haskell-src-exts
-  - lens
-  - lens-aeson
-  - optparse-applicative
-  - parsec
-  - process
-  - profunctors
-  - regex-pcre
-  - singletons
-  - split
-  - strict
-  - template-haskell
-  - text
-  - typed-process
-  - uniplate
-  - vector
-  - yaml
+  dependencies: []
 executables:
   axel:
     main: Main.hs
@@ -78,8 +87,6 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - axel
-    - containers
-    - optparse-applicative
 tests:
   axel-test:
     main: Main.hs
@@ -90,16 +97,3 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - axel
-    - bytestring
-    - containers
-    - filepath
-    - hedgehog
-    - lens
-    - split
-    - tasty
-    - tasty-golden
-    - tasty-hedgehog
-    - tasty-hspec
-    - tasty-hunit
-    - transformers
-    - uniplate

@@ -4,6 +4,7 @@
 (raw "import Prelude hiding (putStrLn)")
 (import Axel.Eff.App (AppEffs runApp))
 (import Axel.Eff.Console (putStrLn))
+(import Axel.Eff.Ghci (withGhci))
 (import Axel.Haskell.File (convertFileInPlace transpileFileInPlace))
 (import Axel.Haskell.Project (buildProject runProject))
 (import Axel.Haskell.Stack (axelStackageVersion))
@@ -13,7 +14,7 @@
 (import Options.Applicative (<**> execParser helper info progDesc))
 (importq Polysemy Sem all)
 (importq Polysemy.State Sem all)
-(def app ((-> Command) (Sem.Sem AppEffs Unit)) (((Convert filePath)) (void (convertFileInPlace filePath))) (((File filePath)) (void ((Sem.evalState Map.empty) (transpileFileInPlace filePath)))) (((Project)) (>> buildProject runProject)) (((Version)) (putStrLn (<> "Axel version " axelStackageVersion))))
+(def app ((-> Command) (Sem.Sem AppEffs Unit)) (((Convert filePath)) (void (convertFileInPlace filePath))) (((File filePath)) (void ((Sem.evalState Map.empty) (withGhci (transpileFileInPlace filePath))))) (((Project)) (>> buildProject runProject)) (((Version)) (putStrLn (<> "Axel version " axelStackageVersion))))
 (def main (IO Unit)
  (()
   (do'

@@ -38,7 +38,7 @@
         (\ (expr)
          (case expr
            ((AST.SExpression _ [(AST.Symbol _ "quote") x])
-            `{unit <$ ~expr})
+            (AST.quoteExpression (const (AST.Symbol Nothing "_")) x))
            (_ expr)))
         pattern)])))
 

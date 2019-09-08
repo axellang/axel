@@ -5,6 +5,7 @@ import qualified Axel.Parse.AST as AST
 import Prelude hiding (putStrLn)
 import Axel.Eff.App(AppEffs,runApp)
 import Axel.Eff.Console(putStrLn)
+import Axel.Eff.Ghci(withGhci)
 import Axel.Haskell.File(convertFileInPlace,transpileFileInPlace)
 import Axel.Haskell.Project(buildProject,runProject)
 import Axel.Haskell.Stack(axelStackageVersion)
@@ -15,7 +16,7 @@ import Options.Applicative((<**>),execParser,helper,info,progDesc)
 import qualified Polysemy as Sem
 import qualified Polysemy.State as Sem
 app (Convert filePath) = (void (convertFileInPlace filePath))
-app (File filePath) = (void ((Sem.evalState Map.empty) (transpileFileInPlace filePath)))
+app (File filePath) = (void ((Sem.evalState Map.empty) (withGhci (transpileFileInPlace filePath))))
 app (Project ) = ((>>) buildProject runProject)
 app (Version ) = (putStrLn ((<>) "Axel version " axelStackageVersion))
 app :: (((->) Command) (Sem.Sem AppEffs ()))
