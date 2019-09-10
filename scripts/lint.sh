@@ -1,1 +1,1 @@
-./onHsFiles.sh "hlint --color=always | grep -v 'No hints'"
+./scripts/onHsFiles.sh "hlint --color=always | grep -v 'No hints'"

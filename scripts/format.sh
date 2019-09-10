@@ -1,1 +1,1 @@
-./onHsFiles.sh hindent
+./scripts/onHsFiles.sh hindent
