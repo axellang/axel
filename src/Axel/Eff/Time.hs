@@ -33,7 +33,10 @@ runTime =
 
 -- | Only use for debugging purposes.
 reportTime ::
-     (Sem.Members '[Effs.Console, Time] effs) => String -> Sem.Sem effs a -> Sem.Sem effs a
+     (Sem.Members '[ Effs.Console, Time] effs)
+  => String
+  -> Sem.Sem effs a
+  -> Sem.Sem effs a
 reportTime message x = do
   startTime <- getCurrentTime
   result <- x
@@ -46,5 +49,9 @@ reportTime message x = do
   Effs.putStrLn $ "\nACTION: " <> message <> "\nTIME: " <> timeDelta <> "\n"
   pure result
 
-unsafeReportTime :: String -> Sem.Sem (Time ': Effs.Console ': Sem.Embed IO ': effs) a -> Sem.Sem effs a
-unsafeReportTime message = unsafeEmbedIO . Effs.runConsole . runTime . reportTime message
+unsafeReportTime ::
+     String
+  -> Sem.Sem (Time ': Effs.Console ': Sem.Embed IO ': effs) a
+  -> Sem.Sem effs a
+unsafeReportTime message =
+  unsafeEmbedIO . Effs.runConsole . runTime . reportTime message

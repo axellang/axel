@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
@@ -14,5 +15,8 @@ type Callback effs fn a
                         fn (Sem.Sem openEffs a)
 
 unsafeEmbedIO :: Sem.Sem (Sem.Embed IO ': effs) a -> Sem.Sem effs a
-unsafeEmbedIO = Sem.interpret $ \case
-  Sem.Embed x -> pure $ unsafePerformIO x
+unsafeEmbedIO =
+  Sem.interpret $ \case
+    Sem.Embed x -> do
+      let !result = unsafePerformIO x
+      pure result

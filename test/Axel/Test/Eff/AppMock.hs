@@ -12,6 +12,7 @@ import qualified Axel.Eff.Ghci as Effs
 import qualified Axel.Eff.Log as Effs
 import qualified Axel.Eff.Process as Effs
 import qualified Axel.Eff.Resource as Effs
+import qualified Axel.Eff.Time as Effs
 import Axel.Test.Eff.ConsoleMock
 import Axel.Test.Eff.FileSystemMock
 import Axel.Test.Eff.GhciMock
@@ -22,7 +23,7 @@ import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
 type AppEffs
-   = '[ Effs.Log, Effs.Console, Sem.Error Error.Error, Effs.Ghci, Effs.Process, Effs.FileSystem, Effs.Resource, Sem.Error String]
+   = '[ Effs.Log, Effs.Console, Sem.Error Error.Error, Effs.Ghci, Effs.Process, Effs.FileSystem, Effs.Resource, Sem.Error String, Effs.Time]
 
 runApp ::
      (processEffs ~ '[ Effs.FileSystem, Effs.Resource, Sem.Error String])
@@ -35,6 +36,7 @@ runApp ::
      , (ProcessState processEffs, (GhciState, (ConsoleState, a))))
 runApp origConsoleState origFSState origGhciState origProcState =
   Sem.run .
+  runTime .
   unsafeRunError .
   runResource .
   runFileSystem origFSState .
