@@ -65,6 +65,7 @@ dependencies:
 - tasty-hunit
 - template-haskell
 - text
+- time
 - transformers
 - typed-process
 - uniplate

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c339883fca353f6069173f7e3f6ff56f25869caa1f8922fde891181fb557d3d5
+-- hash: ca7e52480f1155cd46760767785a40ed9f2bd31662a66fd1f281703092929841
 
 name:           axel
 version:        0.0.11
@@ -63,6 +63,7 @@ library
       Axel.Eff.Random
       Axel.Eff.Resource
       Axel.Eff.Restartable
+      Axel.Eff.Time
       Axel.Haskell.Convert
       Axel.Haskell.Error
       Axel.Haskell.File
@@ -131,6 +132,7 @@ library
     , tasty-hunit
     , template-haskell
     , text
+    , time
     , transformers
     , typed-process
     , uniplate
@@ -184,6 +186,7 @@ executable axel
     , tasty-hunit
     , template-haskell
     , text
+    , time
     , transformers
     , typed-process
     , uniplate
@@ -260,6 +263,7 @@ test-suite axel-test
     , tasty-hunit
     , template-haskell
     , text
+    , time
     , transformers
     , typed-process
     , uniplate
