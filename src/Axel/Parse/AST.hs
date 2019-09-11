@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -30,7 +31,10 @@ import Data.Generics.Uniplate.Zipper
   , right
   , zipper
   )
+import Data.Hashable (Hashable)
 import Data.Semigroup ((<>))
+
+import GHC.Generics (Generic)
 
 -- TODO `Expression` should probably be `Traversable`, use recursion schemes, etc.
 --      We should provide `toFix` and `fromFix` functions for macros to take advantage of.
@@ -41,9 +45,11 @@ data Expression ann
   | LiteralString ann String
   | SExpression ann [Expression ann]
   | Symbol ann String
-  deriving (Eq, Data, Functor, Show)
+  deriving (Eq, Data, Functor, Generic, Show)
 
 makePrisms ''Expression
+
+instance (Hashable ann) => Hashable (Expression ann)
 
 -- TODO Derive this automatically.
 getAnn :: Expression ann -> ann

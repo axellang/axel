@@ -41,6 +41,7 @@ dependencies:
 - filepath
 - freer-simple
 - ghcid
+- hashable
 - haskell-src-exts
 - hedgehog
 - hpack
@@ -69,7 +70,6 @@ dependencies:
 - transformers
 - typed-process
 - uniplate
-- uuid
 - vector
 - yaml
 data-files:

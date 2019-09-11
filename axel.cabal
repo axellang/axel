@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ca7e52480f1155cd46760767785a40ed9f2bd31662a66fd1f281703092929841
+-- hash: 081b91ad892bae7560013817d8e092de51d2c0fa42d05899214c7a96273d1441
 
 name:           axel
 version:        0.0.11
@@ -108,6 +108,7 @@ library
     , filepath
     , freer-simple
     , ghcid
+    , hashable
     , haskell-src-exts
     , hedgehog
     , hpack
@@ -136,7 +137,6 @@ library
     , transformers
     , typed-process
     , uniplate
-    , uuid
     , vector
     , yaml
   default-language: Haskell2010
@@ -162,6 +162,7 @@ executable axel
     , filepath
     , freer-simple
     , ghcid
+    , hashable
     , haskell-src-exts
     , hedgehog
     , hpack
@@ -190,7 +191,6 @@ executable axel
     , transformers
     , typed-process
     , uniplate
-    , uuid
     , vector
     , yaml
   default-language: Haskell2010
@@ -239,6 +239,7 @@ test-suite axel-test
     , filepath
     , freer-simple
     , ghcid
+    , hashable
     , haskell-src-exts
     , hedgehog
     , hpack
@@ -267,7 +268,6 @@ test-suite axel-test
     , transformers
     , typed-process
     , uniplate
-    , uuid
     , vector
     , yaml
   default-language: Haskell2010

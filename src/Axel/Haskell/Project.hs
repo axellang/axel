@@ -18,7 +18,6 @@ import qualified Axel.Eff.Ghci as Effs (Ghci)
 import qualified Axel.Eff.Ghci as Ghci
 import qualified Axel.Eff.Log as Effs (Log)
 import qualified Axel.Eff.Process as Effs (Process)
-import qualified Axel.Eff.Random as Effs (Random)
 import Axel.Eff.Resource (getResourcePath, newProjectTemplate)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import Axel.Haskell.File (readModuleInfo, transpileFileInPlace)
@@ -58,7 +57,7 @@ newProject projectName = do
   mapM_ copyAxel ["Setup", "app" </> "Main", "src" </> "Lib", "test" </> "Spec"]
 
 transpileProject ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Random, Effs.Resource] effs)
+     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
   => Sem.Sem effs ModuleInfo
 transpileProject =
   Ghci.withGhci $ do
@@ -71,7 +70,7 @@ transpileProject =
     pure moduleInfo
 
 buildProject ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Random, Effs.Resource] effs)
+     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
   => Sem.Sem effs ()
 buildProject = do
   projectPath <- getCurrentDirectory

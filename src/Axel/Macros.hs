@@ -49,8 +49,6 @@ import qualified Axel.Eff.Ghci as Ghci (addFiles, exec)
 import qualified Axel.Eff.Log as Effs (Log)
 import Axel.Eff.Log (logStrLn)
 import qualified Axel.Eff.Process as Effs (Process)
-import qualified Axel.Eff.Random as Effs (Random)
-import Axel.Eff.Random (random)
 import qualified Axel.Eff.Restartable as Effs (Restartable)
 import Axel.Eff.Restartable (restart, runRestartable)
 import Axel.Haskell.Error (processErrors)
@@ -75,7 +73,7 @@ import Axel.Sourcemap
   , wrapCompoundExpressions
   )
 import qualified Axel.Sourcemap as SM (Expression, Output, raw)
-import Axel.Utils.List (filterMap, filterMapOut, head', remove)
+import Axel.Utils.List (filterMap, filterMapOut, head')
 import Axel.Utils.Recursion (bottomUpFmap, zipperTopDownTraverse)
 import Axel.Utils.Zipper (unsafeLeft, unsafeUp)
 
@@ -86,12 +84,12 @@ import Control.Monad (guard, unless, when)
 
 import Data.Function (on)
 import Data.Generics.Uniplate.Zipper (Zipper, fromZipper, hole, replaceHole, up)
+import Data.Hashable (hash)
 import Data.List (intersperse, isPrefixOf, nub)
 import Data.List.Split (split, whenElt)
 import qualified Data.Map as M (filter, fromList, toList)
 import Data.Maybe (isNothing)
 import Data.Semigroup ((<>))
-import qualified Data.UUID as UUID
 
 import qualified Language.Haskell.Ghcid as Ghci (Ghci)
 
@@ -323,13 +321,14 @@ addStatementToMacroEnvironment expandFile newExpr = do
 
 -- | If a function application is a macro call, expand it.
 handleFunctionApplication ::
-     (Sem.Members '[ Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Random, Sem.State ModuleInfo, Sem.Reader Ghci.Ghci, Sem.Reader FilePath, Sem.State [SMStatement]] effs)
+     (Sem.Members '[ Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Sem.State ModuleInfo, Sem.Reader Ghci.Ghci, Sem.Reader FilePath, Sem.State [SMStatement]] effs)
   => SM.Expression
   -> Sem.Sem effs (Maybe [SM.Expression])
-handleFunctionApplication (Parse.SExpression ann (Parse.Symbol _ functionName:args)) = do
+handleFunctionApplication fnApp@(Parse.SExpression ann (Parse.Symbol _ functionName:args)) = do
   shouldExpand <- isMacroCall functionName
   if shouldExpand
-    then Just <$> expandMacroApplication ann functionName args
+    then Just <$>
+         withExpansionId fnApp (expandMacroApplication ann functionName args)
     else pure Nothing
 handleFunctionApplication _ = pure Nothing
 
@@ -490,32 +489,29 @@ losslyReconstructMacroCall macroName args =
     (Parse.Symbol Nothing macroName : map (Nothing <$) args)
 
 withExpansionId ::
-     (Sem.Member Effs.Random effs)
-  => Sem.Sem (Sem.Reader ExpansionId ': effs) a
+     SM.Expression
+  -> Sem.Sem (Sem.Reader ExpansionId ': effs) a
   -> Sem.Sem effs a
-withExpansionId x = do
-  uuid <- random @_ @UUID.UUID
-  Sem.runReader (ExpansionId $ toModuleSuffix uuid) x
-  where
-    toModuleSuffix :: UUID.UUID -> String
-    toModuleSuffix = remove (== '-') . UUID.toString
+withExpansionId originalCall x =
+  let expansionId = show $ abs $ hash originalCall -- We take the absolute value so that folder names don't start with dashes
+                                                   -- (it looks weird, even though it's not technically wrong).
+                                                   -- In theory, this allows for collisions, but the chances are negligibly small(?).
+   in Sem.runReader (ExpansionId expansionId) x
 
 expandMacroApplication ::
-     (Sem.Members '[ Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Random, Sem.Reader Ghci.Ghci, Sem.Reader FilePath, Sem.State [SMStatement]] effs)
+     (Sem.Members '[ Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Sem.Reader ExpansionId, Sem.Reader Ghci.Ghci, Sem.Reader FilePath, Sem.State [SMStatement]] effs)
   => SourceMetadata
   -> Identifier
   -> [SM.Expression]
   -> Sem.Sem effs [SM.Expression]
-expandMacroApplication originalAnn macroName args =
-  withExpansionId $ do
-    logStrLn $ "Expanding: " <>
-      toAxel (losslyReconstructMacroCall macroName args)
-    filePath' <- Sem.ask @FilePath
-    macroProgram <- generateMacroProgram filePath' macroName args
-    (tempFilePath, newSource) <-
-      uncurry (evalMacro originalAnn macroName args) macroProgram
-    logStrLn $ "Result: " <> newSource <> "\n\n"
-    parseMultiple (Just tempFilePath) newSource
+expandMacroApplication originalAnn macroName args = do
+  logStrLn $ "Expanding: " <> toAxel (losslyReconstructMacroCall macroName args)
+  filePath' <- Sem.ask @FilePath
+  macroProgram <- generateMacroProgram filePath' macroName args
+  (tempFilePath, newSource) <-
+    uncurry (evalMacro originalAnn macroName args) macroProgram
+  logStrLn $ "Result: " <> newSource <> "\n\n"
+  parseMultiple (Just tempFilePath) newSource
 
 isMacroDefinitionStatement :: Statement ann -> Bool
 isMacroDefinitionStatement (SMacroDefinition _) = True

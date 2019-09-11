@@ -25,7 +25,6 @@ import qualified Axel.Eff.FileSystem as FS (readFile, writeFile)
 import qualified Axel.Eff.Ghci as Effs (Ghci)
 import qualified Axel.Eff.Log as Effs (Log)
 import qualified Axel.Eff.Process as Effs (Process)
-import qualified Axel.Eff.Random as Effs (Random)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import qualified Axel.Eff.Restartable as Effs (Restartable)
 import Axel.Haskell.Convert (convertFile)
@@ -98,9 +97,9 @@ readModuleInfo axelFiles = do
 
 transpileSource ::
      forall effs fileExpanderEffs funAppExpanderEffs.
-     ( fileExpanderEffs ~ '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Random, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo]
+     ( fileExpanderEffs ~ '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo]
      , funAppExpanderEffs ~ (Sem.Reader FilePath ': Effs.Restartable SM.Expression ': Sem.State [SMStatement] ': fileExpanderEffs)
-     , Sem.Members '[ Sem.Error Error, Effs.Ghci, Effs.Random, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs
+     , Sem.Members '[ Sem.Error Error, Effs.Ghci, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs
      , Sem.Members fileExpanderEffs effs
      )
   => FilePath
@@ -128,7 +127,7 @@ convertFileInPlace path = do
   pure newPath
 
 transpileFile ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Random, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs)
+     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs)
   => FilePath
   -> FilePath
   -> Sem.Sem effs ()
@@ -140,7 +139,7 @@ transpileFile path newPath = do
   Sem.modify $ M.adjust (_2 ?~ newContents) path
 
 transpileFileInPlace ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Random, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs)
+     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs)
   => FilePath
   -> Sem.Sem effs FilePath
 transpileFileInPlace path = do

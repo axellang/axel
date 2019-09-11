@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -25,7 +26,10 @@ import Control.Lens.TH (makeFieldsNoPrefix, makeWrapped)
 import Control.Monad (forM_, when)
 
 import Data.Data (Data)
+import Data.Hashable (Hashable)
 import Data.Map (Map)
+
+import GHC.Generics (Generic)
 
 import qualified Polysemy as Sem
 import qualified Polysemy.State as Sem
@@ -35,9 +39,11 @@ data Position =
     { _line :: Int
     , _column :: Int
     }
-  deriving (Data, Eq, Show)
+  deriving (Data, Eq, Generic, Show)
 
 makeFieldsNoPrefix ''Position
+
+instance Hashable Position
 
 type SourcePosition = (FilePath, Position)
 
