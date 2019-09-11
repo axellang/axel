@@ -9,8 +9,8 @@
 
 module Axel.Eff.Time where
 
-import Axel.Eff (unsafeEmbedIO)
 import qualified Axel.Eff.Console as Effs
+import Axel.Eff.Unsafe (unsafeEmbedIO)
 
 import qualified Data.Time as Time
 

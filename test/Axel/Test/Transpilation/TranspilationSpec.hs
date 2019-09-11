@@ -13,6 +13,7 @@ import qualified Axel.Eff.Log as Effs
 import qualified Axel.Eff.Process as Effs
 import qualified Axel.Eff.Random as Effs
 import qualified Axel.Eff.Resource as Effs
+import qualified Axel.Eff.Time as Effs
 import Axel.Haskell.File
 import Axel.Sourcemap as SM
 
@@ -31,6 +32,7 @@ import Test.Tasty.Golden
 runApp :: Sem.Sem AppEffs a -> IO a
 runApp =
   Sem.runM .
+  Effs.runTime .
   Effs.runRandom .
   Effs.runResource .
   Effs.runProcess .
@@ -49,9 +51,8 @@ test_transpilation_golden = do
             axelSource <- readFile axelFile
             output <-
               runApp $
-              Sem.evalState (M.empty :: ModuleInfo) $ do
-                Ghci.withGhci $
-                  transpileSource (takeBaseName axelFile) axelSource
+              Sem.evalState (M.empty :: ModuleInfo) $
+              Ghci.withGhci $ transpileSource (takeBaseName axelFile) axelSource
             let newSource = C.pack $ SM.raw output
             pure newSource
       pure $ goldenVsString (takeBaseName axelFile) hsFile transpiled
