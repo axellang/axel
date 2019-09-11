@@ -37,8 +37,7 @@ runApp =
   Effs.runResource .
   Effs.runProcess .
   Effs.runGhci .
-  Effs.runFileSystem .
-  Effs.unsafeRunError @Effs.Error . Effs.runConsole . Effs.ignoreLog
+  Effs.runFileSystem . Effs.unsafeRunError . Effs.runConsole . Effs.ignoreLog
 
 test_transpilation_golden :: IO TestTree
 test_transpilation_golden = do

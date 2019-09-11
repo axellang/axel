@@ -29,7 +29,7 @@
            (pure
             (snoc (map (\ (x) `(= ~name ~@x))
                        cases)
-                  `(:: ~name ~typeSig)))))
+                  `(wut :: ~name ~typeSig)))))
 
 (defmacro syntaxPattern
     ([pattern]

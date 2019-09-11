@@ -72,7 +72,7 @@ spec_Stack = do
            Mock.runProcess origProcState .
            Mock.runConsole origConsoleState $
            action of
-        Left err -> expectationFailure $ show err
+        Left err -> expectationFailure $ renderError err
         Right (Left err) -> expectationFailure err
         Right (Right (fsState, (procState, (consoleState, x)))) ->
           expectation x (consoleState, fsState, procState)
@@ -102,7 +102,7 @@ spec_Stack = do
            Mock.runFileSystem origFSState .
            Mock.runProcess origProcState $
            action of
-        Left err -> expectationFailure $ show err
+        Left err -> expectationFailure $ renderError err
         Right (Left err) -> expectationFailure err
         Right (Right (fsState, (procState, x))) ->
           expectation x (fsState, procState)
@@ -133,7 +133,7 @@ spec_Stack = do
            Mock.runProcess origProcState .
            Mock.runConsole origConsoleState $
            action of
-        Left err -> expectationFailure $ show err
+        Left err -> expectationFailure $ renderError err
         Right (Left err) -> expectationFailure err
         Right (Right (fsState, (procState, (consoleState, x)))) ->
           expectation x (consoleState, fsState, procState)

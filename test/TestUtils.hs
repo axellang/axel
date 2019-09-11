@@ -41,9 +41,9 @@ throwInterpretError actionName message = do
       message <> "\n\nSTATE\t" <> show ctxt <> "\n----------\n"
   Sem.throw errorMsg
 
-unwrapRight :: (Show b) => Either b a -> a
+unwrapRight :: (RenderError e) => Either e a -> a
 unwrapRight (Right x) = x
-unwrapRight (Left x) = error $ show x
+unwrapRight (Left x) = error $ renderError x
 
 assertEqual :: (Eq a, Show a) => String -> a -> a -> Assertion
 assertEqual msg expected actual =
@@ -61,7 +61,7 @@ assertEqual msg expected actual =
 -- | If multiple expressions are able to be parsed, only the first will be returned.
 unsafeParseSingle :: Maybe FilePath -> String -> SM.Expression
 unsafeParseSingle filePath =
-  head . Sem.run . unsafeRunError @Axel.Eff.Error.Error . parseMultiple filePath
+  head . Sem.run . unsafeRunError . parseMultiple filePath
 
 -- NOTE Workaround until https://github.com/hedgehogqa/haskell-hedgehog/commit/de401e949526951fdff87ef02fc75f13e8e22dfe
 --      is publicly released.

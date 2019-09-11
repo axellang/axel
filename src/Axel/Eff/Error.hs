@@ -1,11 +1,13 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Axel.Eff.Error where
 
@@ -28,20 +30,30 @@ data Error where
 mkFileErrorMsg :: FilePath -> String -> String
 mkFileErrorMsg filePath err = "While compiling '" <> filePath <> "':\n\n" <> err
 
-instance Show Error where
-  show :: Error -> String
-  show (ConvertError filePath err) = mkFileErrorMsg filePath err
-  show (MacroError filePath ctxt err) =
+-- | Render an error in human-readable format.
+class RenderError a where
+  renderError :: a -> String
+
+instance RenderError String where
+  renderError :: String -> String
+  renderError = id
+
+instance RenderError Error where
+  renderError :: Error -> String
+  renderError (ConvertError filePath err) = mkFileErrorMsg filePath err
+  renderError (MacroError filePath ctxt err) =
     mkFileErrorMsg filePath $
     "While expanding " <> toAxel ctxt <> ":\n\n" <> err
-  show (NormalizeError filePath err context) =
+  renderError (NormalizeError filePath err context) =
     mkFileErrorMsg filePath $
     err <> "\n\n" <> "Context:\n" <> unlines (map toAxel context)
-  show (ParseError filePath err) = mkFileErrorMsg filePath err
-  show (ProjectError err) = err
+  renderError (ParseError filePath err) = mkFileErrorMsg filePath err
+  renderError (ProjectError err) = err
 
 fatal :: String -> String -> a
 fatal context message = error $ "[FATAL] " <> context <> " - " <> message
 
-unsafeRunError :: (Show e) => Sem.Sem (Sem.Error e ': effs) a -> Sem.Sem effs a
-unsafeRunError = Sem.runError >=> either (errorWithoutStackTrace . show) pure -- TODO Don't(?) use `error(WithoutStackTrace)` directly
+unsafeRunError ::
+     (RenderError e) => Sem.Sem (Sem.Error e ': effs) a -> Sem.Sem effs a
+unsafeRunError =
+  Sem.runError >=> either (errorWithoutStackTrace . renderError) pure -- TODO Don't(?) use `error(WithoutStackTrace)` directly

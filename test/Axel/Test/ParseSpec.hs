@@ -3,6 +3,7 @@
 
 module Axel.Test.ParseSpec where
 
+import Axel.Eff.Error
 import Axel.Parse
 import Axel.Parse.AST
 import Axel.Utils.String
@@ -94,7 +95,7 @@ spec_Parse = do
                 [Symbol () "bar", Symbol () "x", Symbol () "y", Symbol () "z"]
             ]
       case Sem.run . Sem.runError $ parseMultiple Nothing input of
-        Left err -> expectationFailure $ show err
+        Left err -> expectationFailure $ renderError err
         Right x -> map (() <$) x `shouldBe` result
   describe "parseSource" $ do
     it "can parse a source file" $ do
@@ -126,5 +127,5 @@ spec_Parse = do
               , SExpression () [Symbol () "butThis-->IsASingleSymbol"]
               ]
       case Sem.run . Sem.runError $ parseSource Nothing input of
-        Left err -> expectationFailure $ show err
+        Left err -> expectationFailure $ renderError err
         Right x -> () <$ x `shouldBe` result

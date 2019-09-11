@@ -170,7 +170,7 @@ normalizeExpression expr@(Parse.Symbol _ symbol) =
 unsafeNormalizeExpression :: SM.Expression -> SMExpression
 unsafeNormalizeExpression =
   Sem.run .
-  unsafeRunError @Error . Sem.runReader "" . withExprCtxt . normalizeExpression
+  unsafeRunError . Sem.runReader "" . withExprCtxt . normalizeExpression
 
 normalizeFunctionDefinition ::
      (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath, Sem.Reader ExprCtxt] effs)
@@ -357,4 +357,4 @@ normalizeStatement expr =
 unsafeNormalizeStatement :: SM.Expression -> SMStatement
 unsafeNormalizeStatement =
   Sem.run .
-  unsafeRunError @Error . Sem.runReader "" . withExprCtxt . normalizeStatement
+  unsafeRunError . Sem.runReader "" . withExprCtxt . normalizeStatement
