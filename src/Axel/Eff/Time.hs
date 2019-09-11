@@ -9,8 +9,6 @@
 
 module Axel.Eff.Time where
 
-import Prelude
-
 import Axel.Eff (unsafeEmbedIO)
 import qualified Axel.Eff.Console as Effs
 
