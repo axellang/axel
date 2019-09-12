@@ -11,7 +11,6 @@ module Axel.Haskell.Convert where
 
 import Prelude hiding (putStrLn)
 
-import Axel (preludeMacros)
 import qualified Axel.AST as AST
 import Axel.Denormalize (denormalizeExpression, denormalizeStatement)
 import Axel.Eff.Console (putStrLn)
@@ -200,8 +199,7 @@ instance ToStmts HSE.Module where
       , case moduleHead of
           Just moduleId -> [AST.SModuleDeclaration Nothing (toId moduleId)]
           Nothing -> []
-      , AST.SMacroImport (AST.MacroImport Nothing "Axel" preludeMacros) :
-        concatMap toStmts imports
+      , concatMap toStmts imports
       , concatMap toStmts decls
       ]
 

@@ -12,8 +12,8 @@ module Axel.Parse.AST where
 
 import Axel.Utils.Maybe (foldMUntilNothing)
 import Axel.Utils.Recursion
-  ( ZipperRecursive(zipperBottomUpTraverse, zipperTopDownTraverse)
-  , ZipperTraverse
+  ( Traverse
+  , ZipperRecursive(zipperBottomUpTraverse, zipperTopDownTraverse)
   , bottomUpFmap
   )
 import Axel.Utils.String (handleStringEscapes)
@@ -60,7 +60,9 @@ getAnn (SExpression ann _) = ann
 getAnn (Symbol ann _) = ann
 
 instance (Data ann) => ZipperRecursive (Expression ann) where
-  zipperBottomUpTraverse :: forall m. ZipperTraverse m (Expression ann)
+  zipperBottomUpTraverse ::
+       forall m.
+       Traverse m (Zipper (Expression ann) (Expression ann)) (Expression ann)
   zipperBottomUpTraverse f = fmap fromZipper . go . zipper
     where
       go ::
@@ -79,7 +81,9 @@ instance (Data ann) => ZipperRecursive (Expression ann) where
         z' <- recurse z
         x <- f z'
         pure $ replaceHole x z'
-  zipperTopDownTraverse :: forall m. ZipperTraverse m (Expression ann)
+  zipperTopDownTraverse ::
+       forall m.
+       Traverse m (Zipper (Expression ann) (Expression ann)) (Expression ann)
   zipperTopDownTraverse f = fmap fromZipper . go . zipper
     where
       go ::
@@ -147,7 +151,7 @@ quoteExpression quoteAnn (Symbol ann x) =
   SExpression ann [Symbol ann "AST.Symbol", quoteAnn ann, LiteralString ann x]
 
 -- | This allows splice-unquoting of both `[Expression]`s and `SExpression`s,
---   without requiring special syntax for each.
+-- | without requiring special syntax for each.
 class ToExpressionList a where
   type Annotation a
   toExpressionList :: a -> [Expression (Annotation a)]
@@ -158,8 +162,8 @@ instance ToExpressionList [Expression ann] where
   toExpressionList = id
 
 -- | Because we do not have a way to statically ensure an `SExpression` is passed
---   (and not another one of `Expression`'s constructors instead),
---   we will error at compile-time if a macro attempts to splice-unquote inappropriately.
+-- | (and not another one of `Expression`'s constructors instead),
+-- | we will error at compile-time if a macro attempts to splice-unquote inappropriately.
 instance ToExpressionList (Expression ann) where
   type Annotation (Expression ann) = ann
   toExpressionList :: Expression ann -> [Expression ann]
