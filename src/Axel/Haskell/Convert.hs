@@ -29,6 +29,8 @@ import Control.Category ((>>>))
 import Control.Lens.Extras (is)
 import Control.Lens.Operators ((%~), (^.))
 
+import Data.Data.Lens (biplate, uniplate)
+
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
@@ -585,9 +587,20 @@ convertFile path newPath = do
        HSE.ParseFailed _ err -> Sem.throw $ ConvertError path err)
   putStrLn $ "Writing " <> newPath <> "..."
   let newContents =
-        unlines $ map toAxel $ groupFunctionDefinitions $ toStmts parsedModule
+        unlines $
+        map toAxel $
+        groupFunctionDefinitions $
+        flattenFunctionApplications $ toStmts parsedModule
   FS.writeFile newPath newContents
   pure newPath
+
+flattenFunctionApplications :: [AST.SMStatement] -> [AST.SMStatement]
+flattenFunctionApplications = map (biplate %~ (uniplate %~ handleExpr))
+  where
+    handleExpr :: AST.SMExpression -> AST.SMExpression
+    handleExpr (AST.EFunctionApplication (AST.FunctionApplication ann (AST.EFunctionApplication (AST.FunctionApplication _ fn args)) args')) =
+      AST.EFunctionApplication $ AST.FunctionApplication ann fn (args <> args')
+    handleExpr x = x
 
 groupFunctionDefinitions :: [AST.SMStatement] -> [SM.Expression]
 groupFunctionDefinitions =

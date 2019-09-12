@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -45,6 +46,7 @@ import Control.Lens.TH (makeFieldsNoPrefix, makePrisms)
 import Control.Lens.Wrapped (_Wrapped)
 import Control.Monad ((>=>))
 
+import Data.Data (Data)
 import Data.Semigroup ((<>))
 
 class ToHaskell a where
@@ -58,7 +60,7 @@ data CaseBlock ann =
     , _expr :: Expression ann
     , _matches :: [(Expression ann, Expression ann)]
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data FunctionApplication ann =
   FunctionApplication
@@ -66,7 +68,7 @@ data FunctionApplication ann =
     , _function :: Expression ann
     , _arguments :: [Expression ann]
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data IfBlock ann =
   IfBlock
@@ -75,19 +77,19 @@ data IfBlock ann =
     , _ifTrue :: Expression ann
     , _ifFalse :: Expression ann
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data TopLevel ann =
   TopLevel
     { _ann :: ann
     , _statements :: [Statement ann]
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data TypeDefinition ann
   = ProperType ann Identifier
   | TypeConstructor ann (FunctionApplication ann)
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data DataDeclaration ann =
   DataDeclaration
@@ -95,7 +97,7 @@ data DataDeclaration ann =
     , _typeDefinition :: TypeDefinition ann
     , _constructors :: [FunctionApplication ann]
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data NewtypeDeclaration ann =
   NewtypeDeclaration
@@ -103,7 +105,7 @@ data NewtypeDeclaration ann =
     , _typeDefinition :: TypeDefinition ann
     , _constructor :: FunctionApplication ann
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data FunctionDefinition ann =
   FunctionDefinition
@@ -113,17 +115,17 @@ data FunctionDefinition ann =
     , _body :: Expression ann
     , _whereBindings :: [FunctionDefinition ann]
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data Import ann
   = ImportItem ann Identifier
   | ImportType ann Identifier [Identifier]
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data ImportSpecification ann
   = ImportAll ann
   | ImportOnly ann [Import ann]
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data Lambda ann =
   Lambda
@@ -131,7 +133,7 @@ data Lambda ann =
     , _arguments :: [Expression ann]
     , _body :: Expression ann
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data LetBlock ann =
   LetBlock
@@ -139,14 +141,14 @@ data LetBlock ann =
     , _bindings :: [(Expression ann, Expression ann)]
     , _body :: Expression ann
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data MacroDefinition ann =
   MacroDefinition
     { _ann :: ann
     , _functionDefinition :: FunctionDefinition ann
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data MacroImport ann =
   MacroImport
@@ -154,14 +156,14 @@ data MacroImport ann =
     , _moduleName :: Identifier
     , _imports :: [Identifier]
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data Pragma ann =
   Pragma
     { _ann :: ann
     , _pragmaSpecification :: String
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data QualifiedImport ann =
   QualifiedImport
@@ -170,21 +172,21 @@ data QualifiedImport ann =
     , _alias :: Identifier
     , _imports :: ImportSpecification ann
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data RecordDefinition ann =
   RecordDefinition
     { _ann :: ann
     , _bindings :: [(Identifier, Expression ann)]
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data RecordType ann =
   RecordType
     { _ann :: ann
     , _fields :: [(Identifier, Expression ann)]
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data RestrictedImport ann =
   RestrictedImport
@@ -192,7 +194,7 @@ data RestrictedImport ann =
     , _moduleName :: Identifier
     , _imports :: ImportSpecification ann
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data TypeclassDefinition ann =
   TypeclassDefinition
@@ -201,7 +203,7 @@ data TypeclassDefinition ann =
     , _constraints :: [Expression ann]
     , _signatures :: [TypeSignature ann]
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data TypeclassInstance ann =
   TypeclassInstance
@@ -209,7 +211,7 @@ data TypeclassInstance ann =
     , _instanceName :: Expression ann
     , _definitions :: [FunctionDefinition ann]
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data TypeSignature ann =
   TypeSignature
@@ -217,7 +219,7 @@ data TypeSignature ann =
     , _name :: Identifier
     , _typeDefinition :: Expression ann
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data TypeSynonym ann =
   TypeSynonym
@@ -225,7 +227,7 @@ data TypeSynonym ann =
     , _alias :: Expression ann
     , _definition :: Expression ann
     }
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data Expression ann
   = ECaseBlock (CaseBlock ann)
@@ -239,13 +241,13 @@ data Expression ann
   | ERawExpression ann String
   | ERecordDefinition (RecordDefinition ann)
   | ERecordType (RecordType ann)
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data Literal ann
   = LChar ann Char
   | LInt ann Int
   | LString ann String
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 data Statement ann
   = STopLevel (TopLevel ann)
@@ -264,7 +266,7 @@ data Statement ann
   | STypeSignature (TypeSignature ann)
   | STypeSynonym (TypeSynonym ann)
   | SUnrestrictedImport ann Identifier
-  deriving (Eq, Functor, Show)
+  deriving (Data, Eq, Functor, Show)
 
 type Program ann = [Statement ann]
 
