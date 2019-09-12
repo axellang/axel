@@ -365,7 +365,28 @@ instance ToExpr HSE.Exp where
   toExpr (HSE.Case _ expr matches) =
     AST.ECaseBlock $
     AST.CaseBlock Nothing (toExpr expr) (map altToClause matches)
-  toExpr expr@HSE.Do {} = unsupportedExpr expr
+  toExpr (HSE.Do _ stmts) =
+    AST.EFunctionApplication $
+    AST.FunctionApplication
+      Nothing
+      (AST.EIdentifier Nothing "do'")
+      (map handleStmt stmts)
+    where
+      handleStmt (HSE.Generator _ pat expr) =
+        AST.EFunctionApplication $
+        AST.FunctionApplication
+          Nothing
+          (AST.EIdentifier Nothing "<-")
+          [toExpr pat, toExpr expr]
+      handleStmt (HSE.Qualifier _ expr) = toExpr expr
+      handleStmt (HSE.LetStmt _ binds) =
+        AST.EFunctionApplication $
+        AST.FunctionApplication
+          Nothing
+          (AST.EIdentifier Nothing "let")
+          (map handleClause $ bindsToClauses binds)
+      handleClause (var, val) =
+        AST.EFunctionApplication $ AST.FunctionApplication Nothing var [val]
   toExpr expr@HSE.MDo {} = unsupportedExpr expr
   toExpr (HSE.Tuple _ _ exps) =
     AST.EFunctionApplication $
