@@ -5,13 +5,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 module TestUtils where
 
 import Axel.Eff.Error
 import Axel.Parse
 import Axel.Sourcemap as SM
+import Axel.Utils.String
 
 import Control.Exception
 
@@ -41,9 +41,9 @@ throwInterpretError actionName message = do
       message <> "\n\nSTATE\t" <> show ctxt <> "\n----------\n"
   Sem.throw errorMsg
 
-unwrapRight :: (RenderError e) => Either e a -> a
-unwrapRight (Right x) = x
-unwrapRight (Left x) = error $ renderError x
+unwrapRight :: Renderer e -> Either e a -> a
+unwrapRight _ (Right x) = x
+unwrapRight errorRenderer (Left x) = error $ errorRenderer x
 
 assertEqual :: (Eq a, Show a) => String -> a -> a -> Assertion
 assertEqual msg expected actual =
@@ -61,7 +61,7 @@ assertEqual msg expected actual =
 -- | If multiple expressions are able to be parsed, only the first will be returned.
 unsafeParseSingle :: Maybe FilePath -> String -> SM.Expression
 unsafeParseSingle filePath =
-  head . Sem.run . unsafeRunError . parseMultiple filePath
+  head . Sem.run . unsafeRunError renderError . parseMultiple filePath
 
 -- NOTE Workaround until https://github.com/hedgehogqa/haskell-hedgehog/commit/de401e949526951fdff87ef02fc75f13e8e22dfe
 --      is publicly released.

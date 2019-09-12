@@ -22,6 +22,6 @@ spec_Console =
       let origState = Mock.mkConsoleState
       let expected = Mock.ConsoleState {Mock._consoleOutput = "line1\nline2\n"}
       let result =
-            unwrapRight $
+            unwrapRight id $
             Sem.run . Sem.runError @String . Mock.runConsole origState $ action
       result `shouldBe` (expected, ())

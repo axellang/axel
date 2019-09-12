@@ -25,6 +25,7 @@ hprop_normalizeExpression_is_the_inverse_of_denormalizeExpression =
     expr <- forAll ASTGen.genExpression
     expr =$=
       unwrapRight
+        renderError
         (Sem.run $
          Sem.runError @Error.Error $
          Sem.runReader "" $
@@ -37,6 +38,7 @@ hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement =
     stmt <- forAll ASTGen.genStatement
     stmt =$=
       unwrapRight
+        renderError
         (Sem.run $
          Sem.runError @Error.Error $
          Sem.runReader "" $

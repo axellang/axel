@@ -35,6 +35,7 @@ handleStringEscapes =
     '\\' -> "\\\\"
     c -> [c]
 
+-- TODO This renders very poorly in e.g. Fira Code Mono.
 bold :: String -> String
 bold = map boldCharacter
   where
@@ -51,3 +52,5 @@ bold = map boldCharacter
 
 indent :: Int -> String -> String
 indent width = unlines . map (replicate width ' ' <>) . lines
+
+type Renderer a = a -> String

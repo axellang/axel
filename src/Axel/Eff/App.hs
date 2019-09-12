@@ -4,7 +4,7 @@
 module Axel.Eff.App where
 
 import Axel.Eff.Console (Console, runConsole)
-import Axel.Eff.Error (Error, unsafeRunError)
+import Axel.Eff.Error (Error, renderError, unsafeRunError)
 import Axel.Eff.FileSystem (FileSystem, runFileSystem)
 import Axel.Eff.Ghci (Ghci, runGhci)
 import Axel.Eff.Log (Log, runLogAsFileSystem)
@@ -28,4 +28,5 @@ runApp =
   runProcess .
   runGhci .
   runFileSystem .
-  unsafeRunError . runConsole . runLogAsFileSystem "axelCompilation.log"
+  unsafeRunError renderError .
+  runConsole . runLogAsFileSystem "axelCompilation.log"

@@ -7,11 +7,12 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 
 module Axel.Eff.Error where
 
-import Axel.Parse.AST (Expression, toAxel)
+import Axel.Parse.AST (getAnn, toAxel)
+import qualified Axel.Sourcemap as SM
+import Axel.Utils.String (Renderer)
 
 import Control.Monad ((>=>))
 
@@ -22,38 +23,37 @@ import qualified Polysemy.Error as Sem
 
 data Error where
   ConvertError :: FilePath -> String -> Error
-  MacroError :: FilePath -> Expression ann -> String -> Error
-  NormalizeError :: FilePath -> String -> [Expression ann] -> Error
+  MacroError :: FilePath -> SM.Expression -> String -> Error
+  NormalizeError :: FilePath -> String -> [SM.Expression] -> Error
   ParseError :: FilePath -> String -> Error
   ProjectError :: String -> Error
 
 mkFileErrorMsg :: FilePath -> String -> String
 mkFileErrorMsg filePath err = "While compiling '" <> filePath <> "':\n\n" <> err
 
--- | Render an error in human-readable format.
-class RenderError a where
-  renderError :: a -> String
+renderErrorContext :: SM.Expression -> String
+renderErrorContext expr =
+  let sourcePosition =
+        case getAnn expr of
+          Just sp -> ", at " <> SM.renderSourcePosition sp
+          Nothing -> ""
+   in toAxel expr <> sourcePosition
 
-instance RenderError String where
-  renderError :: String -> String
-  renderError = id
-
-instance RenderError Error where
-  renderError :: Error -> String
-  renderError (ConvertError filePath err) = mkFileErrorMsg filePath err
-  renderError (MacroError filePath ctxt err) =
-    mkFileErrorMsg filePath $
-    "While expanding " <> toAxel ctxt <> ":\n\n" <> err
-  renderError (NormalizeError filePath err context) =
-    mkFileErrorMsg filePath $
-    err <> "\n\n" <> "Context:\n" <> unlines (map toAxel context)
-  renderError (ParseError filePath err) = mkFileErrorMsg filePath err
-  renderError (ProjectError err) = err
+renderError :: Renderer Error
+renderError (ConvertError filePath err) = mkFileErrorMsg filePath err
+renderError (MacroError filePath ctxt err) =
+  mkFileErrorMsg filePath $
+  "While expanding " <> renderErrorContext ctxt <> ":\n\n" <> err
+renderError (NormalizeError filePath err context) =
+  mkFileErrorMsg filePath $
+  err <> "\n\n" <> "Context:\n" <> unlines (map renderErrorContext context)
+renderError (ParseError filePath err) = mkFileErrorMsg filePath err
+renderError (ProjectError err) = err
 
 fatal :: String -> String -> a
 fatal context message = error $ "[FATAL] " <> context <> " - " <> message
 
 unsafeRunError ::
-     (RenderError e) => Sem.Sem (Sem.Error e ': effs) a -> Sem.Sem effs a
-unsafeRunError =
-  Sem.runError >=> either (errorWithoutStackTrace . renderError) pure -- TODO Don't(?) use `error(WithoutStackTrace)` directly
+     Renderer e -> Sem.Sem (Sem.Error e ': effs) a -> Sem.Sem effs a
+unsafeRunError render =
+  Sem.runError >=> either (errorWithoutStackTrace . render) pure -- TODO Don't(?) use `error(WithoutStackTrace)` directly

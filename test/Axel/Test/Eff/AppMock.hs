@@ -35,12 +35,12 @@ runApp ::
      , (ProcessState processEffs, (GhciState, (ConsoleState, a))))
 runApp origConsoleState origFSState origGhciState origProcState =
   Sem.run .
-  unsafeRunError .
+  unsafeRunError id .
   runResource .
   runFileSystem origFSState .
   runProcess origProcState .
   runGhci origGhciState .
-  unsafeRunError . runConsole origConsoleState . Effs.ignoreLog
+  unsafeRunError renderError . runConsole origConsoleState . Effs.ignoreLog
 
 evalApp ::
      (processEffs ~ '[ Effs.FileSystem, Effs.Resource, Sem.Error String])

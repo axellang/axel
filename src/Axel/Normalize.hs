@@ -45,7 +45,7 @@ import Axel.AST
   , TypeclassDefinition(TypeclassDefinition)
   , TypeclassInstance(TypeclassInstance)
   )
-import Axel.Eff.Error (Error(NormalizeError), unsafeRunError)
+import Axel.Eff.Error (Error(NormalizeError), renderError, unsafeRunError)
 import qualified Axel.Parse.AST as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
            Symbol)
@@ -170,7 +170,8 @@ normalizeExpression expr@(Parse.Symbol _ symbol) =
 unsafeNormalizeExpression :: SM.Expression -> SMExpression
 unsafeNormalizeExpression =
   Sem.run .
-  unsafeRunError . Sem.runReader "" . withExprCtxt . normalizeExpression
+  unsafeRunError renderError .
+  Sem.runReader "" . withExprCtxt . normalizeExpression
 
 normalizeFunctionDefinition ::
      (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath, Sem.Reader ExprCtxt] effs)
@@ -357,4 +358,5 @@ normalizeStatement expr =
 unsafeNormalizeStatement :: SM.Expression -> SMStatement
 unsafeNormalizeStatement =
   Sem.run .
-  unsafeRunError . Sem.runReader "" . withExprCtxt . normalizeStatement
+  unsafeRunError renderError .
+  Sem.runReader "" . withExprCtxt . normalizeStatement

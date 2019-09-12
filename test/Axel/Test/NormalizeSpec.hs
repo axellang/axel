@@ -22,7 +22,7 @@ hprop_denormalizeExpression_is_the_inverse_of_normalizeExpression =
     expr <- forAll Parse.ASTGen.genExpression
     expr ===
       denormalizeExpression
-        (unwrapRight $
+        (unwrapRight renderError $
          Sem.run .
          Sem.runError @Error.Error .
          Sem.runReader "" . Sem.runReader ([] :: [SM.Expression]) $
