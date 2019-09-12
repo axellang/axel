@@ -27,93 +27,100 @@ import Control.Monad (void)
 
 import Data.List ((\\))
 import Data.Maybe (fromMaybe)
+import Data.Void (Void)
 
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
-import qualified Text.Parsec as P
-import Text.Parsec.Language (haskellDef)
-import Text.Parsec.Token (makeTokenParser, stringLiteral)
+import qualified Text.Megaparsec as P
+import qualified Text.Megaparsec.Char as P
+import qualified Text.Megaparsec.Char.Lexer as P (charLiteral)
 
-ann :: (SourceMetadata -> a -> b) -> P.Parsec s u a -> P.Parsec s u b
+type Parser = P.Parsec Void String
+
+-- Adapted from https://hackage.haskell.org/package/megaparsec-7.0.5/docs/Text-Megaparsec-Char-Lexer.html#v:charLiteral.
+stringLiteral :: Parser String
+stringLiteral = P.char '"' *> P.manyTill P.charLiteral (P.char '"')
+
+ann :: (SourceMetadata -> a -> b) -> Parser a -> Parser b
 ann f x = do
-  parsecPosition <- P.getPosition
+  parsecPosition <- P.getSourcePos
   let sourcePosition =
         ( P.sourceName parsecPosition
         , Position
-            { _line = P.sourceLine parsecPosition
-            , _column = P.sourceColumn parsecPosition
+            { _line = P.unPos $ P.sourceLine parsecPosition
+            , _column = P.unPos $ P.sourceColumn parsecPosition
             })
   f (Just sourcePosition) <$> x
 
-parseReadMacro :: String -> String -> P.Parsec String u SM.Expression
+parseReadMacro :: String -> String -> Parser SM.Expression
 parseReadMacro prefix wrapper = do
   expr <- P.string prefix *> expression
   ann SExpression (pure [Symbol Nothing wrapper, expr])
 
-eol :: P.Parsec String u ()
+eol :: Parser ()
 eol = P.try (void P.newline) <|> P.eof
 
-ignored :: P.Parsec String u ()
-ignored = P.skipMany $ P.try comment <|> void P.space
+ignored :: Parser ()
+ignored = P.skipMany $ P.try comment <|> void P.spaceChar
 
-literalChar :: P.Parsec String u SM.Expression
-literalChar = ann LiteralChar (P.string "#\\" *> P.anyChar)
+literalChar :: Parser SM.Expression
+literalChar = ann LiteralChar (P.string "#\\" *> P.anySingle)
 
-literalInt :: P.Parsec String u SM.Expression
-literalInt = ann LiteralInt (read <$> P.many1 P.digit)
+literalInt :: Parser SM.Expression
+literalInt = ann LiteralInt (read <$> P.some P.digitChar)
 
-literalList :: P.Parsec String u SM.Expression
+literalList :: Parser SM.Expression
 literalList =
   ann
     SExpression
     ((Symbol Nothing "list" :) <$>
      (P.char '[' *> P.many sExpressionItem <* P.char ']'))
 
-literalString :: P.Parsec String u SM.Expression
-literalString = ann LiteralString (stringLiteral (makeTokenParser haskellDef))
+literalString :: Parser SM.Expression
+literalString = ann LiteralString stringLiteral
 
-quasiquotedExpression :: P.Parsec String u SM.Expression
+quasiquotedExpression :: Parser SM.Expression
 quasiquotedExpression = parseReadMacro "`" "quasiquote"
 
-quotedExpression :: P.Parsec String u SM.Expression
+quotedExpression :: Parser SM.Expression
 quotedExpression = parseReadMacro "'" "quote"
 
-sExpressionItem :: P.Parsec String u SM.Expression
+sExpressionItem :: Parser SM.Expression
 sExpressionItem = ignored *> expression <* ignored
 
-sExpression :: P.Parsec String u SM.Expression
+sExpression :: Parser SM.Expression
 sExpression =
   ann SExpression (P.char '(' *> P.many sExpressionItem <* P.char ')')
 
-infixSExpression :: P.Parsec String u SM.Expression
+infixSExpression :: Parser SM.Expression
 infixSExpression =
   ann
     SExpression
     ((Symbol Nothing "applyInfix" :) <$>
      (P.char '{' *> P.many sExpressionItem <* P.char '}'))
 
-spliceUnquotedExpression :: P.Parsec String u SM.Expression
+spliceUnquotedExpression :: Parser SM.Expression
 spliceUnquotedExpression = parseReadMacro "~@" "unquoteSplicing"
 
-symbol :: P.Parsec String u SM.Expression
+symbol :: Parser SM.Expression
 symbol =
   ann
     Symbol
-    (P.many1
-       (P.try P.alphaNum <|> P.try (P.oneOf "'_") <|>
+    (P.some
+       (P.try P.alphaNumChar <|> P.try (P.oneOf "'_") <|>
         P.try (P.oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols)) <|>
         P.oneOf (map fst haskellOperatorSymbols)))
 
-unquotedExpression :: P.Parsec String u SM.Expression
+unquotedExpression :: Parser SM.Expression
 unquotedExpression = parseReadMacro "~" "unquote"
 
-comment :: P.Parsec String u ()
+comment :: Parser ()
 comment =
   P.try (P.string "--" *> eol) <|>
-  void (P.string "-- " *> P.manyTill (void P.anyChar) eol)
+  void (P.string "-- " *> P.manyTill (void P.anySingle) eol)
 
-expression :: P.Parsec String u SM.Expression
+expression :: Parser SM.Expression
 expression =
   P.try literalChar <|> P.try literalInt <|> P.try literalList <|>
   P.try literalString <|>
@@ -163,7 +170,7 @@ parseMultiple maybeFilePath input =
   either throwErr (pure . expandQuasiquotes) $ P.parse program filePath input
   where
     filePath = fromMaybe "" maybeFilePath
-    program = P.many1 (ignored *> expression <* ignored) <* eol
+    program = P.some (ignored *> expression <* ignored) <* eol
     throwErr = Sem.throw . ParseError filePath . show
     expandQuasiquotes =
       map $

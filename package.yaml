@@ -47,8 +47,8 @@ dependencies:
 - hpack
 - lens
 - lens-aeson
+- megaparsec
 - optparse-applicative
-- parsec
 - polysemy
 - polysemy-plugin
 - process

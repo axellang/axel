@@ -13,6 +13,7 @@
 - modules:
   - {name: Axel.Utils.Debug, within: []}
   - {name: Debug.Trace, within: []}
+  - {name: Text.Megaparsec.Debug, within: []}
 
 - functions:
   - {name: unsafePerformIO, within: [Axel.Parse.AST]}
@@ -32,6 +33,3 @@
 - warn: {lhs: "unsafeTeeS x", rhs: "x"}
 - warn: {lhs: "unsafeTee' f x", rhs: "x"}
 - warn: {lhs: "unsafeTeeS' f x", rhs: "x"}
-
-# Ban "module X(module X) where", to require a real export list
-- warn: {name: Use explicit module export list}
