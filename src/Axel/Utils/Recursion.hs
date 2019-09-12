@@ -20,45 +20,37 @@ exhaustM f x = do
 
 -- TODO Remove dependencies on `Monad` in favor of `Applicative`
 --      (which is all that `traverse` requires).
-type Traverse m a
+type Traverse m focus a
    = (Monad m) =>
-       (a -> m a) -> a -> m a
+       (focus -> m a) -> a -> m a
 
-type Fmap a = (a -> a) -> a -> a
+type Fmap focus a = (focus -> a) -> a -> a
 
-mkFmapFromTraverse :: Traverse Identity a -> Fmap a
+mkFmapFromTraverse :: Traverse Identity focus a -> Fmap focus a
 mkFmapFromTraverse traverseFn f = runIdentity . traverseFn (pure . f)
 
 class Recursive a where
-  bottomUpTraverse :: Traverse m a
-  topDownTraverse :: Traverse m a
+  bottomUpTraverse :: Traverse m a a
+  topDownTraverse :: Traverse m a a
 
-bottomUpFmap :: (Recursive a) => Fmap a
+bottomUpFmap :: (Recursive a) => Fmap a a
 bottomUpFmap = mkFmapFromTraverse bottomUpTraverse
 
-topDownFmap :: (Recursive a) => Fmap a
-topDownFmap f = runIdentity . topDownTraverse (pure . f)
-
--- TODO Remove dependencies on `Monad` in favor of `Applicative`
---      (which is all that `traverse` requires).
-type ZipperTraverse m a
-   = (Monad m) =>
-       (Zipper a a -> m a) -> a -> m a
-
-type ZipperFmap a = (Zipper a a -> a) -> a -> a
+topDownFmap :: (Recursive a) => Fmap a a
+topDownFmap = mkFmapFromTraverse topDownTraverse
 
 class ZipperRecursive a where
-  zipperBottomUpTraverse :: ZipperTraverse m a
-  zipperTopDownTraverse :: ZipperTraverse m a
+  zipperBottomUpTraverse :: Traverse m (Zipper a a) a
+  zipperTopDownTraverse :: Traverse m (Zipper a a) a
 
 instance (ZipperRecursive a) => Recursive a where
+  bottomUpTraverse :: Traverse m a a
   bottomUpTraverse f = zipperBottomUpTraverse (f . hole)
-  bottomUpTraverse :: (Monad m) => (a -> m a) -> a -> m a
-  topDownTraverse :: (Monad m) => (a -> m a) -> a -> m a
+  topDownTraverse :: Traverse m a a
   topDownTraverse f = zipperTopDownTraverse (f . hole)
 
-zipperBottomUpFmap :: (ZipperRecursive a) => (Zipper a a -> a) -> a -> a
-zipperBottomUpFmap f = runIdentity . zipperBottomUpTraverse (pure . f)
+zipperBottomUpFmap :: (ZipperRecursive a) => Fmap (Zipper a a) a
+zipperBottomUpFmap = mkFmapFromTraverse zipperBottomUpTraverse
 
-zipperTopDownFmap :: (ZipperRecursive a) => (Zipper a a -> a) -> a -> a
-zipperTopDownFmap f = runIdentity . zipperTopDownTraverse (pure . f)
+zipperTopDownFmap :: (ZipperRecursive a) => Fmap (Zipper a a) a
+zipperTopDownFmap = mkFmapFromTraverse zipperTopDownTraverse

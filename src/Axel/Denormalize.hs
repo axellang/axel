@@ -51,6 +51,9 @@ import qualified Axel.Sourcemap as SM (Expression)
 
 import Control.Lens.Operators ((^.))
 
+-- | Metadata is only approximately restored. Thus, `normalizeExpression` and
+-- | `denormalizeExpression` are only inverses if metadata information is
+-- | ignored, although they should be pretty close either way.
 denormalizeExpression :: SMExpression -> SM.Expression
 denormalizeExpression (ECaseBlock caseBlock) =
   let ann' = getAnn' caseBlock
