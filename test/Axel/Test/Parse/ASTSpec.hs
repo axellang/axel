@@ -1,11 +1,13 @@
 module Axel.Test.Parse.ASTSpec where
 
+import Axel.Prelude
+
 import Axel.Parse.AST
 import Axel.Utils.Recursion
 
 import Test.Tasty.Hspec
 
-{-# ANN module "HLint: ignore Redundant do" #-}
+{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 spec_AST :: SpecWith ()
 spec_AST = do

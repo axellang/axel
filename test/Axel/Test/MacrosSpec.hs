@@ -1,5 +1,7 @@
 module Axel.Test.MacrosSpec where
 
+import Axel.Prelude
+
 import Axel.Macros
 import Axel.Parse.AST
 import qualified Axel.Sourcemap as SM
@@ -11,7 +13,7 @@ import Test.Tasty.Hspec hiding (focus)
 
 import TestUtils
 
-{-# ANN module "HLint: ignore Redundant do" #-}
+{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 spec_Macros :: SpecWith ()
 spec_Macros = do
@@ -33,7 +35,7 @@ spec_Macros = do
                     "\n\n\t Context:\thole (focus z)\t\t== " <>
                     toAxel (hole $ focus z) <>
                     "\n\t\t\thole <$> up (focus z)\t== " <>
-                    show (toAxel . hole <$> up (focus z)) <>
+                    showText (toAxel . hole <$> up (focus z)) <>
                     "\n\t\t\tfromZipper z\t\t== " <> toAxel (fromZipper z))
                    expected
                    (isStatementFocused $ focus z))

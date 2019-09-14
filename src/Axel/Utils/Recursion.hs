@@ -1,12 +1,9 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Axel.Utils.Recursion where
+
+import Axel.Prelude
 
 import Data.Functor.Identity (Identity, runIdentity)
 import Data.Generics.Uniplate.Zipper (Zipper, hole)

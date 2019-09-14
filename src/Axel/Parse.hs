@@ -1,10 +1,8 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Axel.Parse where
+
+import Axel.Prelude
 
 import Axel.Eff.Error (Error(ParseError))
 import Axel.Haskell.Language (haskellOperatorSymbols, haskellSyntaxSymbols)
@@ -23,10 +21,12 @@ import Axel.Sourcemap
   )
 
 import Control.Applicative ((<|>))
+import Control.Lens (op)
 import Control.Monad (void)
 
 import Data.List ((\\))
 import Data.Maybe (fromMaybe)
+import qualified Data.Text as T
 import Data.Void (Void)
 
 import qualified Polysemy as Sem
@@ -36,11 +36,11 @@ import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
 import qualified Text.Megaparsec.Char.Lexer as P (charLiteral)
 
-type Parser = P.Parsec Void String
+type Parser = P.Parsec Void Text
 
 -- Adapted from https://hackage.haskell.org/package/megaparsec-7.0.5/docs/Text-Megaparsec-Char-Lexer.html#v:charLiteral.
-stringLiteral :: Parser String
-stringLiteral = P.char '"' *> P.manyTill P.charLiteral (P.char '"')
+stringLiteral :: Parser Text
+stringLiteral = T.pack <$> (P.char '"' *> P.manyTill P.charLiteral (P.char '"'))
 
 ann :: (SourceMetadata -> a -> b) -> Parser a -> Parser b
 ann f x = do
@@ -53,10 +53,10 @@ ann f x = do
             })
   f (Just sourcePosition) <$> x
 
-parseReadMacro :: String -> String -> Parser SM.Expression
+parseReadMacro :: Text -> Text -> Parser SM.Expression
 parseReadMacro prefix wrapper = do
   expr <- P.string prefix *> expression
-  ann SExpression (pure [Symbol Nothing wrapper, expr])
+  ann SExpression (pure [Symbol Nothing (T.unpack wrapper), expr])
 
 eol :: Parser ()
 eol = P.try (void P.newline) <|> P.eof
@@ -78,7 +78,7 @@ literalList =
      (P.char '[' *> P.many sExpressionItem <* P.char ']'))
 
 literalString :: Parser SM.Expression
-literalString = ann LiteralString stringLiteral
+literalString = ann LiteralString (T.unpack <$> stringLiteral)
 
 quasiquotedExpression :: Parser SM.Expression
 quasiquotedExpression = parseReadMacro "`" "quasiquote"
@@ -108,7 +108,7 @@ symbol =
   ann
     Symbol
     (P.some
-       (P.try P.alphaNumChar <|> P.try (P.oneOf "'_") <|>
+       (P.try P.alphaNumChar <|> P.try (P.oneOf ['\'', '_']) <|>
         P.try (P.oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols)) <|>
         P.oneOf (map fst haskellOperatorSymbols)))
 
@@ -164,14 +164,15 @@ expandQuasiquoteInList expr =
 parseMultiple ::
      (Sem.Member (Sem.Error Error) effs)
   => Maybe FilePath
-  -> String
+  -> Text
   -> Sem.Sem effs [SM.Expression]
 parseMultiple maybeFilePath input =
-  either throwErr (pure . expandQuasiquotes) $ P.parse program filePath input
+  either throwErr (pure . expandQuasiquotes) $
+  P.parse program (T.unpack $ op FilePath filePath) input
   where
-    filePath = fromMaybe "" maybeFilePath
+    filePath = fromMaybe (FilePath "") maybeFilePath
     program = P.some (ignored *> expression <* ignored) <* eol
-    throwErr = Sem.throw . ParseError filePath . show
+    throwErr = Sem.throw . ParseError filePath . showText
     expandQuasiquotes =
       map $
       bottomUpFmapSplicing
@@ -182,7 +183,7 @@ parseMultiple maybeFilePath input =
 parseSource ::
      (Sem.Member (Sem.Error Error) effs)
   => Maybe FilePath
-  -> String
+  -> Text
   -> Sem.Sem effs SM.Expression
 parseSource filePath input =
   wrapCompoundExpressions <$> parseMultiple filePath input

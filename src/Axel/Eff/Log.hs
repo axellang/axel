@@ -1,15 +1,10 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.Log where
 
-import Prelude hiding (appendFile, putStr, writeFile)
+import Axel.Prelude
 
 import Axel.Eff.Console (Console, putStr)
 import Axel.Eff.FileSystem (FileSystem, appendFile, writeFile)
@@ -17,7 +12,7 @@ import Axel.Eff.FileSystem (FileSystem, appendFile, writeFile)
 import qualified Polysemy as Sem
 
 data Log m a where
-  LogStr :: String -> Log m ()
+  LogStr :: Text -> Log m ()
 
 Sem.makeSem ''Log
 
@@ -44,5 +39,5 @@ ignoreLog =
   Sem.interpret $ \case
     LogStr _ -> pure ()
 
-logStrLn :: (Sem.Member Log effs) => String -> Sem.Sem effs ()
+logStrLn :: (Sem.Member Log effs) => Text -> Sem.Sem effs ()
 logStrLn str = logStr (str <> "\n")

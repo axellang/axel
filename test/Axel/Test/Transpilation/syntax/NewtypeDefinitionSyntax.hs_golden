@@ -1,2 +1,3 @@
+import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
 newtype (Foo a) = Bar (a Int)

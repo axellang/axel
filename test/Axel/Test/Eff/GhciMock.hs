@@ -1,15 +1,10 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Axel.Test.Eff.GhciMock where
+
+import Axel.Prelude
 
 import Axel.Eff.Ghci as Effs
 
@@ -22,18 +17,18 @@ import TestUtils
 
 data GhciState =
   GhciState
-    { _ghciExecutionLog :: [String]
-    , _ghciMockResults :: [[String]]
+    { _ghciExecutionLog :: [Text]
+    , _ghciMockResults :: [[Text]]
     }
   deriving (Eq, Show)
 
 makeFieldsNoPrefix ''GhciState
 
-mkGhciState :: [[String]] -> GhciState
+mkGhciState :: [[Text]] -> GhciState
 mkGhciState = GhciState []
 
 runGhci ::
-     forall effs a. (Member (Effs.Error String) effs)
+     forall effs a. (Member (Effs.Error Text) effs)
   => GhciState
   -> Sem (Effs.Ghci ': effs) a
   -> Sem effs (GhciState, a)

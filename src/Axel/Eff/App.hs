@@ -1,7 +1,6 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
-
 module Axel.Eff.App where
+
+import Axel.Prelude
 
 import Axel.Eff.Console (Console, runConsole)
 import Axel.Eff.Error (Error, renderError, unsafeRunError)
@@ -29,4 +28,4 @@ runApp =
   runGhci .
   runFileSystem .
   unsafeRunError renderError .
-  runConsole . runLogAsFileSystem "axelCompilation.log"
+  runConsole . runLogAsFileSystem (FilePath "axelCompilation.log")

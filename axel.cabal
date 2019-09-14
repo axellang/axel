@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0f084304e59fc78404d9f395d857b72c4f50a026df11d5a2c5cefd0e2f5502f3
+-- hash: b03a46ed7e2a855ffd81c35144f96d3327c2817b9d9e4c814fc3798bc2fcbd52
 
 name:           axel
 version:        0.0.11
@@ -68,7 +68,6 @@ library
       Axel.Haskell.Convert
       Axel.Haskell.Error
       Axel.Haskell.File
-      Axel.Haskell.FilePath
       Axel.Haskell.Language
       Axel.Haskell.Macros
       Axel.Haskell.Project
@@ -78,9 +77,11 @@ library
       Axel.Parse
       Axel.Parse.Args
       Axel.Parse.AST
+      Axel.Prelude
       Axel.Sourcemap
       Axel.Utils.Debug
       Axel.Utils.Display
+      Axel.Utils.FilePath
       Axel.Utils.Foldable
       Axel.Utils.Function
       Axel.Utils.Json
@@ -88,13 +89,14 @@ library
       Axel.Utils.Maybe
       Axel.Utils.Monad
       Axel.Utils.Recursion
-      Axel.Utils.String
+      Axel.Utils.Text
       Axel.Utils.Tuple
       Axel.Utils.Zipper
   other-modules:
       Paths_axel
   hs-source-dirs:
       src
+  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
   ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -O2 -flate-specialise -fspecialise-aggressively
   build-tool-depends:
       hpack:hpack
@@ -116,16 +118,15 @@ library
     , lens
     , lens-aeson
     , megaparsec
+    , mono-traversable
     , optparse-applicative
     , polysemy
     , polysemy-plugin
     , process
     , profunctors
     , random
-    , regex-pcre
     , singletons
     , split
-    , strict
     , tasty
     , tasty-discover
     , tasty-golden
@@ -148,6 +149,7 @@ executable axel
       Paths_axel
   hs-source-dirs:
       app
+  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
   ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -O2 -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       hpack:hpack
@@ -170,16 +172,15 @@ executable axel
     , lens
     , lens-aeson
     , megaparsec
+    , mono-traversable
     , optparse-applicative
     , polysemy
     , polysemy-plugin
     , process
     , profunctors
     , random
-    , regex-pcre
     , singletons
     , split
-    , strict
     , tasty
     , tasty-discover
     , tasty-golden
@@ -225,6 +226,7 @@ test-suite axel-test
       Paths_axel
   hs-source-dirs:
       test
+  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
   ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -O2 -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       hpack:hpack
@@ -247,16 +249,15 @@ test-suite axel-test
     , lens
     , lens-aeson
     , megaparsec
+    , mono-traversable
     , optparse-applicative
     , polysemy
     , polysemy-plugin
     , process
     , profunctors
     , random
-    , regex-pcre
     , singletons
     , split
-    , strict
     , tasty
     , tasty-discover
     , tasty-golden

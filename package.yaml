@@ -9,71 +9,96 @@ github: axellang/axel
 synopsis: The Axel programming language.
 description: Haskell's semantics, plus Lisp's macros. Meet Axel – a purely functional, extensible, and powerful programming language.
 extra-source-files:
-- README.org
-- scripts/**/*
+  - README.org
+  - scripts/**/*
 ghc-options:
-- -Weverything
-- -Wno-all-missed-specialisations
-- -Wno-implicit-prelude
-- -Wno-missed-specialisations
-- -Wno-missing-import-lists
-- -Wno-missing-export-lists
-- -Wno-missing-local-signatures
-- -Wno-monomorphism-restriction
-- -Wno-safe
-- -Wno-unsafe
-- -optP-Wno-nonportable-include-path # https://github.com/haskell/cabal/issues/4739
-# Polysemy https://github.com/polysemy-research/polysemy#necessary-language-extensions
-- -fplugin=Polysemy.Plugin
-- -O2
-- -flate-specialise
-- -fspecialise-aggressively
+  - -Weverything
+  - -Wno-all-missed-specialisations
+  - -Wno-implicit-prelude
+  - -Wno-missed-specialisations
+  - -Wno-missing-import-lists
+  - -Wno-missing-export-lists
+  - -Wno-missing-local-signatures
+  - -Wno-monomorphism-restriction
+  - -Wno-safe
+  - -Wno-unsafe
+  - -optP-Wno-nonportable-include-path # https://github.com/haskell/cabal/issues/4739
+  # Polysemy https://github.com/polysemy-research/polysemy#necessary-language-extensions
+  - -fplugin=Polysemy.Plugin
+  - -O2
+  - -flate-specialise
+  - -fspecialise-aggressively
 build-tools:
-- hpack:hpack
-- tasty-discover:tasty-discover
+  - hpack:hpack
+  - tasty-discover:tasty-discover
 dependencies:
-- aeson
-- ansi-terminal
-- base
-- bytestring
-- containers
-- directory
-- filepath
-- freer-simple
-- ghcid
-- hashable
-- haskell-src-exts
-- hedgehog
-- hpack
-- lens
-- lens-aeson
-- megaparsec
-- optparse-applicative
-- polysemy
-- polysemy-plugin
-- process
-- profunctors
-- random
-- regex-pcre
-- singletons
-- split
-- strict
-- tasty
-- tasty-discover
-- tasty-golden
-- tasty-hedgehog
-- tasty-hspec
-- tasty-hunit
-- template-haskell
-- text
-- time
-- transformers
-- typed-process
-- uniplate
-- vector
-- yaml
+  - aeson
+  - ansi-terminal
+  - base
+  - bytestring
+  - containers
+  - directory
+  - filepath
+  - freer-simple
+  - ghcid
+  - hashable
+  - haskell-src-exts
+  - hedgehog
+  - hpack
+  - lens
+  - lens-aeson
+  - megaparsec
+  - mono-traversable
+  - optparse-applicative
+  - polysemy
+  - polysemy-plugin
+  - process
+  - profunctors
+  - random
+  - singletons
+  - split
+  - tasty
+  - tasty-discover
+  - tasty-golden
+  - tasty-hedgehog
+  - tasty-hspec
+  - tasty-hunit
+  - template-haskell
+  - text
+  - time
+  - transformers
+  - typed-process
+  - uniplate
+  - vector
+  - yaml
 data-files:
-- resources/**/*
+  - resources/**/*
+# NOTE Keep in sync with `.hindent.yaml#extensions` and `.hlint.yaml#extensions`.
+default-extensions:
+  - BangPatterns
+  - ConstraintKinds
+  - DataKinds
+  - DeriveDataTypeable
+  - DeriveFoldable
+  - DeriveFunctor
+  - DeriveGeneric
+  - DeriveTraversable
+  - FlexibleContexts
+  - FlexibleInstances
+  - FunctionalDependencies
+  - GeneralizedNewtypeDeriving
+  - InstanceSigs
+  - KindSignatures
+  - LambdaCase
+  - MultiParamTypeClasses
+  - NoImplicitPrelude
+  - OverloadedStrings
+  - PolyKinds
+  - RankNTypes
+  - StandaloneDeriving
+  - TupleSections
+  - TypeApplications
+  - TypeOperators
 library:
   source-dirs: src
   ghc-options: []
@@ -83,18 +108,18 @@ executables:
     main: Main.hs
     source-dirs: app
     ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
     dependencies:
-    - axel
+      - axel
 tests:
   axel-test:
     main: Main.hs
     source-dirs: test
     ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
     dependencies:
-    - axel
+      - axel

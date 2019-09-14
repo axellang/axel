@@ -1,5 +1,7 @@
 module Axel.Utils.Tuple where
 
+import Axel.Prelude
+
 import Control.Lens.Operators ((^.))
 import Control.Lens.Tuple (_1, _2)
 import Control.Lens.Type (Lens)

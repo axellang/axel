@@ -1,6 +1,6 @@
-{-# LANGUAGE FlexibleContexts #-}
-
 module Axel.Test.Eff.ResourceSpec where
+
+import Axel.Prelude
 
 import Axel.Eff.Resource as Res
 import Axel.Test.Eff.FileSystemMock as Mock
@@ -11,7 +11,9 @@ import qualified Polysemy.Error as Sem
 
 import Test.Tasty.Hspec
 
-{-# ANN module "HLint: ignore Redundant do" #-}
+import TestUtils
+
+{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 spec_Resource :: SpecWith ()
 spec_Resource =
@@ -21,12 +23,18 @@ spec_Resource =
       let origFSState =
             Mock.mkFileSystemState
               [ Mock.Directory
-                  "resources"
-                  [Mock.Directory "resGroup1" [Mock.File "res1" "res1Contents"]]
+                  (FilePath "dataFiles")
+                  [ Mock.Directory
+                      (FilePath "resources")
+                      [ Mock.Directory
+                          (FilePath "resGroup1")
+                          [Mock.File (FilePath "res1") "res1Contents"]
+                      ]
+                  ]
               ]
       let expected = "res1Contents"
       case Sem.run .
            Sem.runError . Mock.runFileSystem origFSState . Mock.runResource $
            action of
-        Left err -> expectationFailure err
+        Left err -> failSpec err
         Right result -> result `shouldBe` (origFSState, expected)

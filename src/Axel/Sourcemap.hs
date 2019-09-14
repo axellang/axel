@@ -1,15 +1,10 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Axel.Sourcemap where
+
+import Axel.Prelude
 
 import Axel.Eff.Lens (assign, modifying)
 import Axel.Eff.Loop (breakLoop)
@@ -19,15 +14,19 @@ import qualified Axel.Parse.AST as Parse
   , quoteExpression
   )
 import Axel.Utils.Foldable (intercalate)
+import Axel.Utils.Text (Renderer)
 import Axel.Utils.Tuple (Annotated, annotate, annotation, unannotate)
 
 import Control.Lens.Operators ((^.))
 import Control.Lens.TH (makeFieldsNoPrefix, makeWrapped)
-import Control.Monad (forM_, when)
+import Control.Monad (when)
 
 import Data.Data (Data)
+import Data.Foldable (for_)
 import Data.Hashable (Hashable)
 import Data.Map (Map)
+import Data.MonoTraversable (oconcatMap, ofor_)
+import qualified Data.Text as T
 
 import GHC.Generics (Generic)
 
@@ -45,21 +44,23 @@ makeFieldsNoPrefix ''Position
 
 instance Hashable Position
 
-type SourcePosition = (FilePath, Position)
+-- NOTE We're using `String` instead of `FilePath` so that we don't have to rely
+-- on `Axel.Prelude` or `-XOverloadedStrings` in user-facing code.
+type SourcePosition = (String, Position)
 
-renderSourcePosition :: SourcePosition -> String
+renderSourcePosition :: Renderer SourcePosition
 renderSourcePosition (filePath, position) =
   let filePath' =
         if filePath == ""
           then "<unknown>"
-          else filePath
+          else T.pack filePath
    in filePath' <>
-      ":" <> show (position ^. line) <> ":" <> show (position ^. column)
+      ":" <> showText (position ^. line) <> ":" <> showText (position ^. column)
 
 type SourceMetadata = Maybe SourcePosition
 
 newtype Output =
-  Output [Annotated SourceMetadata String]
+  Output [Annotated SourceMetadata Text]
   deriving (Eq, Show)
 
 deriving instance Semigroup Output
@@ -68,10 +69,10 @@ deriving instance Monoid Output
 
 makeWrapped ''Output
 
-raw :: Output -> String
-raw (Output output) = concatMap unannotate output
+raw :: Output -> Text
+raw (Output output) = oconcatMap unannotate output
 
-unassociated :: String -> Output
+unassociated :: Text -> Output
 unassociated x = Output [annotate Nothing x]
 
 type Expression = Parse.Expression SourceMetadata
@@ -132,13 +133,13 @@ renderBlock = surround CurlyBraces . delimit Semicolons
 --   Behavior is undefined if `column transPos == 0`.
 --   TODO Make algorithm functional (assuming this can be cleanly done so).
 findOriginalPosition ::
-     forall ann. [Annotated ann String] -> Position -> Maybe ann
+     forall ann. [Annotated ann Text] -> Position -> Maybe ann
 findOriginalPosition output transPos =
   Sem.run $
   Sem.evalState (Position {_line = 1, _column = 0}) $
   Effs.runLoop $ do
-    forM_ output $ \chunk ->
-      forM_ (unannotate chunk) $ \char -> do
+    for_ output $ \chunk ->
+      ofor_ (unannotate chunk) $ \char -> do
         if char == '\n'
           then do
             assign @Position column 0
@@ -169,9 +170,9 @@ quote2Tuple (quoterA, quoterB) (a, b) =
 
 -- TODO Derive this with Template Haskell (it's currently very brittle)
 quoteMaybe :: (a -> Expression) -> Maybe a -> Expression
-quoteMaybe _ Nothing = Parse.Symbol Nothing "Nothing"
+quoteMaybe _ Nothing = Parse.Symbol Nothing "GHCPrelude.Nothing"
 quoteMaybe quoter (Just x) =
-  Parse.SExpression Nothing [Parse.Symbol Nothing "Just", quoter x]
+  Parse.SExpression Nothing [Parse.Symbol Nothing "GHCPrelude.Just", quoter x]
 
 quoteSourceMetadata :: Maybe SourcePosition -> Expression
 quoteSourceMetadata = quoteMaybe $ quote2Tuple (quoteString, quotePosition)
@@ -180,4 +181,4 @@ quoteSMExpression :: Expression -> Expression
 quoteSMExpression = Parse.quoteExpression quoteSourceMetadata
 
 -- | Keys are the module file paths, and values are (the module name, the transpiled output).
-type ModuleInfo = Map FilePath (String, Maybe Output)
+type ModuleInfo = Map FilePath (Text, Maybe Output)

@@ -1,15 +1,9 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Axel.Haskell.File where
 
-import Prelude hiding (putStrLn)
+import Axel.Prelude
 
 import Axel.AST
   ( SMStatement
@@ -28,7 +22,6 @@ import qualified Axel.Eff.Process as Effs (Process)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import qualified Axel.Eff.Restartable as Effs (Restartable)
 import Axel.Haskell.Convert (convertFile)
-import Axel.Haskell.FilePath (axelPathToHaskellPath, haskellPathToAxelPath)
 import Axel.Macros (handleFunctionApplication, processProgram)
 import Axel.Normalize (normalizeStatement, withExprCtxt)
 import Axel.Parse (parseSource)
@@ -40,8 +33,10 @@ import qualified Axel.Sourcemap as SM
   , unwrapCompoundExpressions
   )
 import Axel.Sourcemap (ModuleInfo)
+import Axel.Utils.FilePath (replaceExtension)
 import Axel.Utils.Recursion (bottomUpFmap)
 
+import Control.Lens (op)
 import Control.Lens.Operators ((<&>), (?~))
 import Control.Lens.Tuple (_2)
 import Control.Monad (forM, mapM, unless, void)
@@ -103,7 +98,7 @@ transpileSource ::
      , Sem.Members fileExpanderEffs effs
      )
   => FilePath
-  -> String
+  -> Text
   -> Sem.Sem effs SM.Output
 transpileSource filePath source =
   toHaskell . statementsToProgram <$>
@@ -122,7 +117,7 @@ convertFileInPlace ::
   => FilePath
   -> Sem.Sem effs FilePath
 convertFileInPlace path = do
-  let newPath = haskellPathToAxelPath path
+  let newPath = replaceExtension path "axel"
   void $ convertFile path newPath
   pure newPath
 
@@ -134,7 +129,7 @@ transpileFile ::
 transpileFile path newPath = do
   fileContents <- FS.readFile path
   newContents <- transpileSource path fileContents
-  putStrLn $ path <> " => " <> newPath
+  putStrLn $ op FilePath path <> " => " <> op FilePath newPath
   FS.writeFile newPath (SM.raw newContents)
   Sem.modify $ M.adjust (_2 ?~ newContents) path
 
@@ -148,6 +143,6 @@ transpileFileInPlace path = do
         case moduleInfo of
           Just (_, Just _) -> True
           _ -> False
-  let newPath = axelPathToHaskellPath path
+  let newPath = replaceExtension path "hs"
   unless alreadyCompiled $ transpileFile path newPath
   pure newPath

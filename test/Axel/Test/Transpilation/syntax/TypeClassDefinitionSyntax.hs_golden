@@ -1,2 +1,3 @@
+import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
 class ((SuperFoo a),(SuperBar b)) => (Foo a b) where {foo :: ((->) a b)}

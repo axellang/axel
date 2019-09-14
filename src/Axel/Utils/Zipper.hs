@@ -1,5 +1,7 @@
 module Axel.Utils.Zipper where
 
+import Axel.Prelude
+
 import Data.Generics.Uniplate.Operations (Uniplate)
 import Data.Generics.Uniplate.Zipper (Zipper, down, left, right, up)
 

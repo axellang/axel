@@ -1,17 +1,16 @@
 {-# OPTIONS_GHC "-fno-warn-incomplete-patterns" #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module TestUtils where
 
+import Axel.Prelude
+
 import Axel.Eff.Error
 import Axel.Parse
 import Axel.Sourcemap as SM
-import Axel.Utils.String
+import Axel.Utils.Text
 
 import Control.Exception
 
@@ -20,17 +19,18 @@ import qualified Polysemy.Error as Sem
 import qualified Polysemy.State as Sem
 
 import Data.Functor.Identity (Identity)
+import qualified Data.Text as T
 
 import Hedgehog hiding (MonadGen)
 import qualified Hedgehog
 
 import Test.Tasty.HUnit as HUnit
+import Test.Tasty.Hspec
 
 throwInterpretError ::
-     forall s effs a.
-     (Sem.Members '[ Sem.Error String, Sem.State s] effs, Show s)
-  => String
-  -> String
+     forall s effs a. (Sem.Members '[ Sem.Error Text, Sem.State s] effs, Show s)
+  => Text
+  -> Text
   -> Sem.Sem effs a
 throwInterpretError actionName message = do
   errorMsg <-
@@ -38,28 +38,28 @@ throwInterpretError actionName message = do
       "\n----------\nACTION\t" <>
       actionName <>
       "\n\nMESSAGE\t" <>
-      message <> "\n\nSTATE\t" <> show ctxt <> "\n----------\n"
+      message <> "\n\nSTATE\t" <> showText ctxt <> "\n----------\n"
   Sem.throw errorMsg
 
 unwrapRight :: Renderer e -> Either e a -> a
 unwrapRight _ (Right x) = x
 unwrapRight errorRenderer (Left x) = error $ errorRenderer x
 
-assertEqual :: (Eq a, Show a) => String -> a -> a -> Assertion
+assertEqual :: (Eq a, Show a) => Text -> a -> a -> Assertion
 assertEqual msg expected actual =
   catch (HUnit.assertEqual "" expected actual) $ \(HUnitFailure maybeSrcLoc errorMsg) ->
     errorWithoutStackTrace $
     "assertEquals FAILURE\n\nmessage: " <>
     msg <>
     "\n\n" <>
-    errorMsg <>
+    T.pack errorMsg <>
     (case maybeSrcLoc of
-       Just srcLoc -> "\n\nat: " <> show srcLoc
+       Just srcLoc -> "\n\nat: " <> showText srcLoc
        Nothing -> "")
 
 -- | Will error at runtime if a parse error occurs.
 -- | If multiple expressions are able to be parsed, only the first will be returned.
-unsafeParseSingle :: Maybe FilePath -> String -> SM.Expression
+unsafeParseSingle :: Maybe FilePath -> Text -> SM.Expression
 unsafeParseSingle filePath =
   head . Sem.run . unsafeRunError renderError . parseMultiple filePath
 
@@ -70,3 +70,6 @@ unsafeParseSingle filePath =
 --      because of `Gen.unicode`).
 -- | Use instead of `MonadGen` from `hedgehog`.
 type MonadGen m = (Hedgehog.MonadGen m, GenBase m ~ Identity)
+
+failSpec :: Text -> Expectation
+failSpec = expectationFailure . T.unpack

@@ -1,17 +1,21 @@
 module Axel.Haskell.Language where
 
+import Axel.Prelude
+
 import Data.Char (isSymbol, toUpper)
+import qualified Data.Text as T
 
 -- https://stackoverflow.com/questions/10548170/what-characters-are-permitted-for-haskell-operators
-isOperator :: String -> Bool
+isOperator :: Text -> Bool
 isOperator =
-  all $ \x -> isSymbol x || x `elem` map fst haskellOperatorSymbols || x == ','
+  T.all $ \x ->
+    isSymbol x || x `elem` map fst haskellOperatorSymbols || x == ','
 
-type SymbolReplacementMap = [(Char, String)]
+type SymbolReplacementMap = [(Char, Text)]
 
 mkHygenicSymbolReplacementMap :: SymbolReplacementMap -> SymbolReplacementMap
 mkHygenicSymbolReplacementMap =
-  map (\(symbol, name) -> (symbol, "aXEL_SYMBOL_" <> map toUpper name <> "_"))
+  map (\(symbol, name) -> (symbol, "aXEL_SYMBOL_" <> T.map toUpper name <> "_"))
 
 haskellOperatorSymbols :: SymbolReplacementMap
 haskellOperatorSymbols =

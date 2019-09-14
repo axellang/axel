@@ -1,10 +1,8 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.Restartable where
+
+import Axel.Prelude
 
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem

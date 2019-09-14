@@ -1,12 +1,13 @@
 module Axel.Test.SourcemapSpec where
 
+import Axel.Prelude
 import Axel.Sourcemap
 
-import Control.Monad
+import Data.Foldable
 
 import Test.Tasty.Hspec
 
-{-# ANN module "HLint: ignore Redundant do" #-}
+{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 spec_Sourcemap :: SpecWith ()
 spec_Sourcemap = do
@@ -29,15 +30,15 @@ spec_Sourcemap = do
               , ("\n", 5)
               , ("foo\nquux\n", 6)
               ]
-        forM_ [1 .. 4] $ \i -> (output, 1, i) `was` Just (1 :: Int)
-        forM_ [5 .. 6] $ \i -> (output, 1, i) `was` Just (2 :: Int)
-        forM_ [7 .. 12] $ \i -> (output, 1, i) `was` Just (3 :: Int)
+        for_ [1 .. 4] $ \i -> (output, 1, i) `was` Just (1 :: Int)
+        for_ [5 .. 6] $ \i -> (output, 1, i) `was` Just (2 :: Int)
+        for_ [7 .. 12] $ \i -> (output, 1, i) `was` Just (3 :: Int)
         (output, 1, 13) `was` Nothing
-        forM_ [1 .. 3] $ \i -> (output, 2, i) `was` Just (4 :: Int)
-        forM_ [4 .. 4] $ \i -> (output, 2, i) `was` Nothing
+        for_ [1 .. 3] $ \i -> (output, 2, i) `was` Just (4 :: Int)
+        for_ [4 .. 4] $ \i -> (output, 2, i) `was` Nothing
         (output, 2, 5) `was` Nothing
-        forM_ [1 .. 3] $ \i -> (output, 3, i) `was` Just (6 :: Int)
+        for_ [1 .. 3] $ \i -> (output, 3, i) `was` Just (6 :: Int)
         (output, 3, 4) `was` Nothing
-        forM_ [1 .. 4] $ \i -> (output, 4, i) `was` Just (6 :: Int)
+        for_ [1 .. 4] $ \i -> (output, 4, i) `was` Just (6 :: Int)
         (output, 4, 5) `was` Nothing
         (output, 5, 1) `was` Nothing

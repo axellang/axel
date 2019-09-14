@@ -1,20 +1,22 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.Time where
+
+import Axel.Prelude
 
 import qualified Axel.Eff.Console as Effs
 import Axel.Eff.Unsafe (unsafeEmbedIO)
 
+import qualified Data.Text as T
 import qualified Data.Time as Time
 
 import qualified Polysemy as Sem
+
+{-# ANN module
+          ("HLint: ignore Avoid restricted function" :: String)
+        #-}
 
 data Time m a where
   GetCurrentTime :: Time m Time.UTCTime
@@ -32,7 +34,7 @@ runTime =
 -- | Only use for debugging purposes.
 reportTime ::
      (Sem.Members '[ Effs.Console, Time] effs)
-  => String
+  => Text
   -> Sem.Sem effs a
   -> Sem.Sem effs a
 reportTime message x = do
@@ -43,12 +45,12 @@ reportTime message x = do
         let Time.UTCTime currentDay _ = startTime
             timeDiff = Time.diffUTCTime endTime startTime
             utcDelta = Time.UTCTime currentDay (realToFrac timeDiff)
-         in Time.formatTime Time.defaultTimeLocale "%S%Q" utcDelta
+         in T.pack $ Time.formatTime Time.defaultTimeLocale "%S%Q" utcDelta
   Effs.putStrLn $ "\nACTION: " <> message <> "\nTIME: " <> timeDelta <> "\n"
   pure result
 
 unsafeReportTime ::
-     String
+     Text
   -> Sem.Sem (Time ': Effs.Console ': Sem.Embed IO ': effs) a
   -> Sem.Sem effs a
 unsafeReportTime message =

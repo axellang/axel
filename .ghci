@@ -1,2 +1,1 @@
-:set -XFlexibleContexts
 :set -XPartialTypeSignatures

@@ -1,6 +1,6 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Axel.Test.DenormalizeSpec where
+
+import Axel.Prelude
 
 import Axel.Denormalize
 import Axel.Eff.Error as Error
@@ -28,7 +28,7 @@ hprop_normalizeExpression_is_the_inverse_of_denormalizeExpression =
         renderError
         (Sem.run $
          Sem.runError @Error.Error $
-         Sem.runReader "" $
+         Sem.runReader (FilePath "") $
          Sem.runReader ([] :: [SM.Expression]) $
          normalizeExpression (denormalizeExpression expr))
 
@@ -41,6 +41,6 @@ hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement =
         renderError
         (Sem.run $
          Sem.runError @Error.Error $
-         Sem.runReader "" $
+         Sem.runReader (FilePath "") $
          Sem.runReader ([] :: [SM.Expression]) $
          normalizeStatement (denormalizeStatement stmt))

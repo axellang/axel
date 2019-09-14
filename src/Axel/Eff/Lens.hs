@@ -1,8 +1,9 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 
 -- NOTE Inspired by `fused-effects-lens`.
 module Axel.Eff.Lens where
+
+import Axel.Prelude
 
 import Control.Lens
   ( ASetter

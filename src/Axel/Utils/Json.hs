@@ -1,5 +1,7 @@
 module Axel.Utils.Json where
 
+import Axel.Prelude
+
 import Control.Lens.Iso (iso)
 import Control.Lens.Prism (Prism')
 

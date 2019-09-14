@@ -1,3 +1,4 @@
+import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
 foo  = 1
 bar 1 = 3

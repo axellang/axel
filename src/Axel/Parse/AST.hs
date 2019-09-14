@@ -1,14 +1,10 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Axel.Parse.AST where
+
+import Axel.Prelude
 
 import Axel.Utils.Maybe (foldMUntilNothing)
 import Axel.Utils.Recursion
@@ -16,9 +12,10 @@ import Axel.Utils.Recursion
   , ZipperRecursive(zipperBottomUpTraverse, zipperTopDownTraverse)
   , bottomUpFmap
   )
-import Axel.Utils.String (handleStringEscapes)
+import Axel.Utils.Text (handleCharEscapes)
 import Axel.Utils.Zipper (unsafeDown, unsafeUp)
 
+import Control.Lens ((<|))
 import Control.Lens.TH (makePrisms)
 
 import Data.Data (Data)
@@ -32,13 +29,17 @@ import Data.Generics.Uniplate.Zipper
   , zipper
   )
 import Data.Hashable (Hashable)
+import Data.MonoTraversable (oconcatMap)
 import Data.Semigroup ((<>))
+import qualified Data.Text as T
 
 import GHC.Generics (Generic)
 
 -- TODO `Expression` should probably be `Traversable`, use recursion schemes, etc.
 --      We should provide `toFix` and `fromFix` functions for macros to take advantage of.
 --      (Maybe all macros have the argument automatically `fromFix`-ed to make consumption simpler?)
+-- NOTE We're using `String` instead of `Text` so that we don't have to rely
+--      on `Axel.Prelude` in user-facing code.
 data Expression ann
   = LiteralChar ann Char
   | LiteralInt ann Int
@@ -110,23 +111,28 @@ bottomUpFmapSplicing ::
   -> Expression ann
 bottomUpFmapSplicing f =
   bottomUpFmap $ \case
-    SExpression ann' xs -> SExpression ann' $ concatMap f xs
+    SExpression ann' xs -> SExpression ann' $ oconcatMap f xs
     x -> x
 
-toAxel :: Expression ann -> String
-toAxel (LiteralChar _ x) = ['{', x, '}']
-toAxel (LiteralInt _ x) = show x
-toAxel (LiteralString _ xs) = "\"" <> handleStringEscapes xs <> "\""
+toAxel :: Expression ann -> Text
+toAxel (LiteralChar _ x) = T.pack ['{', x, '}']
+toAxel (LiteralInt _ x) = showText x
+toAxel (LiteralString _ xs) = "\"" <> handleCharEscapes (T.pack xs) <> "\""
 toAxel (SExpression _ (Symbol _ "applyInfix":xs)) =
-  "{" <> unwords (map toAxel xs) <> "}"
+  "{" <> T.unwords (map toAxel xs) <> "}"
 toAxel (SExpression _ (Symbol _ "list":xs)) =
-  "[" <> unwords (map toAxel xs) <> "]"
-toAxel (SExpression _ [Symbol _ "quote", x]) = '\'' : toAxel x
-toAxel (SExpression _ [Symbol _ "quasiquote", x]) = '`' : toAxel x
-toAxel (SExpression _ [Symbol _ "unquote", x]) = '~' : toAxel x
+  "[" <> T.unwords (map toAxel xs) <> "]"
+toAxel (SExpression _ [Symbol _ "quote", x]) = '\'' <| toAxel x
+toAxel (SExpression _ [Symbol _ "quasiquote", x]) = '`' <| toAxel x
+toAxel (SExpression _ [Symbol _ "unquote", x]) = '~' <| toAxel x
 toAxel (SExpression _ [Symbol _ "unquoteSplicing", x]) = "~@" <> toAxel x
-toAxel (SExpression _ xs) = "(" <> unwords (map toAxel xs) <> ")"
-toAxel (Symbol _ x) = x
+toAxel (SExpression _ xs) = "(" <> T.unwords (map toAxel xs) <> ")"
+toAxel (Symbol _ x) = T.pack x
+
+-- NOTE We're using `String` instead of `Text` so that we don't have to rely
+--      on `Axel.Prelude` in user-facing code.
+toAxel' :: Expression ann -> String
+toAxel' = T.unpack . toAxel
 
 -- TODO Derive this with Template Haskell (it's currently very brittle)
 quoteExpression :: (ann -> Expression ann) -> Expression ann -> Expression ann
@@ -169,6 +175,5 @@ instance ToExpressionList (Expression ann) where
   toExpressionList :: Expression ann -> [Expression ann]
   toExpressionList (SExpression _ xs) = xs
   toExpressionList x =
-    error
-      (toAxel x <>
-       " cannot be splice-unquoted, because it is not an s-expression!")
+    error $
+    toAxel x <> " cannot be splice-unquoted, because it is not an s-expression!"

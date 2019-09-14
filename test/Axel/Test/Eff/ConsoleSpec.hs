@@ -1,6 +1,6 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Axel.Test.Eff.ConsoleSpec where
+
+import Axel.Prelude
 
 import qualified Axel.Eff.Console as Console
 import qualified Axel.Test.Eff.ConsoleMock as Mock
@@ -12,7 +12,7 @@ import Test.Tasty.Hspec
 
 import TestUtils
 
-{-# ANN module "HLint: ignore Redundant do" #-}
+{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 spec_Console :: SpecWith ()
 spec_Console =
@@ -23,5 +23,5 @@ spec_Console =
       let expected = Mock.ConsoleState {Mock._consoleOutput = "line1\nline2\n"}
       let result =
             unwrapRight id $
-            Sem.run . Sem.runError @String . Mock.runConsole origState $ action
+            Sem.run . Sem.runError @Text . Mock.runConsole origState $ action
       result `shouldBe` (expected, ())

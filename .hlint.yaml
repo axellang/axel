@@ -10,16 +10,46 @@
 # Generalise map to fmap, ++ to <>
 # - group: {name: generalise, enabled: true}
 
+# NOTE Keep in sync with `package.yaml#default-extensions` and `.hindent.yaml#extensions`.
+- arguments:
+  - -XBangPatterns
+  - -XConstraintKinds
+  - -XDataKinds
+  - -XDeriveDataTypeable
+  - -XDeriveFoldable
+  - -XDeriveFunctor
+  - -XDeriveGeneric
+  - -XDeriveTraversable
+  - -XFlexibleContexts
+  - -XFlexibleInstances
+  - -XFunctionalDependencies
+  - -XGeneralizedNewtypeDeriving
+  - -XInstanceSigs
+  - -XKindSignatures
+  - -XLambdaCase
+  - -XMultiParamTypeClasses
+  - -XNoImplicitPrelude
+  - -XOverloadedStrings
+  - -XPolyKinds
+  - -XRankNTypes
+  - -XStandaloneDeriving
+  - -XTupleSections
+  - -XTypeApplications
+  - -XTypeOperators
+
 - modules:
   - {name: Axel.Utils.Debug, within: []}
   - {name: Debug.Trace, within: []}
+  - {name: [Prelude], as: Prelude}
   - {name: Text.Megaparsec.Debug, within: []}
 
 - functions:
-  - {name: unsafePerformIO, within: [Axel.Parse.AST]}
+  - {name: unsafeEmbedIO, within: []}
+  - {name: unsafePerformIO, within: []}
   - {name: undefined, within: []}
 
 - warn: {lhs: "head x", rhs: "Axel.Utils.List.unsafeHead x"}
+
 - warn: {lhs: "fromJust (head' x)", rhs: "Axel.Utils.List.unsafeHead x"}
 
 - warn: {lhs: "fromJust (down x)", rhs: "Axel.Utils.Zipper.unsafeDown x"}
@@ -33,3 +63,5 @@
 - warn: {lhs: "unsafeTeeS x", rhs: "x"}
 - warn: {lhs: "unsafeTee' f x", rhs: "x"}
 - warn: {lhs: "unsafeTeeS' f x", rhs: "x"}
+
+- warn: {lhs: "unsafeReportTime message x", rhs: "x"}

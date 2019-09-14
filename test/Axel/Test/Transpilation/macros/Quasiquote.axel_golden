@@ -1,5 +1,7 @@
 -- If this file compiles, the tests have passed.
 
+(import Axel.Prelude all)
+
 (importq Axel.Parse.AST AST all)
 (importq Axel.Sourcemap SM all)
 

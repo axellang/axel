@@ -1,24 +1,21 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.Process where
 
+import Axel.Prelude
+
+import qualified Axel.Utils.Text as T (decodeUtf8Lazy, encodeUtf8Lazy)
+
 import qualified Polysemy as Sem
 
-import qualified Data.ByteString.Lazy.Char8 as B (pack, unpack)
 import Data.Kind (Type)
 import Data.Singletons (Sing, SingI, sing)
 import Data.Singletons.TH (singletons)
+import qualified Data.Text as T
 
 import qualified System.Environment (getArgs)
 import System.Exit (ExitCode)
@@ -40,7 +37,7 @@ $(singletons
 type family StreamsHandler (a :: StreamSpecification) (f :: Type -> Type) :: Type
 
 type instance StreamsHandler 'CreateStreams f =
-     String -> f (ExitCode, String, String)
+     Text -> f (ExitCode, Text, Text)
 
 type instance StreamsHandler 'InheritStreams f = f ExitCode
 
@@ -49,17 +46,16 @@ type ProcessRunner' (streamSpec :: StreamSpecification) f
                               streamsHandler
 
 type ProcessRunnerPrimitive (streamSpec :: StreamSpecification) (f :: Type -> Type)
-   = FilePath -> [String] -> ProcessRunner' streamSpec f
+   = FilePath -> [Text] -> ProcessRunner' streamSpec f
 
 type ProcessRunner (streamSpec :: StreamSpecification) (f :: Type -> Type)
    = (SingI streamSpec) =>
        ProcessRunner' streamSpec f
 
 data Process m a where
-  GetArgs :: Process m [String]
-  RunProcessCreatingStreams
-    :: String -> String -> Process m (ExitCode, String, String)
-  RunProcessInheritingStreams :: String -> Process m ExitCode
+  GetArgs :: Process m [Text]
+  RunProcessCreatingStreams :: Text -> Text -> Process m (ExitCode, Text, Text)
+  RunProcessInheritingStreams :: Text -> Process m ExitCode
 
 Sem.makeSem ''Process
 
@@ -69,18 +65,19 @@ runProcess ::
   -> Sem.Sem effs a
 runProcess =
   Sem.interpret $ \case
-    GetArgs -> Sem.embed System.Environment.getArgs
+    GetArgs -> Sem.embed $ map T.pack <$> System.Environment.getArgs
     RunProcessCreatingStreams cmd stdin ->
       Sem.embed $ do
-        let stdinStream = P.byteStringInput (B.pack stdin)
-        let config = P.setStdin stdinStream $ P.shell cmd
+        let stdinStream = P.byteStringInput (T.encodeUtf8Lazy stdin)
+        let config = P.setStdin stdinStream $ P.shell (T.unpack cmd)
         (exitCode, stdout, stderr) <- P.readProcess config
-        pure (exitCode, B.unpack stdout, B.unpack stderr)
-    RunProcessInheritingStreams cmd -> Sem.embed $ P.runProcess (P.shell cmd)
+        pure (exitCode, T.decodeUtf8Lazy stdout, T.decodeUtf8Lazy stderr)
+    RunProcessInheritingStreams cmd ->
+      Sem.embed $ P.runProcess (P.shell $ T.unpack cmd)
 
 execProcess ::
      forall (streamSpec :: StreamSpecification) effs. (Sem.Member Process effs)
-  => String
+  => Text
   -> ProcessRunner streamSpec (Sem.Sem effs)
 execProcess cmd =
   case sing :: Sing streamSpec of

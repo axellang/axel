@@ -1,9 +1,9 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Axel.Haskell.Project where
+
+import Axel.Prelude
 
 import qualified Axel.Eff.Console as Effs (Console)
 import Axel.Eff.Error (Error)
@@ -29,41 +29,54 @@ import Axel.Haskell.Stack
   , runStackProject
   )
 import Axel.Sourcemap (ModuleInfo)
+import Axel.Utils.FilePath ((<.>), (</>))
 
-import Data.Semigroup ((<>))
-import qualified Data.Text as T (isSuffixOf, pack)
+import Control.Lens (op)
+
+import qualified Data.Text as T
 
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 import qualified Polysemy.State as Sem
 
-import System.FilePath ((</>))
-
 type ProjectPath = FilePath
 
 newProject ::
      Sem.Members '[ Effs.FileSystem, Effs.Process, Effs.Resource] effs
-  => String
+  => Text
   -> Sem.Sem effs ()
 newProject projectName = do
   createStackProject projectName
-  addStackDependency axelStackageId projectName
+  let projectPath = FilePath projectName
+  addStackDependency axelStackageId projectPath
   templatePath <- getResourcePath newProjectTemplate
   let copyAxel filePath = do
         copyFile
-          (templatePath </> filePath <> ".axel")
-          (projectName </> filePath <> ".axel")
-        removeFile (projectName </> filePath <> ".hs")
-  mapM_ copyAxel ["Setup", "app" </> "Main", "src" </> "Lib", "test" </> "Spec"]
+          (templatePath </> filePath <.> "axel")
+          (projectPath </> filePath <.> "axel")
+        removeFile (projectPath </> filePath <.> "hs")
+  mapM_
+    copyAxel
+    [ FilePath "Setup"
+    , FilePath "app" </> FilePath "Main"
+    , FilePath "src" </> FilePath "Lib"
+    , FilePath "test" </> FilePath "Spec"
+    ]
 
 transpileProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
   => Sem.Sem effs ModuleInfo
 transpileProject =
   Ghci.withGhci $ do
-    files <- concat <$> mapM getDirectoryContentsRec ["app", "src", "test"]
+    files <-
+      concat <$>
+      mapM
+        getDirectoryContentsRec
+        [FilePath "app", FilePath "src", FilePath "test"]
     let axelFiles =
-          filter (\filePath -> ".axel" `T.isSuffixOf` T.pack filePath) files
+          filter
+            (\filePath -> ".axel" `T.isSuffixOf` op FilePath filePath)
+            files
     initialModuleInfo <- readModuleInfo axelFiles
     (moduleInfo, _) <-
       Sem.runState initialModuleInfo $ mapM transpileFileInPlace axelFiles

@@ -2,6 +2,8 @@
 
 module Axel.Test.ASTGen where
 
+import Axel.Prelude
+
 import qualified Axel.AST as AST
 import qualified Axel.Sourcemap as SM
 
@@ -11,14 +13,14 @@ import qualified Hedgehog.Range as Range
 import TestUtils
 
 genIdentifier :: (MonadGen m) => m AST.Identifier
-genIdentifier = Gen.string (Range.linear 1 5) Gen.alpha
+genIdentifier = Gen.text (Range.linear 1 5) Gen.alpha
 
 genLiteral :: (MonadGen m) => m (AST.Literal (Maybe SM.Expression))
 genLiteral =
   Gen.choice
     [ AST.LChar Nothing <$> Gen.unicode
     , AST.LInt Nothing <$> Gen.int Range.constantBounded
-    , AST.LString Nothing <$> Gen.string (Range.linear 0 5) Gen.unicode
+    , AST.LString Nothing <$> Gen.text (Range.linear 0 5) Gen.unicode
     ]
 
 genCaseBlock :: (MonadGen m) => m (AST.CaseBlock (Maybe SM.Expression))
@@ -47,8 +49,8 @@ genLetBlock =
   Gen.list (Range.linear 0 3) ((,) <$> genExpression <*> genExpression) <*>
   genExpression
 
-genRawExpression :: (MonadGen m) => m String
-genRawExpression = Gen.string (Range.linear 0 10) Gen.unicode
+genRawExpression :: (MonadGen m) => m Text
+genRawExpression = Gen.text (Range.linear 0 10) Gen.unicode
 
 genRecordDefinition ::
      (MonadGen m) => m (AST.RecordDefinition (Maybe SM.Expression))
@@ -102,7 +104,7 @@ genFunctionDefinition =
   Gen.list (Range.linear 0 3) genFunctionDefinition
 
 genPragma :: (MonadGen m) => m (AST.Pragma (Maybe SM.Expression))
-genPragma = AST.Pragma Nothing <$> Gen.string (Range.linear 0 10) Gen.ascii
+genPragma = AST.Pragma Nothing <$> Gen.text (Range.linear 0 10) Gen.ascii
 
 genMacroDefinition ::
      (MonadGen m) => m (AST.MacroDefinition (Maybe SM.Expression))
@@ -141,8 +143,8 @@ genNewtypeDeclaration =
   AST.NewtypeDeclaration Nothing <$> genTypeDefinition <*>
   genFunctionApplication
 
-genRawStatement :: (MonadGen m) => m String
-genRawStatement = Gen.string (Range.linear 0 10) Gen.unicode
+genRawStatement :: (MonadGen m) => m Text
+genRawStatement = Gen.text (Range.linear 0 10) Gen.unicode
 
 genRestrictedImport ::
      (MonadGen m) => Bool -> m (AST.RestrictedImport (Maybe SM.Expression))

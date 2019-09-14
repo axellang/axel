@@ -1,5 +1,7 @@
 module Axel.Utils.List where
 
+import Axel.Prelude
+
 import Axel.Utils.Tuple
   ( Annotated
   , annotate

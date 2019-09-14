@@ -1,15 +1,11 @@
 -- TODO Integrate with the effects system used everywhere else (convert `error` to `throwError`, etc.)
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC
   -Wno-incomplete-patterns -Wno-incomplete-uni-patterns #-}
 
 module Axel.Haskell.Convert where
 
-import Prelude hiding (putStrLn)
+import Axel.Prelude
 
 import qualified Axel.AST as AST
 import Axel.Denormalize (denormalizeExpression, denormalizeStatement)
@@ -22,14 +18,15 @@ import qualified Axel.Parse.AST as Parse
 import Axel.Parse.AST (toAxel)
 import qualified Axel.Sourcemap as SM (Expression)
 import Axel.Utils.List (removeOut, stablyGroupAllWith, unsafeHead)
-import Axel.Utils.String (replace)
 import Axel.Utils.Tuple (flattenAnnotations, unannotated)
 
 import Control.Category ((>>>))
+import Control.Lens ((<|), op)
 import Control.Lens.Extras (is)
 import Control.Lens.Operators ((%~), (^.))
 
 import Data.Data.Lens (biplate, uniplate)
+import qualified Data.Text as T
 
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
@@ -38,12 +35,13 @@ import qualified Data.List.NonEmpty as NE (toList)
 
 import qualified Language.Haskell.Exts as HSE
 
-renderRaw :: (HSE.Pretty a) => a -> String
-renderRaw = escapeNewlines . escapeQuotes . HSE.prettyPrintWithMode ppMode
+renderRaw :: (HSE.Pretty a) => a -> Text
+renderRaw =
+  escapeNewlines . escapeQuotes . T.pack . HSE.prettyPrintWithMode ppMode
   where
     ppMode = HSE.defaultMode {HSE.layout = HSE.PPNoLayout}
-    escapeQuotes = replace "\"" "\\\\\\\""
-    escapeNewlines = replace "\n" "\\n"
+    escapeQuotes = T.replace "\"" "\\\\\\\""
+    escapeNewlines = T.replace "\n" "\\n"
 
 unsupportedExpr :: (HSE.Pretty a) => a -> AST.SMExpression
 unsupportedExpr = AST.ERawExpression Nothing . renderRaw
@@ -57,17 +55,17 @@ class ToExpr a where
 class ToStmts a where
   toStmts :: a b -> [AST.SMStatement]
 
-toId :: (ToExpr a) => a b -> String
+toId :: (ToExpr a) => a b -> Text
 toId x =
   let AST.EIdentifier _ sym = toExpr x
    in sym
 
 instance ToExpr HSE.Name where
-  toExpr (HSE.Ident _ name) = AST.EIdentifier Nothing name
-  toExpr (HSE.Symbol _ name) = AST.EIdentifier Nothing name
+  toExpr (HSE.Ident _ name) = AST.EIdentifier Nothing $ T.pack name
+  toExpr (HSE.Symbol _ name) = AST.EIdentifier Nothing $ T.pack name
 
 instance ToExpr HSE.ModuleName where
-  toExpr (HSE.ModuleName _ name) = AST.EIdentifier Nothing name
+  toExpr (HSE.ModuleName _ name) = AST.EIdentifier Nothing $ T.pack name
 
 instance ToExpr HSE.CName where
   toExpr (HSE.VarName _ name) = toExpr name
@@ -78,7 +76,7 @@ instance ToExpr HSE.SpecialCon where
   toExpr HSE.ListCon {} = AST.EIdentifier Nothing "List"
   toExpr HSE.FunCon {} = AST.EIdentifier Nothing "->"
   toExpr (HSE.TupleCon _ _ arity) =
-    AST.EIdentifier Nothing $ replicate arity ','
+    AST.EIdentifier Nothing $ T.replicate arity ","
   toExpr HSE.Cons {} = AST.EIdentifier Nothing ":"
   toExpr expr@HSE.UnboxedSingleCon {} = unsupportedExpr expr
   toExpr HSE.ExprHole {} = AST.EIdentifier Nothing "_"
@@ -100,7 +98,7 @@ instance ToExpr HSE.MaybePromotedName where
 instance ToExpr HSE.Promoted where
   toExpr expr@HSE.PromotedInteger {} = unsupportedExpr expr
   toExpr expr@HSE.PromotedString {} = unsupportedExpr expr
-  toExpr (HSE.PromotedCon _ _ con) = AST.EIdentifier Nothing $ '\'' : toId con
+  toExpr (HSE.PromotedCon _ _ con) = AST.EIdentifier Nothing $ '\'' <| toId con
   toExpr expr@HSE.PromotedList {} = unsupportedExpr expr
   toExpr expr@HSE.PromotedTuple {} = unsupportedExpr expr
   toExpr expr@HSE.PromotedUnit {} = unsupportedExpr expr
@@ -224,7 +222,8 @@ instance ToExpr HSE.QualConDecl where
 
 instance ToExpr HSE.Literal where
   toExpr (HSE.Char _ char _) = AST.ELiteral $ AST.LChar Nothing char
-  toExpr (HSE.String _ string _) = AST.ELiteral $ AST.LString Nothing string
+  toExpr (HSE.String _ string _) =
+    AST.ELiteral $ AST.LString Nothing $ T.pack string
   toExpr (HSE.Int _ int _) = AST.ELiteral $ AST.LInt Nothing (fromInteger int)
   toExpr expr@HSE.Frac {} = unsupportedExpr expr
   toExpr expr@HSE.PrimInt {} = unsupportedExpr expr
@@ -338,15 +337,15 @@ instance ToExpr HSE.Exp where
   toExpr expr@HSE.IPVar {} = unsupportedExpr expr
   toExpr (HSE.Con _ name) = toExpr name
   toExpr (HSE.Lit _ lit) = toExpr lit
-  toExpr (HSE.InfixApp _ a op b) =
-    if toId op == "$"
+  toExpr (HSE.InfixApp _ a op' b) =
+    if toId op' == "$"
       then AST.EFunctionApplication $
            AST.FunctionApplication Nothing (toExpr a) [toExpr b]
       else AST.EFunctionApplication $
            AST.FunctionApplication
              Nothing
              (AST.EIdentifier Nothing "applyInfix")
-             [toExpr a, toExpr op, toExpr b]
+             [toExpr a, toExpr op', toExpr b]
   toExpr (HSE.App _ (HSE.App _ f a) b) =
     AST.EFunctionApplication $
     AST.FunctionApplication Nothing (toExpr f) [toExpr a, toExpr b]
@@ -392,7 +391,7 @@ instance ToExpr HSE.Exp where
     AST.EFunctionApplication $
     AST.FunctionApplication
       Nothing
-      (AST.EIdentifier Nothing $ replicate (length exps) ',')
+      (AST.EIdentifier Nothing $ T.replicate (length exps) ",")
       (map toExpr exps)
   toExpr expr@HSE.UnboxedSum {} = unsupportedExpr expr
   toExpr expr@HSE.TupleSection {} = unsupportedExpr expr
@@ -599,16 +598,16 @@ convertFile ::
      )
   => FilePath
   -> FilePath
-  -> Sem.Sem effs String
+  -> Sem.Sem effs FilePath
 convertFile path newPath = do
   parsedModule <-
-    Sem.embed (HSE.parseFile path) >>=
+    Sem.embed (HSE.parseFile $ T.unpack $ op FilePath path) >>=
     (\case
        HSE.ParseOk parsedModule -> pure parsedModule
-       HSE.ParseFailed _ err -> Sem.throw $ ConvertError path err)
-  putStrLn $ "Writing " <> newPath <> "..."
+       HSE.ParseFailed _ err -> Sem.throw $ ConvertError path (T.pack err))
+  putStrLn $ "Writing " <> op FilePath newPath <> "..."
   let newContents =
-        unlines $
+        T.unlines $
         map toAxel $
         groupFunctionDefinitions $
         flattenFunctionApplications $ toStmts parsedModule
@@ -629,8 +628,8 @@ groupFunctionDefinitions =
       findFnName (AST.STypeSignature tySig) = Just $ tySig ^. AST.name
       findFnName _ = Nothing
       extractTySig ::
-           ([AST.SMStatement], Maybe String)
-        -> (([AST.SMStatement], [AST.SMStatement]), Maybe String)
+           ([AST.SMStatement], Maybe Text)
+        -> (([AST.SMStatement], [AST.SMStatement]), Maybe Text)
       extractTySig = unannotated %~ removeOut (is AST._STypeSignature)
       transformFnDef (AST.SFunctionDefinition fnDef) =
         let whereBindings =
@@ -657,7 +656,7 @@ groupFunctionDefinitions =
                  [AST.STypeSignature tySig] ->
                    [ Parse.SExpression Nothing $
                      Parse.Symbol Nothing "def" :
-                     Parse.Symbol Nothing fnName :
+                     Parse.Symbol Nothing (T.unpack fnName) :
                      denormalizeExpression (tySig ^. AST.typeDefinition) :
                      map transformFnDef stmts
                    ]

@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 module Axel.Test.Utils.MaybeSpec where
+
+import Axel.Prelude
 
 import Axel.Utils.Maybe
 import Axel.Utils.Zipper
@@ -9,14 +9,15 @@ import Data.Char
 import Data.Data
 import Data.Generics.Uniplate.Data ()
 import Data.Generics.Uniplate.Zipper
+import qualified Data.Text as T
 
 import Test.Tasty.Hspec
 
-{-# ANN module "HLint: ignore Redundant do" #-}
+{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 data MockAST
   = SExp [MockAST]
-  | Symbol String
+  | Symbol Text
   deriving (Data, Eq, Show)
 
 spec_Maybe :: SpecWith ()
@@ -35,7 +36,7 @@ spec_Maybe = do
             replaceHole
               (case hole z of
                  SExp xs -> SExp xs
-                 Symbol x -> Symbol $ map toUpper x)
+                 Symbol x -> Symbol $ T.map toUpper x)
               z
        in (fromZipper .
            foldUntilNothing right modify .

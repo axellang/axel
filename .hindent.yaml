@@ -1,1 +1,26 @@
 force-trailing-newline: true
+# NOTE Keep in sync with `package.yaml#default-extensions` and `.hlint.yaml#arguments`.
+extensions:
+  - BangPatterns
+  - ConstraintKinds
+  - DataKinds
+  - DeriveDataTypeable
+  - DeriveFoldable
+  - DeriveFunctor
+  - DeriveGeneric
+  - DeriveTraversable
+  - FlexibleContexts
+  - FlexibleInstances
+  - FunctionalDependencies
+  - GeneralizedNewtypeDeriving
+  - InstanceSigs
+  - KindSignatures
+  - LambdaCase
+  - MultiParamTypeClasses
+  - OverloadedStrings
+  - PolyKinds
+  - RankNTypes
+  - StandaloneDeriving
+  - TupleSections
+  - TypeApplications
+  - TypeOperators

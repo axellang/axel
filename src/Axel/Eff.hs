@@ -1,5 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
-
 module Axel.Eff where
 
 import qualified Polysemy as Sem

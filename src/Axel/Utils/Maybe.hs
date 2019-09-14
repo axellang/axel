@@ -1,5 +1,7 @@
 module Axel.Utils.Maybe where
 
+import Axel.Prelude
+
 import Data.Functor.Identity (runIdentity)
 
 foldMUntilNothing :: (Monad m) => (a -> Maybe a) -> (a -> m a) -> a -> m a

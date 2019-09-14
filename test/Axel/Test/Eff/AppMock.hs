@@ -1,9 +1,8 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Axel.Test.Eff.AppMock where
+
+import Axel.Prelude
 
 import qualified Axel.Eff.Console as Effs
 import Axel.Eff.Error as Error
@@ -22,10 +21,10 @@ import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
 type AppEffs
-   = '[ Effs.Log, Effs.Console, Sem.Error Error.Error, Effs.Ghci, Effs.Process, Effs.FileSystem, Effs.Resource, Sem.Error String]
+   = '[ Effs.Log, Effs.Console, Sem.Error Error.Error, Effs.Ghci, Effs.Process, Effs.FileSystem, Effs.Resource, Sem.Error Text]
 
 runApp ::
-     (processEffs ~ '[ Effs.FileSystem, Effs.Resource, Sem.Error String])
+     (processEffs ~ '[ Effs.FileSystem, Effs.Resource, Sem.Error Text])
   => ConsoleState
   -> FileSystemState
   -> GhciState
@@ -43,7 +42,7 @@ runApp origConsoleState origFSState origGhciState origProcState =
   unsafeRunError renderError . runConsole origConsoleState . Effs.ignoreLog
 
 evalApp ::
-     (processEffs ~ '[ Effs.FileSystem, Effs.Resource, Sem.Error String])
+     (processEffs ~ '[ Effs.FileSystem, Effs.Resource, Sem.Error Text])
   => ConsoleState
   -> FileSystemState
   -> GhciState

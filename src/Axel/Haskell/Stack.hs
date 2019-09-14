@@ -1,45 +1,39 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Axel.Haskell.Stack where
 
-import Prelude hiding (putStrLn)
+import Axel.Prelude
 
 import Axel.Eff.Console (putStrLn)
-import qualified Axel.Eff.Console as Effs (Console)
+import qualified Axel.Eff.Console as Effs
 import Axel.Eff.Error (Error(ProjectError), fatal)
 import qualified Axel.Eff.FileSystem as FS
-  ( readFile
-  , withCurrentDirectory
-  , writeFile
-  )
-import qualified Axel.Eff.FileSystem as Effs (FileSystem)
+import qualified Axel.Eff.FileSystem as Effs
 import Axel.Eff.Process
   ( ProcessRunner
   , StreamSpecification(CreateStreams, InheritStreams)
   , execProcess
   )
-import qualified Axel.Eff.Process as Effs (Process)
+import qualified Axel.Eff.Process as Effs
 import Axel.Haskell.Error (processErrors)
+import Axel.Parse (Parser)
 import Axel.Sourcemap (ModuleInfo)
+import Axel.Utils.FilePath (takeFileName)
+
+import Control.Lens (op)
 import Control.Lens.Operators ((%~))
 import Control.Monad (void)
 
 import Data.Aeson.Lens (_Array, key)
-import qualified Data.ByteString.Char8 as B (pack, unpack)
 import Data.Function ((&))
 import Data.List (foldl')
-import qualified Data.Text as T (pack)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import Data.Vector (cons)
 import Data.Version (showVersion)
-import qualified Data.Yaml as Yaml (Value(String), decodeEither', encode)
+import qualified Data.Yaml as Yaml
 
 import Paths_axel (version)
 
@@ -47,25 +41,25 @@ import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
-import System.FilePath (takeFileName)
 
-import Text.Regex.PCRE ((=~), getAllTextSubmatches)
+import qualified Text.Megaparsec as P
+import qualified Text.Megaparsec.Char as P
 
 type ProjectPath = FilePath
 
-type StackageId = String
+type StackageId = Text
 
-type StackageResolver = String
+type StackageResolver = Text
 
-type Target = String
+type Target = Text
 
-type Version = String
+type Version = Text
 
 stackageResolverWithAxel :: StackageResolver
 stackageResolverWithAxel = "nightly"
 
 axelStackageVersion :: Version
-axelStackageVersion = showVersion version
+axelStackageVersion = T.pack $ showVersion version
 
 axelStackageId :: StackageId
 axelStackageId = "axel"
@@ -77,7 +71,7 @@ getStackProjectTargets ::
 getStackProjectTargets projectPath =
   FS.withCurrentDirectory projectPath $ do
     (_, _, stderr) <- execProcess @'CreateStreams "stack ide targets" ""
-    pure $ lines stderr
+    pure $ T.lines stderr
 
 addStackDependency ::
      (Sem.Member Effs.FileSystem effs)
@@ -86,14 +80,14 @@ addStackDependency ::
   -> Sem.Sem effs ()
 addStackDependency dependencyId projectPath =
   FS.withCurrentDirectory projectPath $ do
-    let packageConfigPath = "package.yaml"
+    let packageConfigPath = FilePath "package.yaml"
     packageConfigContents <- FS.readFile packageConfigPath
-    case Yaml.decodeEither' $ B.pack packageConfigContents of
+    case Yaml.decodeEither' $ T.encodeUtf8 packageConfigContents of
       Right contents ->
         let newContents :: Yaml.Value =
               contents & key "dependencies" . _Array %~
-              cons (Yaml.String $ T.pack dependencyId)
-            encodedContents = B.unpack $ Yaml.encode newContents
+              cons (Yaml.String dependencyId)
+            encodedContents = T.decodeUtf8 $ Yaml.encode newContents
          in FS.writeFile packageConfigPath encodedContents
       Left _ -> fatal "addStackDependency" "0001"
 
@@ -103,7 +97,7 @@ buildStackProject ::
   -> ProjectPath
   -> Sem.Sem effs ()
 buildStackProject moduleInfo projectPath = do
-  putStrLn ("Building " <> takeFileName projectPath <> "...")
+  putStrLn ("Building " <> op FilePath (takeFileName projectPath) <> "...")
   result <-
     FS.withCurrentDirectory projectPath $
     execProcess @'CreateStreams "stack build --ghc-options='-ddump-json'" ""
@@ -116,7 +110,7 @@ buildStackProject moduleInfo projectPath = do
 
 createStackProject ::
      (Sem.Members '[ Effs.FileSystem, Effs.Process] effs)
-  => String
+  => Text
   -> Sem.Sem effs ()
 createStackProject projectName = do
   void $
@@ -124,7 +118,7 @@ createStackProject projectName = do
       @'CreateStreams
       ("stack new " <> projectName <> " new-template")
       ""
-  setStackageResolver projectName stackageResolverWithAxel
+  setStackageResolver (FilePath projectName) stackageResolverWithAxel
 
 runStackProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
@@ -134,18 +128,21 @@ runStackProject projectPath = do
   targets <- getStackProjectTargets projectPath
   case findExeTargets targets of
     [target] -> do
-      putStrLn ("Running " <> target <> "...")
+      putStrLn $ "Running " <> target <> "..."
       void $ execProcess @'InheritStreams ("stack exec " <> target)
     _ ->
       Sem.throw $ ProjectError "No executable target was unambiguously found!"
   where
+    exeTarget :: Parser Text
+    exeTarget =
+      P.many (P.anySingleBut ':') *> P.string ":exe:" *>
+      (T.pack <$> P.many (P.anySingleBut ':'))
     findExeTargets =
       foldl'
         (\acc target ->
-           case getAllTextSubmatches $ target =~
-                ("([^:]*):exe:([^:]*)" :: String) of
-             [_fullMatch, _projectName, targetName] -> targetName : acc
-             _ -> acc)
+           case P.parseMaybe exeTarget target of
+             Just targetName -> targetName : acc
+             Nothing -> acc)
         []
 
 setStackageResolver ::
@@ -157,17 +154,18 @@ setStackageResolver projectPath resolver =
   void $ FS.withCurrentDirectory projectPath $
   execProcess @'CreateStreams ("stack config set resolver " <> resolver) ""
 
-includeAxelArguments :: String
+includeAxelArguments :: Text
 includeAxelArguments =
-  unwords ["--resolver", stackageResolverWithAxel, "--package", axelStackageId]
+  T.unwords
+    ["--resolver", stackageResolverWithAxel, "--package", axelStackageId]
 
 compileFile ::
      forall (streamSpec :: StreamSpecification) effs.
      (Sem.Member Effs.Process effs)
   => FilePath
   -> ProcessRunner streamSpec (Sem.Sem effs)
-compileFile filePath =
-  let cmd = unwords ["stack", "ghc", includeAxelArguments, "--", filePath]
+compileFile (FilePath filePath) =
+  let cmd = T.unwords ["stack", "ghc", includeAxelArguments, "--", filePath]
    in execProcess @streamSpec @effs cmd
 
 interpretFile ::
@@ -175,6 +173,6 @@ interpretFile ::
      (Sem.Member Effs.Process effs)
   => FilePath
   -> ProcessRunner streamSpec (Sem.Sem effs)
-interpretFile filePath =
-  let cmd = unwords ["stack", "runghc", includeAxelArguments, "--", filePath]
+interpretFile (FilePath filePath) =
+  let cmd = T.unwords ["stack", "runghc", includeAxelArguments, "--", filePath]
    in execProcess @streamSpec @effs cmd

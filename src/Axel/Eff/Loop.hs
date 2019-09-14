@@ -1,11 +1,10 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
 
 -- Inspired by http://www.haskellforall.com/2012/07/breaking-from-loop.html.
 module Axel.Eff.Loop where
+
+import Axel.Prelude
 
 import Control.Monad (void)
 

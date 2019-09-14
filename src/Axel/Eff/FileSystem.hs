@@ -1,21 +1,19 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.FileSystem where
 
-import Prelude hiding (readFile, writeFile)
-import qualified Prelude (writeFile)
+import Axel.Prelude
 
 import Control.Monad (forM)
 
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
+
 import qualified Polysemy as Sem
 
+import Axel.Utils.FilePath ((</>))
 import qualified System.Directory
   ( copyFile
   , createDirectoryIfMissing
@@ -26,21 +24,19 @@ import qualified System.Directory
   , removeFile
   , setCurrentDirectory
   )
-import System.FilePath ((</>))
-import qualified System.IO.Strict as S (readFile)
 
 data FileSystem m a where
-  AppendFile :: String -> FilePath -> FileSystem m ()
+  AppendFile :: FilePath -> Text -> FileSystem m ()
   CopyFile :: FilePath -> FilePath -> FileSystem m ()
   CreateDirectoryIfMissing :: Bool -> FilePath -> FileSystem m ()
   DoesDirectoryExist :: FilePath -> FileSystem m Bool
   GetCurrentDirectory :: FileSystem m FilePath
   GetDirectoryContents :: FilePath -> FileSystem m [FilePath]
   GetTemporaryDirectory :: FileSystem m FilePath
-  ReadFile :: FilePath -> FileSystem m String
+  ReadFile :: FilePath -> FileSystem m Text
   RemoveFile :: FilePath -> FileSystem m ()
   SetCurrentDirectory :: FilePath -> FileSystem m ()
-  WriteFile :: String -> FilePath -> FileSystem m ()
+  WriteFile :: FilePath -> Text -> FileSystem m ()
 
 Sem.makeSem ''FileSystem
 
@@ -51,29 +47,41 @@ runFileSystem ::
 runFileSystem =
   Sem.interpret
     (\case
-       AppendFile path contents -> Sem.embed $ Prelude.appendFile path contents
-       CopyFile src dest -> Sem.embed $ System.Directory.copyFile src dest
-       CreateDirectoryIfMissing createParentDirs path ->
+       AppendFile (FilePath path) contents ->
+         Sem.embed $ T.appendFile (T.unpack path) contents
+       CopyFile (FilePath src) (FilePath dest) ->
+         Sem.embed $ System.Directory.copyFile (T.unpack src) (T.unpack dest)
+       CreateDirectoryIfMissing createParentDirs (FilePath path) ->
          Sem.embed $
-         System.Directory.createDirectoryIfMissing createParentDirs path
-       DoesDirectoryExist path ->
-         Sem.embed $ System.Directory.doesDirectoryExist path
-       GetCurrentDirectory -> Sem.embed System.Directory.getCurrentDirectory
-       GetDirectoryContents path ->
-         Sem.embed $ System.Directory.getDirectoryContents path
-       GetTemporaryDirectory -> Sem.embed System.Directory.getTemporaryDirectory
-       ReadFile path -> Sem.embed $ S.readFile path
-       RemoveFile path -> Sem.embed $ System.Directory.removeFile path
-       SetCurrentDirectory path ->
-         Sem.embed $ System.Directory.setCurrentDirectory path
-       WriteFile path contents -> Sem.embed $ Prelude.writeFile path contents)
+         System.Directory.createDirectoryIfMissing
+           createParentDirs
+           (T.unpack path)
+       DoesDirectoryExist (FilePath path) ->
+         Sem.embed $ System.Directory.doesDirectoryExist (T.unpack path)
+       GetCurrentDirectory ->
+         Sem.embed $ FilePath . T.pack <$> System.Directory.getCurrentDirectory
+       GetDirectoryContents (FilePath path) ->
+         Sem.embed $
+         map (FilePath . T.pack) <$>
+         System.Directory.getDirectoryContents (T.unpack path)
+       GetTemporaryDirectory ->
+         Sem.embed $
+         FilePath . T.pack <$> System.Directory.getTemporaryDirectory
+       ReadFile (FilePath path) -> Sem.embed $ T.readFile (T.unpack path)
+       RemoveFile (FilePath path) ->
+         Sem.embed $ System.Directory.removeFile (T.unpack path)
+       SetCurrentDirectory (FilePath path) ->
+         Sem.embed $ System.Directory.setCurrentDirectory (T.unpack path)
+       WriteFile (FilePath path) contents ->
+         Sem.embed $ T.writeFile (T.unpack path) contents)
 
 -- Adapted from http://book.realworldhaskell.org/read/io-case-study-a-library-for-searching-the-filesystem.html.
 getDirectoryContentsRec ::
      (Sem.Member FileSystem effs) => FilePath -> Sem.Sem effs [FilePath]
 getDirectoryContentsRec dir = do
   names <- getDirectoryContents dir
-  let properNames = filter (`notElem` [".", ".."]) names
+  let properNames =
+        filter (\(FilePath path) -> path `notElem` [".", ".."]) names
   paths <-
     forM properNames $ \name -> do
       let path = dir </> name

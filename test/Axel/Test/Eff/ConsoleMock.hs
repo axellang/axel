@@ -1,14 +1,10 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Axel.Test.Eff.ConsoleMock where
+
+import Axel.Prelude
 
 import Axel.Eff.Console as Effs
 
@@ -22,7 +18,7 @@ import TestUtils
 
 newtype ConsoleState =
   ConsoleState
-    { _consoleOutput :: String
+    { _consoleOutput :: Text
     }
   deriving (Eq, Show)
 
@@ -32,7 +28,7 @@ mkConsoleState :: ConsoleState
 mkConsoleState = ConsoleState {_consoleOutput = ""}
 
 runConsole ::
-     forall effs a. (Sem.Member (Sem.Error String) effs)
+     forall effs a. (Sem.Member (Sem.Error Text) effs)
   => ConsoleState
   -> Sem.Sem (Effs.Console ': effs) a
   -> Sem.Sem effs (ConsoleState, a)

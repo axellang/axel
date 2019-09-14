@@ -1,6 +1,6 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Axel.Test.NormalizeSpec where
+
+import Axel.Prelude
 
 import Axel.Denormalize
 import Axel.Eff.Error as Error
@@ -25,5 +25,5 @@ hprop_denormalizeExpression_is_the_inverse_of_normalizeExpression =
         (unwrapRight renderError $
          Sem.run .
          Sem.runError @Error.Error .
-         Sem.runReader "" . Sem.runReader ([] :: [SM.Expression]) $
+         Sem.runReader (FilePath "") . Sem.runReader ([] :: [SM.Expression]) $
          normalizeExpression expr)

@@ -1,21 +1,11 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
--- TODO Should this module (as well as the corresponding `denormalize*` utilities)
---      be exposed during the expansion phase, so that a higher-level (and more typesafe)
---      representation of the AST can be used if the user so wishes?
 module Axel.AST where
+
+import Axel.Prelude
 
 import Axel.Haskell.Language (isOperator)
 import Axel.Haskell.Macros (hygenisizeMacroName)
@@ -37,7 +27,7 @@ import qualified Axel.Sourcemap as SM
   , surround
   )
 import qualified Axel.Utils.Display as Display (delimit, renderPragma, surround)
-import Axel.Utils.String (handleStringEscapes)
+import Axel.Utils.Text (handleCharEscapes)
 import Axel.Utils.Tuple (annotate, unannotated)
 
 import Control.Lens.Combinators (_head, _last)
@@ -48,11 +38,12 @@ import Control.Monad ((>=>))
 
 import Data.Data (Data)
 import Data.Semigroup ((<>))
+import qualified Data.Text as T
 
 class ToHaskell a where
   toHaskell :: a -> SM.Output
 
-type Identifier = String
+type Identifier = Text
 
 data CaseBlock ann =
   CaseBlock
@@ -161,7 +152,7 @@ data MacroImport ann =
 data Pragma ann =
   Pragma
     { _ann :: ann
-    , _pragmaSpecification :: String
+    , _pragmaSpecification :: Text
     }
   deriving (Data, Eq, Functor, Show)
 
@@ -238,7 +229,7 @@ data Expression ann
   | ELambda (Lambda ann)
   | ELetBlock (LetBlock ann)
   | ELiteral (Literal ann)
-  | ERawExpression ann String
+  | ERawExpression ann Text
   | ERecordDefinition (RecordDefinition ann)
   | ERecordType (RecordType ann)
   deriving (Data, Eq, Functor, Show)
@@ -246,7 +237,7 @@ data Expression ann
 data Literal ann
   = LChar ann Char
   | LInt ann Int
-  | LString ann String
+  | LString ann Text
   deriving (Data, Eq, Functor, Show)
 
 data Statement ann
@@ -259,7 +250,7 @@ data Statement ann
   | SNewtypeDeclaration (NewtypeDeclaration ann)
   | SPragma (Pragma ann)
   | SQualifiedImport (QualifiedImport ann)
-  | SRawStatement ann String
+  | SRawStatement ann Text
   | SRestrictedImport (RestrictedImport ann)
   | STypeclassDefinition (TypeclassDefinition ann)
   | STypeclassInstance (TypeclassInstance ann)
@@ -393,7 +384,7 @@ instance {-# OVERLAPPING #-} HasAnnotation (Import ann) ann where
 getAnn' :: (HasAnnotation a (Maybe SM.Expression)) => a -> SM.SourceMetadata
 getAnn' = getAnn >=> getAnn
 
-mkHaskell :: (HasAnnotation a (Maybe SM.Expression)) => a -> String -> SM.Output
+mkHaskell :: (HasAnnotation a (Maybe SM.Expression)) => a -> Text -> SM.Output
 mkHaskell x haskellRendering = SM.Output [annotate (getAnn' x) haskellRendering]
 
 instance ToHaskell SMStatement where
@@ -447,10 +438,11 @@ instance ToHaskell (FunctionApplication (Maybe SM.Expression)) where
 instance ToHaskell (Literal (Maybe SM.Expression)) where
   toHaskell :: Literal (Maybe SM.Expression) -> SM.Output
   toHaskell literal@(LChar _ x) =
-    mkHaskell literal $ Display.surround SingleQuotes (handleStringEscapes [x])
-  toHaskell literal@(LInt _ x) = mkHaskell literal $ show x
+    mkHaskell literal $
+    Display.surround SingleQuotes (handleCharEscapes (T.singleton x))
+  toHaskell literal@(LInt _ x) = mkHaskell literal $ showText x
   toHaskell literal@(LString _ x) =
-    mkHaskell literal $ Display.surround DoubleQuotes (handleStringEscapes x)
+    mkHaskell literal $ Display.surround DoubleQuotes (handleCharEscapes x)
 
 instance ToHaskell (TypeSignature (Maybe SM.Expression)) where
   toHaskell :: TypeSignature (Maybe SM.Expression) -> SM.Output
@@ -489,8 +481,8 @@ instance ToHaskell (DataDeclaration (Maybe SM.Expression)) where
 removeSurroundingParentheses :: SM.Output -> SM.Output
 removeSurroundingParentheses = removeOpen . removeClosed
   where
-    removeOpen = _Wrapped . _head . unannotated %~ tail
-    removeClosed = _Wrapped . _last . unannotated %~ init
+    removeOpen = _Wrapped . _head . unannotated %~ T.tail
+    removeClosed = _Wrapped . _last . unannotated %~ T.init
 
 instance ToHaskell (IfBlock (Maybe SM.Expression)) where
   toHaskell :: IfBlock (Maybe SM.Expression) -> SM.Output

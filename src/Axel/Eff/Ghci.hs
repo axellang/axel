@@ -1,24 +1,24 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Axel.Eff.Ghci where
 
+import Axel.Prelude
+
+import Control.Lens (op)
 import Control.Monad (void)
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Reader as Sem
+import qualified Data.Text as T
 
 import Language.Haskell.Ghcid (startGhci, stopGhci)
 import qualified Language.Haskell.Ghcid as Ghci
 
+import qualified Polysemy as Sem
+import qualified Polysemy.Reader as Sem
+
 data Ghci m a where
-  Exec :: Ghci.Ghci -> String -> Ghci m [String]
+  Exec :: Ghci.Ghci -> Text -> Ghci m [Text]
   Start :: Ghci m Ghci.Ghci
   Stop :: Ghci.Ghci -> Ghci m ()
 
@@ -30,7 +30,8 @@ runGhci ::
   -> Sem.Sem effs a
 runGhci =
   Sem.interpret $ \case
-    Exec ghci command -> Sem.embed $ Ghci.exec ghci command
+    Exec ghci command ->
+      Sem.embed $ map T.pack <$> Ghci.exec ghci (T.unpack command)
     Start ->
       Sem.embed $
       fst <$>
@@ -43,9 +44,9 @@ runGhci =
     Stop ghci -> Sem.embed $ stopGhci ghci
 
 addFiles ::
-     (Sem.Member Ghci effs) => Ghci.Ghci -> [FilePath] -> Sem.Sem effs [String]
+     (Sem.Member Ghci effs) => Ghci.Ghci -> [FilePath] -> Sem.Sem effs [Text]
 addFiles ghci filePaths =
-  exec ghci $ ":add " <> unwords filePaths -- TODO What if a file path contains a space?
+  exec ghci $ ":add " <> T.unwords (map (op FilePath) filePaths) -- TODO What if a file path contains a space?
 
 enableJsonErrors :: (Sem.Member Ghci effs) => Ghci.Ghci -> Sem.Sem effs ()
 enableJsonErrors ghci = void $ exec ghci ":set -ddump-json"

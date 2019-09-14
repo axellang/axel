@@ -2,6 +2,8 @@
 
 module Axel.Test.Parse.ASTGen where
 
+import Axel.Prelude
+
 import qualified Axel.Parse.AST as AST
 import qualified Axel.Sourcemap as SM
 

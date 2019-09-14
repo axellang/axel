@@ -1,12 +1,13 @@
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Axel.Test.ParseSpec where
+
+import Axel.Prelude
 
 import Axel.Eff.Error
 import Axel.Parse
 import Axel.Parse.AST
-import Axel.Utils.String
+import Axel.Utils.Text
 
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
@@ -15,9 +16,9 @@ import Test.Tasty.Hspec
 
 import TestUtils
 
-{-# ANN module "HLint: ignore Redundant do" #-}
+{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
-parseSingle :: String -> Expression ()
+parseSingle :: Text -> Expression ()
 parseSingle = (() <$) . unsafeParseSingle Nothing
 
 spec_Parse :: SpecWith ()
@@ -95,7 +96,7 @@ spec_Parse = do
                 [Symbol () "bar", Symbol () "x", Symbol () "y", Symbol () "z"]
             ]
       case Sem.run . Sem.runError $ parseMultiple Nothing input of
-        Left err -> expectationFailure $ renderError err
+        Left err -> failSpec $ renderError err
         Right x -> map (() <$) x `shouldBe` result
   describe "parseSource" $ do
     it "can parse a source file" $ do
@@ -127,5 +128,5 @@ spec_Parse = do
               , SExpression () [Symbol () "butThis-->IsASingleSymbol"]
               ]
       case Sem.run . Sem.runError $ parseSource Nothing input of
-        Left err -> expectationFailure $ renderError err
+        Left err -> failSpec $ renderError err
         Right x -> () <$ x `shouldBe` result

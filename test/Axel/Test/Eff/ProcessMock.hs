@@ -1,21 +1,11 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Axel.Test.Eff.ProcessMock where
+
+import Axel.Prelude
 
 import Axel.Eff.FileSystem as Effs
 import Axel.Eff.Process as Effs
@@ -33,7 +23,7 @@ import System.Exit
 import TestUtils
 
 newtype ProcessResult effs =
-  ProcessResult ((ExitCode, Maybe (String, String)), Sem.Sem effs ())
+  ProcessResult ((ExitCode, Maybe (Text, Text)), Sem.Sem effs ())
 
 -- | We are pretending that all `ProcessResult`s are unique no matter what, for simplicity's sake.
 instance Eq (ProcessResult effs) where
@@ -47,15 +37,15 @@ instance Show (ProcessResult effs) where
 
 data ProcessState effs =
   ProcessState
-    { _procMockArgs :: [String]
-    , _procExecutionLog :: [(String, Maybe String)]
+    { _procMockArgs :: [Text]
+    , _procExecutionLog :: [(Text, Maybe Text)]
     , _procMockResults :: [ProcessResult effs]
     }
   deriving (Eq, Show)
 
 makeFieldsNoPrefix ''ProcessState
 
-mkProcessState :: [String] -> [ProcessResult effs] -> ProcessState effs
+mkProcessState :: [Text] -> [ProcessResult effs] -> ProcessState effs
 mkProcessState mockArgs mockResults =
   ProcessState
     { _procMockArgs = mockArgs
@@ -64,7 +54,7 @@ mkProcessState mockArgs mockResults =
     }
 
 runProcess ::
-     forall effs a. (Sem.Members '[ Sem.Error String, Effs.FileSystem] effs)
+     forall effs a. (Sem.Members '[ Sem.Error Text, Effs.FileSystem] effs)
   => ProcessState effs
   -> Sem.Sem (Effs.Process ': effs) a
   -> Sem.Sem effs (ProcessState effs, a)
@@ -83,7 +73,7 @@ runProcess origProcessState = Sem.runState origProcessState . Sem.reinterpret go
             _ ->
               throwInterpretError
                 "RunProcess"
-                ("Wrong type for mock result: " <> show mockResult)
+                ("Wrong type for mock result: " <> showText mockResult)
         Nothing -> throwInterpretError "RunProcess" "No mock result available"
     go (RunProcessInheritingStreams cmd) = do
       Sem.modify $ procExecutionLog %~ (|> (cmd, Nothing))
@@ -95,7 +85,7 @@ runProcess origProcessState = Sem.runState origProcessState . Sem.reinterpret go
             _ ->
               throwInterpretError
                 "RunProcessInheritingStreams"
-                ("Wrong type for mock result: " <> show mockResult)
+                ("Wrong type for mock result: " <> showText mockResult)
         Nothing ->
           throwInterpretError
             "RunProcessInheritingStreams"
