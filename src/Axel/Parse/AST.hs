@@ -115,7 +115,7 @@ bottomUpFmapSplicing f =
     x -> x
 
 toAxel :: Expression ann -> Text
-toAxel (LiteralChar _ x) = T.pack ['{', x, '}']
+toAxel (LiteralChar _ x) = "#\\" <> T.singleton x
 toAxel (LiteralInt _ x) = showText x
 toAxel (LiteralString _ xs) = "\"" <> handleCharEscapes (T.pack xs) <> "\""
 toAxel (SExpression _ (Symbol _ "applyInfix":xs)) =
