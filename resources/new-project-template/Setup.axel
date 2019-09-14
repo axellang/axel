@@ -1,4 +1,4 @@
 (import Distribution.Simple (defaultMain))
 
-(= main (IO Unit)
+(def main (IO Unit)
   (() defaultMain))

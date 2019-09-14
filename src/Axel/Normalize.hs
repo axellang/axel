@@ -33,7 +33,7 @@ import Axel.AST
           SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
           SQualifiedImport, SRawStatement, SRestrictedImport, STopLevel,
           STypeSignature, STypeSynonym, STypeclassDefinition,
-          STypeclassInstance, SUnrestrictedImport)
+          STypeclassInstance)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , TypeSignature(TypeSignature)
@@ -275,8 +275,6 @@ normalizeStatement expr@(Parse.SExpression _ items) =
       SQualifiedImport <$>
       (QualifiedImport (Just expr) (T.pack moduleName) (T.pack alias) <$>
        normalizeImportSpec importSpec)
-    [Parse.Symbol _ "importUnrestricted", Parse.Symbol _ moduleName] ->
-      pure $ SUnrestrictedImport (Just expr) (T.pack moduleName)
     Parse.Symbol _ "instance":instanceName:defs ->
       let normalizedDefs =
             traverse

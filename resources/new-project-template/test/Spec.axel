@@ -1,2 +1,2 @@
-(= main (IO Unit)
+(def main (IO Unit)
   (() (putStrLn "Test suite not yet implemented")))

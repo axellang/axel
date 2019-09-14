@@ -1,6 +1,5 @@
 import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
-import Quux
 import Foo
 import Bar(foo,bar,Baz(baz))
 import qualified Bar as Baz

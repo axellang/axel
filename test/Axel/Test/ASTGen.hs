@@ -189,7 +189,6 @@ genStatement =
     , AST.STypeclassInstance <$> genTypeclassInstance
     , AST.STypeSignature <$> genTypeSignature
     , AST.STypeSynonym <$> genTypeSynonym
-    , AST.SUnrestrictedImport Nothing <$> genIdentifier
     ]
     [ AST.STopLevel <$> genTopLevel
     , AST.SFunctionDefinition <$> genFunctionDefinition

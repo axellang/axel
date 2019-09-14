@@ -1,4 +1,3 @@
-(importUnrestricted Quux)
 (import Foo all)
 (import Bar (foo bar (Baz baz)))
 (importq Bar Baz all)

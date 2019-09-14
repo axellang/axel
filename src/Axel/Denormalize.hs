@@ -15,7 +15,7 @@ import Axel.AST
           SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
           SQualifiedImport, SRawStatement, SRestrictedImport, STopLevel,
           STypeSignature, STypeSynonym, STypeclassDefinition,
-          STypeclassInstance, SUnrestrictedImport)
+          STypeclassInstance)
   , TopLevel(TopLevel)
   , TypeDefinition(ProperType, TypeConstructor)
   , alias
@@ -299,11 +299,4 @@ denormalizeStatement (STypeSynonym typeSynonym) =
         [ Parse.Symbol ann' "type"
         , denormalizeExpression (typeSynonym ^. alias)
         , denormalizeExpression (typeSynonym ^. definition)
-        ]
-denormalizeStatement stmt@(SUnrestrictedImport _ identifier) =
-  let ann' = getAnn' stmt
-   in Parse.SExpression
-        ann'
-        [ Parse.Symbol ann' "importUnrestricted"
-        , Parse.Symbol ann' (T.unpack identifier)
         ]

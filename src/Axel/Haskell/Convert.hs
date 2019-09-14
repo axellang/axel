@@ -168,15 +168,13 @@ instance ToStmts HSE.ImportDecl where
                    Nothing -> unsupportedStmt stmt
             else case alias of
                    Nothing ->
-                     case importSpecListToExpr spec of
-                       AST.ImportAll _ ->
-                         AST.SUnrestrictedImport Nothing moduleId
-                       AST.ImportOnly _ imports ->
-                         AST.SRestrictedImport $
-                         AST.RestrictedImport
-                           Nothing
-                           moduleId
-                           (AST.ImportOnly Nothing imports)
+                     let importSpec =
+                           case importSpecListToExpr spec of
+                             AST.ImportAll _ -> AST.ImportAll Nothing
+                             AST.ImportOnly _ imports ->
+                               AST.ImportOnly Nothing imports
+                      in AST.SRestrictedImport $
+                         AST.RestrictedImport Nothing moduleId importSpec
                    Just _ -> unsupportedStmt stmt
     ]
     where

@@ -1,6 +1,6 @@
 (module Main)
 
-(importUnrestricted Lib)
+(import Lib all)
 
-(= main (IO Unit)
-  (() someFunc))
+(def main (IO Unit)
+ (() someFunc))

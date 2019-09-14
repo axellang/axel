@@ -256,7 +256,6 @@ data Statement ann
   | STypeclassInstance (TypeclassInstance ann)
   | STypeSignature (TypeSignature ann)
   | STypeSynonym (TypeSynonym ann)
-  | SUnrestrictedImport ann Identifier
   deriving (Data, Eq, Functor, Show)
 
 type Program ann = [Statement ann]
@@ -349,7 +348,6 @@ instance {-# OVERLAPPING #-} HasAnnotation (Statement ann) ann where
   getAnn (STypeclassInstance typeclassInstance) = getAnn typeclassInstance
   getAnn (STypeSignature typeSig) = getAnn typeSig
   getAnn (STypeSynonym typeSynonym) = getAnn typeSynonym
-  getAnn (SUnrestrictedImport ann' _) = ann'
 
 instance {-# OVERLAPPING #-} HasAnnotation (Parse.Expression ann) ann where
   getAnn :: Parse.Expression ann -> ann
@@ -405,7 +403,6 @@ instance ToHaskell SMStatement where
   toHaskell (STypeclassInstance x) = toHaskell x
   toHaskell (STypeSignature x) = toHaskell x
   toHaskell (STypeSynonym x) = toHaskell x
-  toHaskell stmt@(SUnrestrictedImport _ x) = mkHaskell stmt $ "import " <> x
 
 instance ToHaskell (TypeDefinition (Maybe SM.Expression)) where
   toHaskell :: TypeDefinition (Maybe SM.Expression) -> SM.Output
