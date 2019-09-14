@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e588bca04a035adb844f37396c03dc15163f801320af309974a14539409b7c9f
+-- hash: 3bd176f732bbb770b9959ea979b99b32f8723c2df6b2bfdaf208f8662379add4
 
 name:           axel
 version:        0.0.11
@@ -79,6 +79,7 @@ library
       Axel.Parse.Args
       Axel.Parse.AST
       Axel.Prelude
+      Axel.Pretty
       Axel.Sourcemap
       Axel.Utils.Debug
       Axel.Utils.Display
@@ -123,6 +124,7 @@ library
     , optparse-applicative
     , polysemy
     , polysemy-plugin
+    , prettyprinter
     , process
     , profunctors
     , random
@@ -177,6 +179,7 @@ executable axel
     , optparse-applicative
     , polysemy
     , polysemy-plugin
+    , prettyprinter
     , process
     , profunctors
     , random
@@ -254,6 +257,7 @@ test-suite axel-test
     , optparse-applicative
     , polysemy
     , polysemy-plugin
+    , prettyprinter
     , process
     , profunctors
     , random

@@ -15,7 +15,7 @@ import Axel.Eff.Error (Error(ConvertError), fatal)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS (writeFile)
 import qualified Axel.Parse.AST as Parse
-import Axel.Parse.AST (toAxel)
+import Axel.Pretty (prettifyProgram)
 import qualified Axel.Sourcemap as SM (Expression)
 import Axel.Utils.List (removeOut, stablyGroupAllWith, unsafeHead)
 import Axel.Utils.Tuple (flattenAnnotations, unannotated)
@@ -605,8 +605,7 @@ convertFile path newPath = do
        HSE.ParseFailed _ err -> Sem.throw $ ConvertError path (T.pack err))
   putStrLn $ "Writing " <> op FilePath newPath <> "..."
   let newContents =
-        T.unlines $
-        map toAxel $
+        prettifyProgram $
         groupFunctionDefinitions $
         flattenFunctionApplications $ toStmts parsedModule
   FS.writeFile newPath newContents

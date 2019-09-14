@@ -52,6 +52,7 @@ dependencies:
   - optparse-applicative
   - polysemy
   - polysemy-plugin
+  - prettyprinter
   - process
   - profunctors
   - random
@@ -93,7 +94,7 @@ default-extensions:
   - MultiParamTypeClasses
   - NoImplicitPrelude
   - OverloadedStrings
-  - PolyKinds
+  - PolyKinds # Required by `Polysemy.makeSem`
   - RankNTypes
   - StandaloneDeriving
   - TupleSections
