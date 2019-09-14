@@ -1,3 +1,4 @@
+{- HLINT ignore "Redundant do" -}
 {-# LANGUAGE QuasiQuotes #-}
 
 module Axel.Test.ParseSpec where
@@ -15,8 +16,6 @@ import qualified Polysemy.Error as Sem
 import Test.Tasty.Hspec
 
 import TestUtils
-
-{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 parseSingle :: Text -> Expression ()
 parseSingle = (() <$) . unsafeParseSingle Nothing

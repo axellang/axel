@@ -1,3 +1,4 @@
+{- HLINT ignore "Redundant do" -}
 module Axel.Test.MacrosSpec where
 
 import Axel.Prelude
@@ -12,8 +13,6 @@ import Data.Generics.Uniplate.Zipper
 import Test.Tasty.Hspec hiding (focus)
 
 import TestUtils
-
-{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 spec_Macros :: SpecWith ()
 spec_Macros = do

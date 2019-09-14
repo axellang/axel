@@ -1,3 +1,4 @@
+{- HLINT ignore "Redundant do" -}
 module Axel.Test.Utils.MaybeSpec where
 
 import Axel.Prelude
@@ -12,8 +13,6 @@ import Data.Generics.Uniplate.Zipper
 import qualified Data.Text as T
 
 import Test.Tasty.Hspec
-
-{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 data MockAST
   = SExp [MockAST]

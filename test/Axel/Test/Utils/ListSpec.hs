@@ -1,3 +1,4 @@
+{- HLINT ignore "Redundant do" -}
 module Axel.Test.Utils.ListSpec where
 
 import Axel.Prelude
@@ -5,8 +6,6 @@ import Axel.Prelude
 import Axel.Utils.List
 
 import Test.Tasty.Hspec
-
-{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 spec_List :: SpecWith ()
 spec_List = do

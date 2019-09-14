@@ -1,3 +1,4 @@
+{- HLINT ignore "Redundant do" -}
 module Axel.Test.Eff.ConsoleSpec where
 
 import Axel.Prelude
@@ -11,8 +12,6 @@ import qualified Polysemy.Error as Sem
 import Test.Tasty.Hspec
 
 import TestUtils
-
-{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 spec_Console :: SpecWith ()
 spec_Console =

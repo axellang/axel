@@ -1,3 +1,4 @@
+{- HLINT ignore "Avoid restricted module" -}
 module Axel.Utils.Debug where
 
 import Axel.Prelude
@@ -5,9 +6,6 @@ import Axel.Prelude
 import qualified Data.Text as T
 
 import Debug.Trace (trace, traceShow)
-
-{-# ANN module ("HLint: ignore Avoid restricted module" :: String)
-        #-}
 
 unsafeTee :: Text -> Text
 unsafeTee x = trace (T.unpack x) x

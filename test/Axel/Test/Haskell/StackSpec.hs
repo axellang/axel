@@ -1,3 +1,4 @@
+{- HLINT ignore "Redundant do" -}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
@@ -25,8 +26,6 @@ import System.Exit
 import Test.Tasty.Hspec
 
 import TestUtils
-
-{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
 
 spec_Stack :: SpecWith ()
 spec_Stack = do
@@ -106,7 +105,7 @@ spec_Stack = do
             fsState ^. Mock.fsCurrentDirectory `shouldBe` FilePath "/"
             fsState ^. Mock.fsRoot . at (FilePath "newProject") . _Just .
               Mock.fsPath `shouldBe`
-              (FilePath "newProject")
+              FilePath "newProject"
       case Sem.run . Sem.runError @Error . Sem.runError @Text .
            Mock.runFileSystem origFSState .
            Mock.runProcess origProcState $

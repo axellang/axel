@@ -1,3 +1,4 @@
+{- HLINT ignore "Avoid restricted function" -}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -13,10 +14,6 @@ import qualified Data.Text as T
 import qualified Data.Time as Time
 
 import qualified Polysemy as Sem
-
-{-# ANN module
-          ("HLint: ignore Avoid restricted function" :: String)
-        #-}
 
 data Time m a where
   GetCurrentTime :: Time m Time.UTCTime
