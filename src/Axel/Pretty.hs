@@ -64,6 +64,12 @@ privilegedFormToAxelPretty (Symbol _ "if":bindings:rest) =
   "if" <+> sexp (toAxelPretty bindings : map toAxelPretty rest)
 privilegedFormToAxelPretty (Symbol _ "case":bindings:rest) =
   "case" <+> sexp (toAxelPretty bindings : map toAxelPretty rest)
+privilegedFormToAxelPretty (Symbol _ "import":name:rest) =
+  "import" <+> sexp (toAxelPretty name : map toAxelPretty rest)
+privilegedFormToAxelPretty (Symbol _ "importq":name:rest) =
+  "importq" <+> sexp (toAxelPretty name : map toAxelPretty rest)
+privilegedFormToAxelPretty (Symbol _ "importm":name:rest) =
+  "importm" <+> sexp (toAxelPretty name : map toAxelPretty rest)
 privilegedFormToAxelPretty xs = sexp $ map toAxelPretty xs
 
 toAxelPretty :: Expression ann -> P.Doc a
