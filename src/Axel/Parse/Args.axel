@@ -1,74 +1,84 @@
 (module Axel.Parse.Args)
 
 (import Axel.Prelude all)
-
 (import Control.Applicative (<**>))
-
 (import Data.Foldable (asum))
 (import Data.Semigroup (<>))
 (importq Data.Text T all)
+(import Options.Applicative (Parser CommandFields
+                                    Mod
+                                    ParserInfo
+                                    argument
+                                    command
+                                    fullDesc
+                                    helper
+                                    hsubparser
+                                    info
+                                    metavar
+                                    progDesc
+                                    str))
 
-(import Options.Applicative (Parser ParserInfo argument command fullDesc helper hsubparser info metavar progDesc str))
+(data FileCommand (ConvertFile FilePath)
+                  (RunFile FilePath)
+                  (FormatFile FilePath))
 
-(data FileCommand
-      (ConvertFile FilePath)
-      (RunFile FilePath)
-      (FormatFile FilePath))
+(data ProjectCommand (RunProject))
 
-(data ProjectCommand
-      (RunProject))
-
-(data Command
-      (FileCommand FileCommand)
-      (ProjectCommand ProjectCommand)
-      (Version))
+(data Command (FileCommand FileCommand)
+              (ProjectCommand ProjectCommand)
+              (Version))
 
 (def experimental {String -> String}
      (() (<> "(EXPERIMENTAL) ")))
 
+(def command' {String -> {(ParserInfo a) -> (Parser a)}}
+     ((name parserInfo)
+      (hsubparser {(command name parserInfo) <> (metavar name)})))
+
 (def fileCommandParser (Parser FileCommand)
-     (() (hsubparser (mconcat [convertFileCommand formatFileCommand runFileCommand]))
+     (()
+      (asum
+       [convertFileCommand formatFileCommand runFileCommand])
       (= convertFileCommand ()
-         (command "convert"
-                  (filePathParser ConvertFile
-                                  (experimental "Convert a Haskell file to Axel"))))
+         (command' "convert"
+                   (filePathParser
+                    ConvertFile
+                    (experimental "Convert a Haskell file to Axel"))))
       (= runFileCommand ()
-         (command "run"
-                  (filePathParser RunFile
-                                  "Transpile and run an Axel file")))
+         (command'
+          "run"
+          (filePathParser RunFile "Transpile and run an Axel file")))
       (= formatFileCommand ()
-         (command "format"
-                  (filePathParser FormatFile
-                                  "Format an Axel file")))
+         (command' "format"
+                   (filePathParser FormatFile "Format an Axel file")))
       (= filePathParser (ctor desc)
-         (info {{ctor . {FilePath . T.pack}} <$> (argument str (metavar "FILE"))}
-               (progDesc desc)))))
+         (info
+          {{ctor . {FilePath . T.pack}} <$>
+          (argument str (metavar "FILE"))}
+          (progDesc desc)))))
 
 (def projectCommandParser (Parser ProjectCommand)
-     (() (hsubparser (mconcat [runProjectCommand]))
+     (()
+      (asum [runProjectCommand])
       (= runProjectCommand ()
-         (command "run"
-                  (info (pure RunProject)
-                        (progDesc "Build and run the project"))))))
+         (command' "run" (info (pure RunProject)
+                               (progDesc "Build and run the project"))))))
 
 (def commandParserInfo (ParserInfo Command)
-     (() (let ((subparsers (asum [fileCommand projectCommand versionCommand])))
-           (info {subparsers <**> helper} fullDesc))
+     (()
+      (let ((subparsers
+             (asum [fileCommand projectCommand versionCommand])))
+        (info {subparsers <**> helper} fullDesc))
       (= fileCommand ()
-         (hsubparser {(command "file"
-                               (info {FileCommand <$> fileCommandParser}
-                                     (progDesc "Run file-specific commands")))
-                     <>
-                     (metavar "file")}))
+          (command' "file"
+                    (info {FileCommand <$> fileCommandParser}
+                          (progDesc "Run file-specific commands"))))
       (= projectCommand ()
-         (hsubparser {(command "project"
-                               (info {ProjectCommand <$> projectCommandParser}
-                                     (progDesc "Run project-wide commands")))
-                     <>
-                     (metavar "project")}))
+          (command' "project"
+                   (info {ProjectCommand <$> projectCommandParser}
+                         (progDesc "Run project-wide commands"))))
       (= versionCommand ()
-         (hsubparser {(command "version"
-                               (info (pure Version)
-                                     (progDesc "Display the version of the Axel compiler")))
-                     <>
-                     (metavar "version")}))))
+          (command'
+           "version"
+           (info (pure Version)
+                 (progDesc "Display the version of the Axel compiler"))))))
