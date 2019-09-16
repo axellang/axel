@@ -22,7 +22,7 @@
                   (RunFile FilePath)
                   (FormatFile FilePath))
 
-(data ProjectCommand (FormatProject) (RunProject))
+(data ProjectCommand (ConvertProject) (FormatProject) (RunProject))
 
 (data Command (FileCommand FileCommand)
               (ProjectCommand ProjectCommand)
@@ -58,7 +58,11 @@
 
 (def projectCommandParser (Parser ProjectCommand)
      (()
-      (asum [formatProjectCommand runProjectCommand])
+      (asum [convertProjectCommand formatProjectCommand runProjectCommand])
+      (= convertProjectCommand ()
+         (command'
+          "convert"
+          (info (pure ConvertProject) (progDesc "Convert the Haskell project to Axel"))))
       (= formatProjectCommand ()
          (command'
           "format"

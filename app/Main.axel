@@ -7,13 +7,13 @@
 (import Axel.Eff.Ghci (withGhci))
 (import Axel.Haskell.File
         (convertFileInPlace formatFileInPlace transpileFileInPlace))
-(import Axel.Haskell.Project (buildProject formatProject runProject))
+(import Axel.Haskell.Project (buildProject convertProject formatProject runProject))
 (import Axel.Haskell.Stack (axelStackageVersion))
 (importq Axel.Parse.AST AST all)
 (import Axel.Parse.Args
         ((Command FileCommand ProjectCommand Version)
          (FileCommand ConvertFile RunFile FormatFile)
-         (ProjectCommand FormatProject RunProject)
+         (ProjectCommand ConvertProject FormatProject RunProject)
          commandParserInfo))
 (import Control.Monad (void))
 (importq Data.Map Map (empty))
@@ -33,7 +33,8 @@
               (Sem.evalState Map.empty
                              (withGhci (transpileFileInPlace filePath)))))))
      (((ProjectCommand projectCommand))
-      (case projectCommand (FormatProject formatProject)
+      (case projectCommand (ConvertProject convertProject)
+                           (FormatProject formatProject)
                            (RunProject (>> buildProject runProject))))
      (((Version))
       (putStrLn (<> "Axel version " axelStackageVersion))))

@@ -21,7 +21,8 @@ import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (getResourcePath, newProjectTemplate)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import Axel.Haskell.File
-  ( formatFileInPlace
+  ( convertFileInPlace
+  , formatFileInPlace
   , readModuleInfo
   , transpileFileInPlace
   )
@@ -69,21 +70,31 @@ newProject projectName = do
     , FilePath "test" </> FilePath "Spec"
     ]
 
-getProjectAxelFiles ::
-     (Sem.Member Effs.FileSystem effs) => Sem.Sem effs [FilePath]
-getProjectAxelFiles = do
+data ProjectFileType
+  = Axel
+  | Backend
+
+getProjectFiles ::
+     (Sem.Member Effs.FileSystem effs)
+  => ProjectFileType
+  -> Sem.Sem effs [FilePath]
+getProjectFiles fileType = do
   files <-
     concatMapM
       getDirectoryContentsRec
       [FilePath "app", FilePath "src", FilePath "test"]
-  pure $ filter (\filePath -> ".axel" `T.isSuffixOf` op FilePath filePath) files
+  let ext =
+        case fileType of
+          Axel -> ".axel"
+          Backend -> ".hs"
+  pure $ filter (\filePath -> ext `T.isSuffixOf` op FilePath filePath) files
 
 transpileProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
   => Sem.Sem effs ModuleInfo
 transpileProject =
   Ghci.withGhci $ do
-    axelFiles <- getProjectAxelFiles
+    axelFiles <- getProjectFiles Axel
     initialModuleInfo <- readModuleInfo axelFiles
     (moduleInfo, _) <-
       Sem.runState initialModuleInfo $ mapM transpileFileInPlace axelFiles
@@ -97,6 +108,11 @@ buildProject = do
   transpiledFiles <- transpileProject
   buildStackProject transpiledFiles projectPath
 
+convertProject ::
+     (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
+  => Sem.Sem effs ()
+convertProject = getProjectFiles Backend >>= void . traverse convertFileInPlace
+
 runProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
   => Sem.Sem effs ()
@@ -105,4 +121,4 @@ runProject = getCurrentDirectory >>= runStackProject
 formatProject ::
      (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error] effs)
   => Sem.Sem effs ()
-formatProject = getProjectAxelFiles >>= void . traverse formatFileInPlace
+formatProject = getProjectFiles Axel >>= void . traverse formatFileInPlace

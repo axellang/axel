@@ -112,9 +112,7 @@ transpileSource filePath source =
      filePath)
 
 convertFileInPlace ::
-     ( Sem.Member (Sem.Embed IO) effs
-     , Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem] effs
-     )
+     (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error, Effs.FileSystem] effs)
   => FilePath
   -> Sem.Sem effs FilePath
 convertFileInPlace path = do

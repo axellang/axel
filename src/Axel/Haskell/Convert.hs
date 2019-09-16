@@ -13,10 +13,10 @@ import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
 import Axel.Eff.Error (Error(ConvertError), fatal)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
-import qualified Axel.Eff.FileSystem as FS (writeFile)
+import qualified Axel.Eff.FileSystem as FS
 import qualified Axel.Parse.AST as Parse
 import Axel.Pretty (prettifyProgram)
-import qualified Axel.Sourcemap as SM (Expression)
+import qualified Axel.Sourcemap as SM
 import Axel.Utils.List (removeOut, stablyGroupAllWith, unsafeHead)
 import Axel.Utils.Tuple (flattenAnnotations, unannotated)
 
@@ -31,7 +31,7 @@ import qualified Data.Text as T
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
-import qualified Data.List.NonEmpty as NE (toList)
+import qualified Data.List.NonEmpty as NE
 
 import qualified Language.Haskell.Exts as HSE
 
@@ -591,18 +591,16 @@ contextToExprs (Just (HSE.CxTuple _ assts)) = map toExpr assts
 contextToExprs (Just (HSE.CxEmpty _)) = []
 
 convertFile ::
-     ( Sem.Member (Sem.Embed IO) effs
-     , Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem] effs
-     )
+     (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error, Effs.FileSystem] effs)
   => FilePath
   -> FilePath
   -> Sem.Sem effs FilePath
 convertFile path newPath = do
+  originalContents <- FS.readFile path
   parsedModule <-
-    Sem.embed (HSE.parseFile $ T.unpack $ op FilePath path) >>=
-    (\case
-       HSE.ParseOk parsedModule -> pure parsedModule
-       HSE.ParseFailed _ err -> Sem.throw $ ConvertError path (T.pack err))
+    case HSE.parse @(HSE.Module HSE.SrcSpanInfo) (T.unpack originalContents) of
+      HSE.ParseOk parsedModule -> pure parsedModule
+      HSE.ParseFailed _ err -> Sem.throw $ ConvertError path (T.pack err)
   putStrLn $ "Writing " <> op FilePath newPath <> "..."
   let newContents =
         prettifyProgram $
