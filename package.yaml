@@ -25,7 +25,6 @@ ghc-options:
   - -optP-Wno-nonportable-include-path # https://github.com/haskell/cabal/issues/4739
   # Polysemy https://github.com/polysemy-research/polysemy#necessary-language-extensions
   - -fplugin=Polysemy.Plugin
-  - -O2
   - -flate-specialise
   - -fspecialise-aggressively
 build-tools:
@@ -34,7 +33,7 @@ build-tools:
 dependencies:
   - aeson
   - ansi-terminal
-  - base
+  - base >= 4.12 && < 4.13
   - bytestring
   - containers
   - directory

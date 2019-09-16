@@ -6,7 +6,7 @@ import Control.Applicative((<**>))
 import Data.Foldable(asum)
 import Data.Semigroup((<>))
 import qualified Data.Text as T
-import Options.Applicative(Parser,CommandFields,Mod,ParserInfo,argument,command,fullDesc,helper,hsubparser,info,metavar,progDesc,str)
+import Options.Applicative(Parser,ParserInfo,argument,command,fullDesc,helper,hsubparser,info,metavar,progDesc,str)
 data FileCommand = ConvertFile FilePath|RunFile FilePath|FormatFile FilePath
 data ProjectCommand = ConvertProject |FormatProject |RunProject 
 data Command = FileCommand FileCommand|ProjectCommand ProjectCommand|Version 

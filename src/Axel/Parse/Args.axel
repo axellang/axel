@@ -5,9 +5,7 @@
 (import Data.Foldable (asum))
 (import Data.Semigroup (<>))
 (importq Data.Text T all)
-(import Options.Applicative (Parser CommandFields
-                                    Mod
-                                    ParserInfo
+(import Options.Applicative (Parser ParserInfo
                                     argument
                                     command
                                     fullDesc
