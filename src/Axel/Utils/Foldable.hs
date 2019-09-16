@@ -11,3 +11,7 @@ intercalate sep xs = snd $ foldl go (True, mempty) xs
       , if isInit
           then x
           else acc <> sep <> x)
+
+mapWithPrev :: (Foldable f) => (Maybe a -> a -> b) -> f a -> [b]
+mapWithPrev f =
+  snd . foldr (\x (prev, acc) -> (Just x, f prev x : acc)) (Nothing, [])
