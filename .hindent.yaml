@@ -17,6 +17,7 @@ extensions:
   - KindSignatures
   - LambdaCase
   - MultiParamTypeClasses
+  - MultiWayIf
   - OverloadedStrings
   - PolyKinds
   - RankNTypes

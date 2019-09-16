@@ -59,7 +59,7 @@ parseReadMacro prefix wrapper = do
   ann SExpression (pure [Symbol Nothing (T.unpack wrapper), expr])
 
 eol :: Parser ()
-eol = P.try (void P.newline) <|> P.eof
+eol = P.try (void P.eol) <|> P.eof
 
 ignored :: Parser ()
 ignored = P.skipMany $ P.try comment <|> void P.spaceChar
@@ -171,8 +171,8 @@ parseMultiple maybeFilePath input =
   P.parse program (T.unpack $ op FilePath filePath) input
   where
     filePath = fromMaybe (FilePath "") maybeFilePath
-    program = P.some (ignored *> expression <* ignored) <* eol
-    throwErr = Sem.throw . ParseError filePath . showText
+    program = P.some (ignored *> expression <* ignored) <* P.eof
+    throwErr = Sem.throw . ParseError filePath . T.pack . P.errorBundlePretty
     expandQuasiquotes =
       map $
       bottomUpFmapSplicing

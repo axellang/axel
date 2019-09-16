@@ -24,8 +24,9 @@ import qualified Axel.Eff.Restartable as Effs (Restartable)
 import Axel.Haskell.Convert (convertFile)
 import Axel.Macros (handleFunctionApplication, processProgram)
 import Axel.Normalize (normalizeStatement, withExprCtxt)
-import Axel.Parse (parseSource)
+import Axel.Parse (parseMultiple, parseSource)
 import Axel.Parse.AST (Expression(Symbol))
+import Axel.Pretty (prettifyProgram)
 import qualified Axel.Sourcemap as SM
   ( Expression
   , Output
@@ -146,3 +147,13 @@ transpileFileInPlace path = do
   let newPath = replaceExtension path "hs"
   unless alreadyCompiled $ transpileFile path newPath
   pure newPath
+
+formatFileInPlace ::
+     (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error] effs)
+  => FilePath
+  -> Sem.Sem effs ()
+formatFileInPlace path = do
+  contents <- FS.readFile path
+  program <- parseMultiple (Just path) contents
+  let prettifiedContents = prettifyProgram program
+  FS.writeFile path prettifiedContents

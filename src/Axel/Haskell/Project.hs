@@ -20,7 +20,11 @@ import qualified Axel.Eff.Log as Effs (Log)
 import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Resource (getResourcePath, newProjectTemplate)
 import qualified Axel.Eff.Resource as Effs (Resource)
-import Axel.Haskell.File (readModuleInfo, transpileFileInPlace)
+import Axel.Haskell.File
+  ( formatFileInPlace
+  , readModuleInfo
+  , transpileFileInPlace
+  )
 import Axel.Haskell.Stack
   ( addStackDependency
   , axelStackageId
@@ -30,8 +34,10 @@ import Axel.Haskell.Stack
   )
 import Axel.Sourcemap (ModuleInfo)
 import Axel.Utils.FilePath ((<.>), (</>))
+import Axel.Utils.Monad (concatMapM)
 
 import Control.Lens (op)
+import Control.Monad (void)
 
 import qualified Data.Text as T
 
@@ -63,20 +69,21 @@ newProject projectName = do
     , FilePath "test" </> FilePath "Spec"
     ]
 
+getProjectAxelFiles ::
+     (Sem.Member Effs.FileSystem effs) => Sem.Sem effs [FilePath]
+getProjectAxelFiles = do
+  files <-
+    concatMapM
+      getDirectoryContentsRec
+      [FilePath "app", FilePath "src", FilePath "test"]
+  pure $ filter (\filePath -> ".axel" `T.isSuffixOf` op FilePath filePath) files
+
 transpileProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
   => Sem.Sem effs ModuleInfo
 transpileProject =
   Ghci.withGhci $ do
-    files <-
-      concat <$>
-      mapM
-        getDirectoryContentsRec
-        [FilePath "app", FilePath "src", FilePath "test"]
-    let axelFiles =
-          filter
-            (\filePath -> ".axel" `T.isSuffixOf` op FilePath filePath)
-            files
+    axelFiles <- getProjectAxelFiles
     initialModuleInfo <- readModuleInfo axelFiles
     (moduleInfo, _) <-
       Sem.runState initialModuleInfo $ mapM transpileFileInPlace axelFiles
@@ -94,3 +101,8 @@ runProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
   => Sem.Sem effs ()
 runProject = getCurrentDirectory >>= runStackProject
+
+formatProject ::
+     (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error] effs)
+  => Sem.Sem effs ()
+formatProject = getProjectAxelFiles >>= void . traverse formatFileInPlace

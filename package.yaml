@@ -92,6 +92,7 @@ default-extensions:
   - KindSignatures
   - LambdaCase
   - MultiParamTypeClasses
+  - MultiWayIf
   - NoImplicitPrelude
   - OverloadedStrings
   - PolyKinds # Required by `Polysemy.makeSem`

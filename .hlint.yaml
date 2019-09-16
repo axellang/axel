@@ -28,6 +28,7 @@
   - -XKindSignatures
   - -XLambdaCase
   - -XMultiParamTypeClasses
+  - -XMultiWayIf
   - -XNoImplicitPrelude
   - -XOverloadedStrings
   - -XPolyKinds

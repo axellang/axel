@@ -19,18 +19,20 @@ render :: P.Doc a -> Text
 render = P.renderStrict . P.layoutSmart (P.LayoutOptions P.Unbounded)
 
 maximumExpressionLength :: Int
-maximumExpressionLength = 28
+maximumExpressionLength = 80
 
 sexp :: [Expression ann] -> P.Doc a
 sexp [] = mempty
 sexp [x] = toAxelPretty x
 sexp (x:xs) =
-  let align f = toAxelPretty x <+> f (map toAxelPretty xs)
-      oneLiner = align P.hsep
-      multiLiner = align (P.align . P.vsep)
-   in if T.length (render oneLiner) > maximumExpressionLength
-        then multiLiner
-        else oneLiner
+  let align cons = toAxelPretty x `cons` map toAxelPretty xs
+      oneLiner = align (\y ys -> y <+> P.hsep ys)
+      balanced = align (\y ys -> y <+> P.align (P.vsep ys))
+      multiLiner = align (\y ys -> P.align (P.vsep (y : ys)))
+      shortEnough doc = T.length (render doc) <= maximumExpressionLength
+   in if | shortEnough oneLiner -> oneLiner
+         | shortEnough balanced -> balanced
+         | otherwise -> multiLiner
 
 toAxelPretty :: Expression ann -> P.Doc a
 toAxelPretty (LiteralChar _ x) = "#\\" <> P.pretty x

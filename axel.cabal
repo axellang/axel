@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3bd176f732bbb770b9959ea979b99b32f8723c2df6b2bfdaf208f8662379add4
+-- hash: 1a081e352686653c22acf2b4fe2222d390f6f14d7be24466e714125b3d4420f1
 
 name:           axel
 version:        0.0.11
@@ -98,7 +98,7 @@ library
       Paths_axel
   hs-source-dirs:
       src
-  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
+  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
   ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -O2 -flate-specialise -fspecialise-aggressively
   build-tool-depends:
       hpack:hpack
@@ -152,7 +152,7 @@ executable axel
       Paths_axel
   hs-source-dirs:
       app
-  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
+  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
   ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -O2 -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       hpack:hpack
@@ -230,7 +230,7 @@ test-suite axel-test
       Paths_axel
   hs-source-dirs:
       test
-  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
+  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
   ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -O2 -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       hpack:hpack
