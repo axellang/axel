@@ -22,7 +22,8 @@
                   (RunFile FilePath)
                   (FormatFile FilePath))
 
-(data ProjectCommand (RunProject))
+(data ProjectCommand (FormatProject)
+                     (RunProject))
 
 (data Command (FileCommand FileCommand)
               (ProjectCommand ProjectCommand)
@@ -59,7 +60,10 @@
 
 (def projectCommandParser (Parser ProjectCommand)
      (()
-      (asum [runProjectCommand])
+      (asum [formatProjectCommand runProjectCommand])
+      (= formatProjectCommand ()
+         (command' "format" (info (pure FormatProject)
+                                  (progDesc "Format the project"))))
       (= runProjectCommand ()
          (command' "run" (info (pure RunProject)
                                (progDesc "Build and run the project"))))))
