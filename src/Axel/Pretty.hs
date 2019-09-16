@@ -5,9 +5,9 @@ import Axel.Prelude
 import Axel.Parse.AST
 import Axel.Utils.Text (handleCharEscapes)
 
-import Control.Lens (under)
+import Control.Lens (ala, under)
 
-import Data.Semigroup ((<>))
+import Data.Semigroup (Max(Max), (<>))
 import qualified Data.Text as T
 import Data.Text.Lens (unpacked)
 
@@ -19,9 +19,10 @@ render :: P.Doc a -> Text
 render = P.renderStrict . P.layoutSmart (P.LayoutOptions P.Unbounded)
 
 maximumExpressionLength :: Int
-maximumExpressionLength = 80
+maximumExpressionLength = 60
 
-sexp :: [Expression ann] -> P.Doc a
+columnWidth :: Text -> Int
+columnWidth = ala Max foldMap . map T.length . T.lines
 sexp [] = mempty
 sexp [x] = toAxelPretty x
 sexp (x:xs) =
@@ -29,7 +30,7 @@ sexp (x:xs) =
       oneLiner = align (\y ys -> y <+> P.hsep ys)
       balanced = align (\y ys -> y <+> P.align (P.vsep ys))
       multiLiner = align (\y ys -> P.align (P.vsep (y : ys)))
-      shortEnough doc = T.length (render doc) <= maximumExpressionLength
+      shortEnough doc = columnWidth (render doc) <= maximumExpressionLength
    in if | shortEnough oneLiner -> oneLiner
          | shortEnough balanced -> balanced
          | otherwise -> multiLiner
