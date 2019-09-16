@@ -56,11 +56,13 @@
 
 (def projectCommandParser (Parser ProjectCommand)
      (()
-      (asum [convertProjectCommand formatProjectCommand runProjectCommand])
+      (asum
+       [convertProjectCommand formatProjectCommand runProjectCommand])
       (= convertProjectCommand ()
          (command'
           "convert"
-          (info (pure ConvertProject) (progDesc "Convert the Haskell project to Axel"))))
+          (info (pure ConvertProject)
+                (progDesc "Convert the Haskell project to Axel"))))
       (= formatProjectCommand ()
          (command'
           "format"
