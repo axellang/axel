@@ -186,7 +186,7 @@ denormalizeStatement (SFunctionDefinition fnDef) =
       Parse.Symbol ann' (T.unpack $ fnDef ^. name) :
       Parse.SExpression ann' (map denormalizeExpression (fnDef ^. arguments)) :
       denormalizeExpression (fnDef ^. body) :
-      map (denormalizeStatement . SFunctionDefinition) (fnDef ^. whereBindings)
+      map denormalizeStatement (fnDef ^. whereBindings)
 denormalizeStatement (SMacroDefinition macroDef) =
   let ann' = getAnn' macroDef
    in Parse.SExpression ann' $ Parse.Symbol ann' "=macro" :
@@ -195,9 +195,7 @@ denormalizeStatement (SMacroDefinition macroDef) =
         ann'
         (map denormalizeExpression (macroDef ^. functionDefinition . arguments)) :
       denormalizeExpression (macroDef ^. functionDefinition . body) :
-      map
-        (denormalizeStatement . SFunctionDefinition)
-        (macroDef ^. functionDefinition . whereBindings)
+      map denormalizeStatement (macroDef ^. functionDefinition . whereBindings)
 denormalizeStatement (SMacroImport macroImport) =
   let ann' = getAnn' macroImport
    in Parse.SExpression

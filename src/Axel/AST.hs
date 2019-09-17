@@ -104,7 +104,7 @@ data FunctionDefinition ann =
     , _name :: Identifier
     , _arguments :: [Expression ann]
     , _body :: Expression ann
-    , _whereBindings :: [FunctionDefinition ann]
+    , _whereBindings :: [Statement ann]
     }
   deriving (Data, Eq, Functor, Show)
 

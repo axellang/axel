@@ -180,7 +180,8 @@ normalizeFunctionDefinition expr fnName arguments body whereDefs =
   traverse
     (\x ->
        normalizeStatement x >>= \case
-         SFunctionDefinition funDef -> pure funDef
+         stmt@(SFunctionDefinition _) -> pure stmt
+         stmt@(STypeSignature _) -> pure stmt
          _ -> pushCtxt x $ throwNormalizeError "Invalid where binding!")
     whereDefs
 

@@ -308,17 +308,10 @@ toFunApp (AST.EFunctionApplication funApp) = funApp
 toFunApp (AST.EIdentifier _ sym) =
   AST.FunctionApplication Nothing (AST.EIdentifier Nothing sym) []
 
-bindsToFunDefs ::
-     Maybe (HSE.Binds a) -> [AST.FunctionDefinition (Maybe SM.Expression)]
-bindsToFunDefs Nothing = []
-bindsToFunDefs (Just (HSE.BDecls _ decls)) =
-  map
-    (\decl ->
-       case toStmts decl of
-         [AST.SFunctionDefinition funDef] -> funDef)
-    decls
-bindsToFunDefs (Just HSE.IPBinds {}) =
-  error "Implicit parameters not supported!"
+bindsToStmts :: Maybe (HSE.Binds a) -> [AST.SMStatement]
+bindsToStmts Nothing = []
+bindsToStmts (Just (HSE.BDecls _ decls)) = concatMap toStmts decls
+bindsToStmts (Just HSE.IPBinds {}) = error "Implicit parameters not supported!"
 
 altToClause ::
      HSE.Alt a
@@ -456,7 +449,7 @@ instance ToStmts HSE.Match where
         (toId fn)
         (map toExpr pats)
         (toExpr body)
-        (bindsToFunDefs whereBinds)
+        (bindsToStmts whereBinds)
     ]
   toStmts (HSE.InfixMatch _ pat fn pats body whereBinds) =
     [ AST.SFunctionDefinition $
@@ -465,7 +458,7 @@ instance ToStmts HSE.Match where
         (toId fn)
         (toExpr pat : map toExpr pats)
         (toExpr body)
-        (bindsToFunDefs whereBinds)
+        (bindsToStmts whereBinds)
     ]
 
 instance ToExpr HSE.InstHead where
@@ -543,7 +536,7 @@ instance ToStmts HSE.Decl where
         (toId fn)
         []
         (toExpr body)
-        (bindsToFunDefs whereBinds)
+        (bindsToStmts whereBinds)
     ]
   toStmts stmt@HSE.ForImp {} = [unsupportedStmt stmt]
   toStmts stmt@HSE.ForExp {} = [unsupportedStmt stmt]
@@ -629,9 +622,7 @@ groupFunctionDefinitions =
       extractTySig = unannotated %~ removeOut (is AST._STypeSignature)
       transformFnDef (AST.SFunctionDefinition fnDef) =
         let whereBindings =
-              case map
-                     (denormalizeStatement . AST.SFunctionDefinition)
-                     (fnDef ^. AST.whereBindings) of
+              case map denormalizeStatement (fnDef ^. AST.whereBindings) of
                 [] -> []
                 xs -> [Parse.SExpression Nothing xs]
          in Parse.SExpression Nothing $
