@@ -37,7 +37,7 @@
      (()
       (asum [convertFileCommand formatFileCommand runFileCommand])
       (= convertFileCommand ()
-         (command' "convertTemp"
+         (command' "convert"
                    (filePathParser
                     ConvertFile
                     (experimental "Convert a Haskell file to Axel"))))

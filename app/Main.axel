@@ -1,7 +1,5 @@
 (module Main)
 
-(importq Prelude GHCPrelude all)
-(importq Axel.Parse.AST AST all)
 (import Axel.Eff.App (AppEffs runApp))
 (import Axel.Eff.Console (putStrLn))
 (import Axel.Eff.Ghci (withStackGhci))
@@ -30,13 +28,13 @@
             ((ConvertFile filePath) (void (convertFileInPlace filePath)))
             ((FormatFile filePath) (formatFileInPlace filePath))
             ((RunFile filePath)
-             (void
-              (Sem.evalState Map.empty
-                             (withStackGhci (transpileFileInPlace filePath)))))))
+             (void (Sem.evalState
+                    Map.empty
+                    (withStackGhci (transpileFileInPlace filePath)))))))
      (((ProjectCommand projectCommand))
-      (case projectCommand (ConvertProject convertProject)
-                           (FormatProject formatProject)
-                           (RunProject (>> buildProject runProject))))
+      (case projectCommand ((ConvertProject) convertProject)
+                           ((FormatProject) formatProject)
+                           ((RunProject) (>> buildProject runProject))))
      (((Version))
       (putStrLn (<> "Axel version " axelStackageVersion))))
 

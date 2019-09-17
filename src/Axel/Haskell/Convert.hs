@@ -26,6 +26,7 @@ import Control.Lens.Extras (is)
 import Control.Lens.Operators ((%~), (^.))
 
 import Data.Data.Lens (biplate, uniplate)
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 
 import qualified Polysemy as Sem
@@ -644,17 +645,18 @@ groupFunctionDefinitions =
       map (flattenAnnotations . extractTySig . (unannotated %~ NE.toList)) >>>
       concatMap
         (\(stmts, (tySigs, maybeFnName)) ->
-           case maybeFnName of
-             Nothing -> map denormalizeStatement stmts
-             Just fnName ->
-               case tySigs of
-                 [AST.STypeSignature tySig] ->
+           fromMaybe (map denormalizeStatement stmts) $ do
+             fnName <- maybeFnName
+             case tySigs of
+               [] -> Nothing
+               [AST.STypeSignature tySig] ->
+                 Just
                    [ Parse.SExpression Nothing $
                      Parse.Symbol Nothing "def" :
                      Parse.Symbol Nothing (T.unpack fnName) :
                      denormalizeExpression (tySig ^. AST.typeDefinition) :
                      map transformFnDef stmts
                    ]
-                 _ ->
-                   error $
-                   "Multiple type signatures found for: `" <> fnName <> "`!")
+               _ ->
+                 error $
+                 "Multiple type signatures found for: `" <> fnName <> "`!")
