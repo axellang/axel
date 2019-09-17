@@ -42,7 +42,7 @@ import Axel.Eff.Log (logStrLn)
 import qualified Axel.Eff.Process as Effs (Process)
 import qualified Axel.Eff.Restartable as Effs (Restartable)
 import Axel.Eff.Restartable (restart, runRestartable)
-import Axel.Haskell.Error (processErrors)
+import Axel.Haskell.Error (processStackOutputLine)
 import Axel.Haskell.Macros (hygenisizeMacroName)
 import Axel.Normalize
   ( normalizeExpression
@@ -66,7 +66,6 @@ import Axel.Sourcemap
 import qualified Axel.Sourcemap as SM
 import Axel.Utils.FilePath ((<.>), (</>), replaceExtension, takeFileName)
 import Axel.Utils.List (filterMap, filterMapOut, head')
-import Axel.Utils.Maybe (whenMaybe)
 import Axel.Utils.Recursion (bottomUpFmap, zipperTopDownTraverse)
 import Axel.Utils.Zipper (unsafeLeft, unsafeUp)
 
@@ -74,11 +73,13 @@ import Control.Lens (_1, op, snoc)
 import Control.Lens.Extras (is)
 import Control.Lens.Operators ((%~), (^.), (^?))
 import Control.Monad (guard, unless, when)
+import Control.Monad.Extra (whenJust)
 
 import Data.Function (on)
 import Data.Generics.Uniplate.Zipper (Zipper, fromZipper, hole, replaceHole, up)
 import Data.Hashable (hash)
 import Data.List (intersperse, nub)
+import Data.List.Extra (mconcatMap)
 import Data.List.Split (split, whenElt)
 import qualified Data.Map as M
 import Data.Maybe (isNothing)
@@ -313,7 +314,7 @@ addStatementToMacroEnvironment expandFile newExpr = do
             Just $ qualifiedImport ^. moduleName
           SMacroImport macroImport -> Just $ macroImport ^. moduleName
           _ -> Nothing
-  whenMaybe maybeDependencyName $
+  whenJust maybeDependencyName $
     ensureCompiledDependency @fileExpanderEffs expandFile
   Sem.modify @[SMStatement] (`snoc` stmt)
 
@@ -560,7 +561,8 @@ evalMacro originalCallAnn macroName args scaffoldProgram macroDefAndEnvProgram =
       if any ("*** Exception:" `T.isPrefixOf`) (T.lines result)
         then throwMacroError result
         else pure (resultFile, result)
-    else throwMacroError (processErrors moduleInfo $ T.unlines loadResult)
+    else throwMacroError $ mconcat $
+         mconcatMap (processStackOutputLine moduleInfo) loadResult
   where
     macroDefAndEnv = SM.raw macroDefAndEnvProgram
     scaffold = SM.raw scaffoldProgram

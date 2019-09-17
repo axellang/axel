@@ -35,10 +35,10 @@ import Axel.Haskell.Stack
   )
 import Axel.Sourcemap (ModuleInfo)
 import Axel.Utils.FilePath ((<.>), (</>))
-import Axel.Utils.Monad (concatMapM)
 
 import Control.Lens (op)
 import Control.Monad (void)
+import Control.Monad.Extra (concatMapM)
 
 import qualified Data.Text as T
 
@@ -93,7 +93,7 @@ transpileProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
   => Sem.Sem effs ModuleInfo
 transpileProject =
-  Ghci.withGhci $ do
+  Ghci.withStackGhci $ do
     axelFiles <- getProjectFiles Axel
     initialModuleInfo <- readModuleInfo axelFiles
     (moduleInfo, _) <-

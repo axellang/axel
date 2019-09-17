@@ -12,15 +12,19 @@ import Axel.Eff.Error (Error(ProjectError), fatal)
 import qualified Axel.Eff.FileSystem as FS
 import qualified Axel.Eff.FileSystem as Effs
 import Axel.Eff.Process
-  ( ProcessRunner
-  , StreamSpecification(CreateStreams, InheritStreams)
-  , execProcess
+  ( createIndependentProcess
+  , handleGetLine
+  , handleIsAtEnd
+  , passthroughProcess
+  , readProcess
+  , waitOnProcess
   )
 import qualified Axel.Eff.Process as Effs
-import Axel.Haskell.Error (processErrors)
+import Axel.Haskell.Error (processStackOutputLine)
 import Axel.Parse (Parser)
 import Axel.Sourcemap (ModuleInfo)
 import Axel.Utils.FilePath (takeFileName)
+import Axel.Utils.Monad (whileM)
 
 import Control.Lens (op)
 import Control.Lens.Operators ((%~))
@@ -70,7 +74,7 @@ getStackProjectTargets ::
   -> Sem.Sem effs [Target]
 getStackProjectTargets projectPath =
   FS.withCurrentDirectory projectPath $ do
-    (_, _, stderr) <- execProcess @'CreateStreams "stack ide targets" ""
+    (_, _, stderr) <- readProcess "stack ide targets"
     pure $ T.lines stderr
 
 addStackDependency ::
@@ -97,27 +101,24 @@ buildStackProject ::
   -> ProjectPath
   -> Sem.Sem effs ()
 buildStackProject moduleInfo projectPath = do
-  putStrLn ("Building " <> op FilePath (takeFileName projectPath) <> "...")
-  result <-
-    FS.withCurrentDirectory projectPath $
-    execProcess @'CreateStreams "stack build --ghc-options='-ddump-json'" ""
-  case result of
-    (ExitSuccess, _, _) -> pure ()
-    (ExitFailure _, _, stderr) ->
-      Sem.throw $
-      ProjectError
-        ("Project failed to build.\n\n" <> processErrors moduleInfo stderr)
+  FS.withCurrentDirectory projectPath $ do
+    putStrLn ("Building " <> op FilePath (takeFileName projectPath) <> "...")
+    (_, _, stderrHandle, processHandle) <-
+      createIndependentProcess "stack build --ghc-options='-ddump-json'"
+    whileM (not <$> handleIsAtEnd stderrHandle) $ do
+      stackOutputLine <- handleGetLine stderrHandle
+      putStrLn $ T.unlines $ processStackOutputLine moduleInfo stackOutputLine
+    exitCode <- waitOnProcess processHandle
+    case exitCode of
+      ExitSuccess -> pure ()
+      ExitFailure _ -> Sem.throw $ ProjectError "Project failed to build."
 
 createStackProject ::
      (Sem.Members '[ Effs.FileSystem, Effs.Process] effs)
   => Text
   -> Sem.Sem effs ()
 createStackProject projectName = do
-  void $
-    execProcess
-      @'CreateStreams
-      ("stack new " <> projectName <> " new-template")
-      ""
+  void $ readProcess ("stack new " <> projectName <> " new-template")
   setStackageResolver (FilePath projectName) stackageResolverWithAxel
 
 runStackProject ::
@@ -129,7 +130,7 @@ runStackProject projectPath = do
   case findExeTargets targets of
     [target] -> do
       putStrLn $ "Running " <> target <> "..."
-      void $ execProcess @'InheritStreams ("stack exec " <> target)
+      void $ passthroughProcess ("stack exec " <> target)
     _ ->
       Sem.throw $ ProjectError "No executable target was unambiguously found!"
   where
@@ -151,28 +152,11 @@ setStackageResolver ::
   -> StackageResolver
   -> Sem.Sem effs ()
 setStackageResolver projectPath resolver =
-  void $ FS.withCurrentDirectory projectPath $
-  execProcess @'CreateStreams ("stack config set resolver " <> resolver) ""
+  void $ FS.withCurrentDirectory projectPath $ readProcess $
+  "stack config set resolver " <>
+  resolver
 
 includeAxelArguments :: Text
 includeAxelArguments =
   T.unwords
     ["--resolver", stackageResolverWithAxel, "--package", axelStackageId]
-
-compileFile ::
-     forall (streamSpec :: StreamSpecification) effs.
-     (Sem.Member Effs.Process effs)
-  => FilePath
-  -> ProcessRunner streamSpec (Sem.Sem effs)
-compileFile (FilePath filePath) =
-  let cmd = T.unwords ["stack", "ghc", includeAxelArguments, "--", filePath]
-   in execProcess @streamSpec @effs cmd
-
-interpretFile ::
-     forall (streamSpec :: StreamSpecification) effs.
-     (Sem.Member Effs.Process effs)
-  => FilePath
-  -> ProcessRunner streamSpec (Sem.Sem effs)
-interpretFile (FilePath filePath) =
-  let cmd = T.unwords ["stack", "runghc", includeAxelArguments, "--", filePath]
-   in execProcess @streamSpec @effs cmd

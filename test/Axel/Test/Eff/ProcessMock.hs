@@ -62,31 +62,3 @@ runProcess origProcessState = Sem.runState origProcessState . Sem.reinterpret go
   where
     go :: Process m a' -> Sem.Sem (Sem.State (ProcessState effs) ': effs) a'
     go GetArgs = Sem.gets (^. procMockArgs)
-    go (RunProcessCreatingStreams cmd stdin) = do
-      Sem.modify $ procExecutionLog %~ (|> (cmd, Just stdin))
-      Sem.gets (uncons . (^. procMockResults)) >>= \case
-        Just (ProcessResult (mockResult, fsAction), newMockResults) -> do
-          Sem.modify $ procMockResults .~ newMockResults
-          case mockResult of
-            (exitCode, Just (stdout, stderr)) ->
-              Sem.raise fsAction $> (exitCode, stdout, stderr)
-            _ ->
-              throwInterpretError
-                "RunProcess"
-                ("Wrong type for mock result: " <> showText mockResult)
-        Nothing -> throwInterpretError "RunProcess" "No mock result available"
-    go (RunProcessInheritingStreams cmd) = do
-      Sem.modify $ procExecutionLog %~ (|> (cmd, Nothing))
-      Sem.gets (uncons . (^. procMockResults)) >>= \case
-        Just (ProcessResult (mockResult, fsAction), newMockResults) -> do
-          Sem.modify $ procMockResults .~ newMockResults
-          case mockResult of
-            (exitCode, Nothing) -> Sem.raise fsAction $> exitCode
-            _ ->
-              throwInterpretError
-                "RunProcessInheritingStreams"
-                ("Wrong type for mock result: " <> showText mockResult)
-        Nothing ->
-          throwInterpretError
-            "RunProcessInheritingStreams"
-            "No mock result available"

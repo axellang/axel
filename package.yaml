@@ -37,6 +37,7 @@ dependencies:
   - bytestring
   - containers
   - directory
+  - extra
   - filepath
   - freer-simple
   - ghcid
@@ -55,7 +56,6 @@ dependencies:
   - process
   - profunctors
   - random
-  - singletons
   - split
   - tasty
   - tasty-discover

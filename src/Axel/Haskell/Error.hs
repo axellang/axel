@@ -35,11 +35,6 @@ data GhcError =
 
 makeFieldsNoPrefix ''GhcError
 
-processErrors :: ModuleInfo -> Text -> Text
-processErrors moduleInfo stackOutput =
-  T.unlines $ concatMap (processStackOutputLine moduleInfo) $
-  T.lines stackOutput
-
 processStackOutputLine :: ModuleInfo -> Text -> [Text]
 processStackOutputLine moduleInfo line =
   fromMaybe [line] (tryProcessGhcOutput moduleInfo line)

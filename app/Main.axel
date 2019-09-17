@@ -4,7 +4,7 @@
 (importq Axel.Parse.AST AST all)
 (import Axel.Eff.App (AppEffs runApp))
 (import Axel.Eff.Console (putStrLn))
-(import Axel.Eff.Ghci (withGhci))
+(import Axel.Eff.Ghci (withStackGhci))
 (import Axel.Haskell.File
         (convertFileInPlace formatFileInPlace transpileFileInPlace))
 (import Axel.Haskell.Project
@@ -32,7 +32,7 @@
             ((RunFile filePath)
              (void
               (Sem.evalState Map.empty
-                             (withGhci (transpileFileInPlace filePath)))))))
+                             (withStackGhci (transpileFileInPlace filePath)))))))
      (((ProjectCommand projectCommand))
       (case projectCommand (ConvertProject convertProject)
                            (FormatProject formatProject)

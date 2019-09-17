@@ -73,6 +73,3 @@ filterMapOut f =
 
 filterMap :: (a -> Maybe b) -> [a] -> [b]
 filterMap f xs = snd $ filterMapOut f xs
-
-only :: a -> [a]
-only x = [x]

@@ -24,11 +24,11 @@ data Ghci m a where
 
 Sem.makeSem ''Ghci
 
-runGhci ::
+runStackGhci ::
      (Sem.Member (Sem.Embed IO) effs)
   => Sem.Sem (Ghci ': effs) a
   -> Sem.Sem effs a
-runGhci =
+runStackGhci =
   Sem.interpret $ \case
     Exec ghci command ->
       Sem.embed $ map T.pack <$> Ghci.exec ghci (T.unpack command)
@@ -51,11 +51,11 @@ addFiles ghci filePaths =
 enableJsonErrors :: (Sem.Member Ghci effs) => Ghci.Ghci -> Sem.Sem effs ()
 enableJsonErrors ghci = void $ exec ghci ":set -ddump-json"
 
-withGhci ::
+withStackGhci ::
      (Sem.Member Ghci effs)
   => Sem.Sem (Sem.Reader Ghci.Ghci ': effs) a
   -> Sem.Sem effs a
-withGhci x = do
+withStackGhci x = do
   ghci <- start
   enableJsonErrors ghci
   result <- Sem.runReader ghci x

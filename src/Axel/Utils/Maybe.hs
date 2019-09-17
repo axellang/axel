@@ -14,7 +14,3 @@ foldMUntilNothing move modify x = do
 foldUntilNothing :: (a -> Maybe a) -> (a -> a) -> a -> a
 foldUntilNothing move modify =
   runIdentity . foldMUntilNothing move (pure . modify)
-
-whenMaybe :: (Applicative f) => Maybe a -> (a -> f ()) -> f ()
-whenMaybe (Just x) f = f x
-whenMaybe Nothing _ = pure ()

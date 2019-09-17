@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fe98617fdf4b49df23353e877c374d13d6b622297d761e302ee9ef5048654211
+-- hash: 99fb260a0ae2149443c78e919a5b97d138da340591cfc306a8345e114b4ae538
 
 name:           axel
 version:        0.0.12
@@ -84,7 +84,6 @@ library
       Axel.Utils.Display
       Axel.Utils.FilePath
       Axel.Utils.Foldable
-      Axel.Utils.Function
       Axel.Utils.Json
       Axel.Utils.List
       Axel.Utils.Maybe
@@ -109,6 +108,7 @@ library
     , bytestring
     , containers
     , directory
+    , extra
     , filepath
     , freer-simple
     , ghcid
@@ -127,7 +127,6 @@ library
     , process
     , profunctors
     , random
-    , singletons
     , split
     , tasty
     , tasty-discover
@@ -164,6 +163,7 @@ executable axel
     , bytestring
     , containers
     , directory
+    , extra
     , filepath
     , freer-simple
     , ghcid
@@ -182,7 +182,6 @@ executable axel
     , process
     , profunctors
     , random
-    , singletons
     , split
     , tasty
     , tasty-discover
@@ -242,6 +241,7 @@ test-suite axel-test
     , bytestring
     , containers
     , directory
+    , extra
     , filepath
     , freer-simple
     , ghcid
@@ -260,7 +260,6 @@ test-suite axel-test
     , process
     , profunctors
     , random
-    , singletons
     , split
     , tasty
     , tasty-discover
