@@ -1,2 +1,6 @@
-(instance (Eq (-> a a))
- (= == (_ _) False))
+(instance () (Foo Int String)
+ (= foo () unit))
+(instance (Quux) (Bar Int String)
+ (= bar () unit))
+(instance ((SuperFoo a) (SuperFoo b)) (Baz Int String)
+ (= baz () unit))

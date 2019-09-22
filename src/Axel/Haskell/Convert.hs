@@ -471,9 +471,7 @@ instance ToExpr HSE.InstHead where
     AST.EFunctionApplication $
     AST.FunctionApplication Nothing (toExpr instHead) [toExpr ty]
 
-instance ToExpr HSE.InstRule where
-  toExpr (HSE.IRule _ _ Nothing instHead) = toExpr instHead
-  toExpr (HSE.IParen _ rule) = toExpr rule
+instance ToExpr HSE.InstRule
 
 instance ToStmts HSE.Decl where
   toStmts (HSE.TypeDecl _ declHead ty) =
@@ -492,13 +490,13 @@ instance ToStmts HSE.Decl where
           AST.NewtypeDeclaration
             Nothing
             (declHeadToTyDef declHead)
-            (toFunApp $ toExpr $ unsafeHead cases)
+            (toExpr $ unsafeHead cases)
         HSE.DataType _ ->
           AST.SDataDeclaration $
           AST.DataDeclaration
             Nothing
             (declHeadToTyDef declHead)
-            (map (toFunApp . toExpr) cases)
+            (map toExpr cases)
     ]
   toStmts stmt@HSE.GDataDecl {} = [unsupportedStmt stmt]
   toStmts stmt@HSE.DataFamDecl {} = [unsupportedStmt stmt]
@@ -514,12 +512,16 @@ instance ToStmts HSE.Decl where
         (maybe [] (map classDeclToTySig) decls)
     ]
   toStmts (HSE.InstDecl _ _ rule decls) =
-    [ AST.STypeclassInstance $
-      AST.TypeclassInstance
-        Nothing
-        (toExpr rule)
-        (maybe [] (map instDeclToFunDef) decls)
-    ]
+    let go (HSE.IRule _ _ Nothing instHead) = undefined
+        go (HSE.IParen _ rule') = go rule'
+        (context, instHead) = go rule
+     in [ AST.STypeclassInstance $
+          AST.TypeclassInstance
+            Nothing
+            instHead
+            context
+            (maybe [] (map instDeclToFunDef) decls)
+        ]
   toStmts stmt@HSE.DerivDecl {} = [unsupportedStmt stmt]
   toStmts stmt@HSE.InfixDecl {} = [unsupportedStmt stmt]
   toStmts (HSE.TypeSig _ names ty) =

@@ -1,3 +1,5 @@
 import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
-instance (Eq ((->) a a)) where {(==) _ _ = False}
+instance () => (Foo Int String) where {foo  = ()}
+instance (Quux) => (Bar Int String) where {bar  = ()}
+instance ((SuperFoo a),(SuperFoo b)) => (Baz Int String) where {baz  = ()}

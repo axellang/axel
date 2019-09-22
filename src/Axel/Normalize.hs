@@ -204,8 +204,9 @@ normalizeStatement expr@(Parse.SExpression _ items) =
     Parse.Symbol _ "class":classConstraints:className:sigs ->
       let normalizedConstraints =
             normalizeExpression classConstraints >>= \case
-              EFunctionApplication (FunctionApplication _ (EIdentifier _ "list") constraints) ->
-                pure constraints
+              EEmptySExpression _ -> pure []
+              EFunctionApplication (FunctionApplication _ constraintsHead constraintsRest) ->
+                pure $ constraintsHead : constraintsRest
               _ ->
                 pushCtxt classConstraints $
                 throwNormalizeError "Invalid constraints!"
@@ -222,49 +223,31 @@ normalizeStatement expr@(Parse.SExpression _ items) =
            normalizedConstraints <*>
            normalizedSigs)
     Parse.Symbol _ "data":typeDef:constructors ->
-      let normalizedConstructors =
-            traverse
-              (\x ->
-                 normalizeExpression x >>= \case
-                   EFunctionApplication functionApplication ->
-                     pure functionApplication
-                   _ ->
-                     pushCtxt x $
-                     throwNormalizeError "Invalid type constructor!")
-              constructors
-       in normalizeExpression typeDef >>= \case
-            EFunctionApplication typeConstructor ->
-              SDataDeclaration <$>
-              (DataDeclaration
-                 (Just expr)
-                 (TypeConstructor (Just expr) typeConstructor) <$>
-               normalizedConstructors)
-            EIdentifier _ properType ->
-              SDataDeclaration <$>
-              (DataDeclaration (Just expr) (ProperType (Just expr) properType) <$>
-               normalizedConstructors)
-            _ -> pushCtxt typeDef $ throwNormalizeError "Invalid type!"
-    [Parse.Symbol _ "newtype", typeDef, constructor] ->
-      let normalizedConstructor =
-            normalizeExpression constructor >>= \case
-              EFunctionApplication funApp -> pure funApp
-              _ ->
-                pushCtxt constructor $
-                throwNormalizeError "Invalid type constructor!"
-       in normalizeExpression typeDef >>= \case
-            EFunctionApplication typeConstructor ->
-              SNewtypeDeclaration <$>
-              (NewtypeDeclaration
-                 (Just expr)
-                 (TypeConstructor (Just expr) typeConstructor) <$>
-               normalizedConstructor)
-            EIdentifier _ properType ->
-              SNewtypeDeclaration <$>
-              (NewtypeDeclaration
-                 (Just expr)
-                 (ProperType (Just expr) properType) <$>
-               normalizedConstructor)
-            _ -> pushCtxt typeDef $ throwNormalizeError "Invalid type!"
+      normalizeExpression typeDef >>= \case
+        EFunctionApplication typeConstructor ->
+          SDataDeclaration <$>
+          (DataDeclaration
+             (Just expr)
+             (TypeConstructor (Just expr) typeConstructor) <$>
+           traverse normalizeExpression constructors)
+        EIdentifier _ properType ->
+          SDataDeclaration <$>
+          (DataDeclaration (Just expr) (ProperType (Just expr) properType) <$>
+           traverse normalizeExpression constructors)
+        _ -> pushCtxt typeDef $ throwNormalizeError "Invalid type!"
+    [Parse.Symbol _ "newtype", typeDef, wrappedType] ->
+      normalizeExpression typeDef >>= \case
+        EFunctionApplication typeConstructor ->
+          SNewtypeDeclaration <$>
+          (NewtypeDeclaration
+             (Just expr)
+             (TypeConstructor (Just expr) typeConstructor) <$>
+           normalizeExpression wrappedType)
+        EIdentifier _ properType ->
+          SNewtypeDeclaration <$>
+          (NewtypeDeclaration (Just expr) (ProperType (Just expr) properType) <$>
+           normalizeExpression wrappedType)
+        _ -> pushCtxt typeDef $ throwNormalizeError "Invalid type!"
     [Parse.Symbol _ "import", Parse.Symbol _ moduleName, importSpec] ->
       SRestrictedImport <$>
       (RestrictedImport (Just expr) (T.pack moduleName) <$>
@@ -276,8 +259,16 @@ normalizeStatement expr@(Parse.SExpression _ items) =
       SQualifiedImport <$>
       (QualifiedImport (Just expr) (T.pack moduleName) (T.pack alias) <$>
        normalizeImportSpec importSpec)
-    Parse.Symbol _ "instance":instanceName:defs ->
-      let normalizedDefs =
+    Parse.Symbol _ "instance":instanceConstraints:instanceName:defs ->
+      let normalizedConstraints =
+            normalizeExpression instanceConstraints >>= \case
+              EEmptySExpression _ -> pure []
+              EFunctionApplication (FunctionApplication _ constraintsHead constraintsRest) ->
+                pure $ constraintsHead : constraintsRest
+              _ ->
+                pushCtxt instanceConstraints $
+                throwNormalizeError "Invalid constraints!"
+          normalizedDefs =
             traverse
               (\x ->
                  normalizeStatement x >>= \case
@@ -286,6 +277,7 @@ normalizeStatement expr@(Parse.SExpression _ items) =
               defs
        in STypeclassInstance <$>
           (TypeclassInstance (Just expr) <$> normalizeExpression instanceName <*>
+           normalizedConstraints <*>
            normalizedDefs)
     [Parse.Symbol _ "pragma", Parse.LiteralString _ pragma] ->
       pure $ SPragma (Pragma (Just expr) (T.pack pragma))

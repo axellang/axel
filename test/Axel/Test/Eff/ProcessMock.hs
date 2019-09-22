@@ -61,4 +61,34 @@ runProcess ::
 runProcess origProcessState = Sem.runState origProcessState . Sem.reinterpret go
   where
     go :: Process m a' -> Sem.Sem (Sem.State (ProcessState effs) ': effs) a'
+    go (CreateIndependentProcess _) =
+      throwInterpretError
+        @(ProcessState effs)
+        "CreateIndependentProcess"
+        "Not implemented!"
+    go (CreatePassthroughProcess _) =
+      throwInterpretError
+        @(ProcessState effs)
+        "CreatePassthroughProcess"
+        "Not implemented!"
     go GetArgs = Sem.gets (^. procMockArgs)
+    go (HandleGetContents _) =
+      throwInterpretError
+        @(ProcessState effs)
+        "HandleGetContents"
+        "Not implemented!"
+    go (HandleGetLine _) =
+      throwInterpretError
+        @(ProcessState effs)
+        "HandleGetLine"
+        "Not implemented!"
+    go (HandleIsAtEnd _) =
+      throwInterpretError
+        @(ProcessState effs)
+        "HandleIsAtEnd"
+        "Not implemented!"
+    go (WaitOnProcess _) =
+      throwInterpretError
+        @(ProcessState effs)
+        "WaitOnProcess"
+        "Not implemented!"

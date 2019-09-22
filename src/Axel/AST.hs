@@ -86,7 +86,7 @@ data DataDeclaration ann =
   DataDeclaration
     { _ann :: ann
     , _typeDefinition :: TypeDefinition ann
-    , _constructors :: [FunctionApplication ann]
+    , _constructors :: [Expression ann]
     }
   deriving (Data, Eq, Functor, Show)
 
@@ -94,7 +94,7 @@ data NewtypeDeclaration ann =
   NewtypeDeclaration
     { _ann :: ann
     , _typeDefinition :: TypeDefinition ann
-    , _constructor :: FunctionApplication ann
+    , _wrappedType :: Expression ann
     }
   deriving (Data, Eq, Functor, Show)
 
@@ -200,6 +200,7 @@ data TypeclassInstance ann =
   TypeclassInstance
     { _ann :: ann
     , _instanceName :: Expression ann
+    , _constraints :: [Expression ann]
     , _definitions :: [FunctionDefinition ann]
     }
   deriving (Data, Eq, Functor, Show)
@@ -220,6 +221,12 @@ data TypeSynonym ann =
     }
   deriving (Data, Eq, Functor, Show)
 
+data Literal ann
+  = LChar ann Char
+  | LInt ann Int
+  | LString ann Text
+  deriving (Data, Eq, Functor, Show)
+
 data Expression ann
   = ECaseBlock (CaseBlock ann)
   | EEmptySExpression ann
@@ -232,12 +239,6 @@ data Expression ann
   | ERawExpression ann Text
   | ERecordDefinition (RecordDefinition ann)
   | ERecordType (RecordType ann)
-  deriving (Data, Eq, Functor, Show)
-
-data Literal ann
-  = LChar ann Char
-  | LInt ann Int
-  | LString ann Text
   deriving (Data, Eq, Functor, Show)
 
 data Statement ann
@@ -259,6 +260,8 @@ data Statement ann
   deriving (Data, Eq, Functor, Show)
 
 type Program ann = [Statement ann]
+
+makePrisms ''Expression
 
 makePrisms ''Statement
 
@@ -470,10 +473,7 @@ instance ToHaskell (DataDeclaration (Maybe SM.Expression)) where
     mkHaskell dataDeclaration "data " <>
     toHaskell (dataDeclaration ^. typeDefinition) <>
     mkHaskell dataDeclaration " = " <>
-    SM.delimit
-      Pipes
-      (map (removeSurroundingParentheses . toHaskell) $ dataDeclaration ^.
-       constructors)
+    SM.delimit Pipes (map toHaskell $ dataDeclaration ^. constructors)
 
 removeSurroundingParentheses :: SM.Output -> SM.Output
 removeSurroundingParentheses = removeOpen . removeClosed
@@ -496,7 +496,13 @@ instance ToHaskell (NewtypeDeclaration (Maybe SM.Expression)) where
     mkHaskell newtypeDeclaration "newtype " <>
     toHaskell (newtypeDeclaration ^. typeDefinition) <>
     mkHaskell newtypeDeclaration " = " <>
-    removeSurroundingParentheses (toHaskell (newtypeDeclaration ^. constructor))
+    constructor <>
+    toHaskell (newtypeDeclaration ^. wrappedType)
+    where
+      constructor =
+        case newtypeDeclaration ^. typeDefinition of
+          ProperType _ x -> mkHaskell newtypeDeclaration x
+          TypeConstructor _ (FunctionApplication _ fn _) -> toHaskell fn
 
 instance ToHaskell (Lambda (Maybe SM.Expression)) where
   toHaskell :: Lambda (Maybe SM.Expression) -> SM.Output
@@ -627,6 +633,10 @@ instance ToHaskell (TypeclassInstance (Maybe SM.Expression)) where
   toHaskell :: TypeclassInstance (Maybe SM.Expression) -> SM.Output
   toHaskell typeclassInstance =
     mkHaskell typeclassInstance "instance " <>
+    SM.surround
+      Parentheses
+      (SM.delimit Commas (map toHaskell (typeclassInstance ^. constraints))) <>
+    mkHaskell typeclassInstance " => " <>
     toHaskell (typeclassInstance ^. instanceName) <>
     mkHaskell typeclassInstance " where " <>
     SM.renderBlock (map toHaskell $ typeclassInstance ^. definitions)

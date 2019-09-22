@@ -7,6 +7,9 @@ import Axel.Prelude
 import qualified Axel.AST as AST
 import qualified Axel.Sourcemap as SM
 
+import Control.Applicative
+import Control.Lens (isn't)
+
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
@@ -26,13 +29,14 @@ genLiteral =
 genCaseBlock :: (MonadGen m) => m (AST.CaseBlock (Maybe SM.Expression))
 genCaseBlock =
   AST.CaseBlock Nothing <$> genExpression <*>
-  Gen.list (Range.linear 0 3) ((,) <$> genExpression <*> genExpression)
+  Gen.list (Range.linear 0 10) ((,) <$> genExpression <*> genExpression)
 
 genFunctionApplication ::
      (MonadGen m) => m (AST.FunctionApplication (Maybe SM.Expression))
 genFunctionApplication =
-  AST.FunctionApplication Nothing <$> genExpression <*>
-  Gen.list (Range.linear 0 3) genExpression
+  AST.FunctionApplication Nothing <$>
+  Gen.filter (isn't AST._EEmptySExpression) genExpression <*>
+  Gen.list (Range.linear 0 10) genExpression
 
 genIfBlock :: (MonadGen m) => m (AST.IfBlock (Maybe SM.Expression))
 genIfBlock =
@@ -40,13 +44,13 @@ genIfBlock =
 
 genLambda :: (MonadGen m) => m (AST.Lambda (Maybe SM.Expression))
 genLambda =
-  AST.Lambda Nothing <$> Gen.list (Range.linear 0 3) genExpression <*>
+  AST.Lambda Nothing <$> Gen.list (Range.linear 0 10) genExpression <*>
   genExpression
 
 genLetBlock :: (MonadGen m) => m (AST.LetBlock (Maybe SM.Expression))
 genLetBlock =
   AST.LetBlock Nothing <$>
-  Gen.list (Range.linear 0 3) ((,) <$> genExpression <*> genExpression) <*>
+  Gen.list (Range.linear 0 10) ((,) <$> genExpression <*> genExpression) <*>
   genExpression
 
 genRawExpression :: (MonadGen m) => m Text
@@ -56,12 +60,12 @@ genRecordDefinition ::
      (MonadGen m) => m (AST.RecordDefinition (Maybe SM.Expression))
 genRecordDefinition =
   AST.RecordDefinition Nothing <$>
-  Gen.list (Range.linear 0 3) ((,) <$> genIdentifier <*> genExpression)
+  Gen.list (Range.linear 0 10) ((,) <$> genIdentifier <*> genExpression)
 
 genRecordType :: (MonadGen m) => m (AST.RecordType (Maybe SM.Expression))
 genRecordType =
   AST.RecordType Nothing <$>
-  Gen.list (Range.linear 0 3) ((,) <$> genIdentifier <*> genExpression)
+  Gen.list (Range.linear 0 10) ((,) <$> genIdentifier <*> genExpression)
 
 genExpression :: (MonadGen m) => m (AST.Expression (Maybe SM.Expression))
 genExpression =
@@ -93,21 +97,26 @@ genDataDeclaration ::
      (MonadGen m) => m (AST.DataDeclaration (Maybe SM.Expression))
 genDataDeclaration =
   AST.DataDeclaration Nothing <$> genTypeDefinition <*>
-  Gen.list (Range.linear 0 3) genFunctionApplication
+  Gen.list (Range.linear 0 10) genExpression
 
 genFunctionDefinition ::
-     (MonadGen m) => m (AST.FunctionDefinition (Maybe SM.Expression))
+     (Alternative m, MonadGen m)
+  => m (AST.FunctionDefinition (Maybe SM.Expression))
 genFunctionDefinition =
   AST.FunctionDefinition Nothing <$> genIdentifier <*>
-  Gen.list (Range.linear 0 3) genExpression <*>
+  Gen.list (Range.linear 0 10) genExpression <*>
   genExpression <*>
-  Gen.list (Range.linear 0 3) genFunctionDefinition
+  Gen.list
+    (Range.linear 0 10)
+    ((AST.STypeSignature <$> genTypeSignature) <|>
+     (AST.SFunctionDefinition <$> genFunctionDefinition))
 
 genPragma :: (MonadGen m) => m (AST.Pragma (Maybe SM.Expression))
 genPragma = AST.Pragma Nothing <$> Gen.text (Range.linear 0 10) Gen.ascii
 
 genMacroDefinition ::
-     (MonadGen m) => m (AST.MacroDefinition (Maybe SM.Expression))
+     (Alternative m, MonadGen m)
+  => m (AST.MacroDefinition (Maybe SM.Expression))
 genMacroDefinition = AST.MacroDefinition Nothing <$> genFunctionDefinition
 
 genImport :: (MonadGen m) => m (AST.Import (Maybe SM.Expression))
@@ -115,14 +124,14 @@ genImport =
   Gen.choice
     [ AST.ImportItem Nothing <$> genIdentifier
     , AST.ImportType Nothing <$> genIdentifier <*>
-      Gen.list (Range.linear 0 3) genIdentifier
+      Gen.list (Range.linear 0 10) genIdentifier
     ]
 
 genImportSpecification ::
      (MonadGen m) => Bool -> m (AST.ImportSpecification (Maybe SM.Expression))
 genImportSpecification importAll =
   let options =
-        (AST.ImportOnly Nothing <$> Gen.list (Range.linear 0 3) genImport) :
+        (AST.ImportOnly Nothing <$> Gen.list (Range.linear 0 10) genImport) :
         [pure $ AST.ImportAll Nothing | importAll]
    in Gen.choice options
 
@@ -135,13 +144,12 @@ genQualifiedImport =
 genMacroImport :: (MonadGen m) => m (AST.MacroImport (Maybe SM.Expression))
 genMacroImport =
   AST.MacroImport Nothing <$> genIdentifier <*>
-  Gen.list (Range.linear 0 3) genIdentifier
+  Gen.list (Range.linear 0 10) genIdentifier
 
 genNewtypeDeclaration ::
      (MonadGen m) => m (AST.NewtypeDeclaration (Maybe SM.Expression))
 genNewtypeDeclaration =
-  AST.NewtypeDeclaration Nothing <$> genTypeDefinition <*>
-  genFunctionApplication
+  AST.NewtypeDeclaration Nothing <$> genTypeDefinition <*> genExpression
 
 genRawStatement :: (MonadGen m) => m Text
 genRawStatement = Gen.text (Range.linear 0 10) Gen.unicode
@@ -152,21 +160,36 @@ genRestrictedImport importAll =
   AST.RestrictedImport Nothing <$> genIdentifier <*>
   genImportSpecification importAll
 
-genTopLevel :: (MonadGen m) => m (AST.TopLevel (Maybe SM.Expression))
-genTopLevel = AST.TopLevel Nothing <$> Gen.list (Range.linear 0 3) genStatement
+genTopLevel ::
+     (Alternative m, MonadGen m) => m (AST.TopLevel (Maybe SM.Expression))
+genTopLevel = AST.TopLevel Nothing <$> Gen.list (Range.linear 0 10) genStatement
+
+genConstraints :: (Alternative m, MonadGen m) => m [AST.SMExpression]
+genConstraints =
+  Gen.list
+    (Range.linear 0 10)
+    ((AST.EIdentifier Nothing <$> genIdentifier) <|>
+     (AST.EFunctionApplication <$> genFunctionApplication))
 
 genTypeclassDefinition ::
-     (MonadGen m) => m (AST.TypeclassDefinition (Maybe SM.Expression))
+     (Alternative m, MonadGen m)
+  => m (AST.TypeclassDefinition (Maybe SM.Expression))
 genTypeclassDefinition =
-  AST.TypeclassDefinition Nothing <$> genExpression <*>
-  Gen.list (Range.linear 0 3) genExpression <*>
-  Gen.list (Range.linear 0 3) genTypeSignature
+  AST.TypeclassDefinition Nothing <$>
+  ((AST.EFunctionApplication <$> genFunctionApplication) <|>
+   (AST.EIdentifier Nothing <$> genIdentifier)) <*>
+  genConstraints <*>
+  Gen.list (Range.linear 0 10) genTypeSignature
 
 genTypeclassInstance ::
-     (MonadGen m) => m (AST.TypeclassInstance (Maybe SM.Expression))
+     (Alternative m, MonadGen m)
+  => m (AST.TypeclassInstance (Maybe SM.Expression))
 genTypeclassInstance =
-  AST.TypeclassInstance Nothing <$> genExpression <*>
-  Gen.list (Range.linear 0 3) genFunctionDefinition
+  AST.TypeclassInstance Nothing <$>
+  ((AST.EFunctionApplication <$> genFunctionApplication) <|>
+   (AST.EIdentifier Nothing <$> genIdentifier)) <*>
+  genConstraints <*>
+  Gen.list (Range.linear 0 10) genFunctionDefinition
 
 genTypeSignature :: (MonadGen m) => m (AST.TypeSignature (Maybe SM.Expression))
 genTypeSignature = AST.TypeSignature Nothing <$> genIdentifier <*> genExpression
@@ -174,7 +197,7 @@ genTypeSignature = AST.TypeSignature Nothing <$> genIdentifier <*> genExpression
 genTypeSynonym :: (MonadGen m) => m (AST.TypeSynonym (Maybe SM.Expression))
 genTypeSynonym = AST.TypeSynonym Nothing <$> genExpression <*> genExpression
 
-genStatement :: (MonadGen m) => m AST.SMStatement
+genStatement :: (Alternative m, MonadGen m) => m AST.SMStatement
 genStatement =
   Gen.recursive
     Gen.choice

@@ -24,7 +24,6 @@ import Axel.AST
   , body
   , cond
   , constraints
-  , constructor
   , constructors
   , definition
   , definitions
@@ -44,6 +43,7 @@ import Axel.AST
   , signatures
   , typeDefinition
   , whereBindings
+  , wrappedType
   )
 import qualified Axel.Parse.AST as Parse
   ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
@@ -177,9 +177,7 @@ denormalizeStatement (SDataDeclaration dataDeclaration) =
    in Parse.SExpression
         ann'
         (Parse.Symbol ann' "data" : denormalizedTypeDefinition :
-         map
-           (denormalizeExpression . EFunctionApplication)
-           (dataDeclaration ^. constructors))
+         map denormalizeExpression (dataDeclaration ^. constructors))
 denormalizeStatement (SFunctionDefinition fnDef) =
   let ann' = getAnn' fnDef
    in Parse.SExpression ann' $ Parse.Symbol ann' "=" :
@@ -224,8 +222,7 @@ denormalizeStatement (SNewtypeDeclaration newtypeDeclaration) =
         ann'
         [ Parse.Symbol ann' "newtype"
         , denormalizedTypeDefinition
-        , denormalizeExpression $
-          EFunctionApplication (newtypeDeclaration ^. constructor)
+        , denormalizeExpression $ newtypeDeclaration ^. wrappedType
         ]
 denormalizeStatement (SPragma pragma) =
   let ann' = getAnn' pragma
@@ -267,8 +264,7 @@ denormalizeStatement (STypeclassDefinition typeclassDefinition) =
         (Parse.Symbol ann' "class" :
          Parse.SExpression
            ann'
-           (Parse.Symbol ann' "list" :
-            map denormalizeExpression (typeclassDefinition ^. constraints)) :
+           (map denormalizeExpression (typeclassDefinition ^. constraints)) :
          denormalizeExpression (typeclassDefinition ^. name) :
          map
            (denormalizeStatement . STypeSignature)
@@ -278,6 +274,9 @@ denormalizeStatement (STypeclassInstance typeclassInstance) =
    in Parse.SExpression
         ann'
         (Parse.Symbol ann' "instance" :
+         Parse.SExpression
+           ann'
+           (map denormalizeExpression (typeclassInstance ^. constraints)) :
          denormalizeExpression (typeclassInstance ^. instanceName) :
          map
            (denormalizeStatement . SFunctionDefinition)
