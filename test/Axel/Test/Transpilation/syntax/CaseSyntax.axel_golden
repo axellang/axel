@@ -1,4 +1,4 @@
 (= main ()
   (case True
-   (True ())
-   (False ())))
+   (True (putStrLn "Yay!"))
+   (False (error "Impossible!"))))
