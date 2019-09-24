@@ -1,7 +1,7 @@
 #+OPTIONS: num:nil toc:nil
 #+STARTUP: inlineimages
 * Axel
-  Haskell + Lisp + JVM/Node/... = Profit!
+  Haskell + Lisp (+ JVM/Node/..., soon) = Profit!
 
   See [[https://axellang.github.io]].
   #+CAPTION: Build Status
