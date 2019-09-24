@@ -369,7 +369,7 @@ insertImports newStmts program =
 mkMacroTypeSignature :: Identifier -> SMStatement
 mkMacroTypeSignature =
   SRawStatement Nothing .
-  (<> " :: [AST.Expression SM.SourceMetadata] -> IO [AST.Expression SM.SourceMetadata]")
+  (<> " :: [AST.Expression SM.SourceMetadata] -> GHCPrelude.IO [AST.Expression SM.SourceMetadata]")
 
 newtype ExpansionId =
   ExpansionId Text
