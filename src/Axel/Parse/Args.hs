@@ -8,13 +8,13 @@ import Data.Semigroup((<>))
 import qualified Data.Text as T
 import Options.Applicative(Parser,ParserInfo,argument,command,fullDesc,helper,hsubparser,info,metavar,progDesc,str)
 data FileCommand = ConvertFile FilePath|RunFile FilePath|FormatFile FilePath
-data ProjectCommand = ConvertProject |FormatProject |RunProject 
-data Command = FileCommand FileCommand|ProjectCommand ProjectCommand|Version 
+data ProjectCommand = ConvertProject|FormatProject|RunProject
+data Command = FileCommand FileCommand|ProjectCommand ProjectCommand|Version
 experimental  = ((<>) "(EXPERIMENTAL) ")
 experimental :: ((->) String String)
 command' name parserInfo = (hsubparser ((<>) (command name parserInfo) (metavar name)))
 command' :: ((->) String ((->) (ParserInfo a) (Parser a)))
-fileCommandParser  = (asum [convertFileCommand,formatFileCommand,runFileCommand]) where {convertFileCommand  = (command' "convertTemp" (filePathParser ConvertFile (experimental "Convert a Haskell file to Axel")));runFileCommand  = (command' "run" (filePathParser RunFile "Transpile and run an Axel file"));formatFileCommand  = (command' "format" (filePathParser FormatFile "Format an Axel file"));filePathParser ctor desc = (info ((<$>) ((.) ctor ((.) FilePath T.pack)) (argument str (metavar "FILE"))) (progDesc desc))}
+fileCommandParser  = (asum [convertFileCommand,formatFileCommand,runFileCommand]) where {convertFileCommand  = (command' "convert" (filePathParser ConvertFile (experimental "Convert a Haskell file to Axel")));runFileCommand  = (command' "run" (filePathParser RunFile "Transpile and run an Axel file"));formatFileCommand  = (command' "format" (filePathParser FormatFile "Format an Axel file"));filePathParser ctor desc = (info ((<$>) ((.) ctor ((.) FilePath T.pack)) (argument str (metavar "FILE"))) (progDesc desc))}
 fileCommandParser :: (Parser FileCommand)
 projectCommandParser  = (asum [convertProjectCommand,formatProjectCommand,runProjectCommand]) where {convertProjectCommand  = (command' "convert" (info (pure ConvertProject) (progDesc "Convert the Haskell project to Axel")));formatProjectCommand  = (command' "format" (info (pure FormatProject) (progDesc "Format the project")));runProjectCommand  = (command' "run" (info (pure RunProject) (progDesc "Build and run the project")))}
 projectCommandParser :: (Parser ProjectCommand)

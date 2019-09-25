@@ -1,8 +1,6 @@
 module Main where
 import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
-import qualified Prelude as GHCPrelude
-import qualified Axel.Parse.AST as AST
 import Axel.Eff.App(AppEffs,runApp)
 import Axel.Eff.Console(putStrLn)
 import Axel.Eff.Ghci(withStackGhci)
@@ -18,7 +16,7 @@ import qualified Polysemy as Sem
 import qualified Polysemy.State as Sem
 import Prelude hiding (putStrLn)
 app (FileCommand fileCommand) = (case fileCommand of {(ConvertFile filePath) -> (void (convertFileInPlace filePath));(FormatFile filePath) -> (formatFileInPlace filePath);(RunFile filePath) -> (void (Sem.evalState Map.empty (withStackGhci (transpileFileInPlace filePath))))})
-app (ProjectCommand projectCommand) = (case projectCommand of {ConvertProject -> convertProject;FormatProject -> formatProject;RunProject -> ((>>) buildProject runProject)})
+app (ProjectCommand projectCommand) = (case projectCommand of {(ConvertProject ) -> convertProject;(FormatProject ) -> formatProject;(RunProject ) -> ((>>) buildProject runProject)})
 app (Version ) = (putStrLn ((<>) "Axel version " axelStackageVersion))
 app :: (((->) Command) (Sem.Sem AppEffs ()))
 main  = ((>>=) (execParser commandParserInfo) (\modeCommand -> (runApp (app modeCommand))))
