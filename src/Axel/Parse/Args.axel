@@ -20,11 +20,11 @@
                   (RunFile FilePath)
                   (FormatFile FilePath))
 
-(data ProjectCommand (ConvertProject) (FormatProject) (RunProject))
+(data ProjectCommand ConvertProject FormatProject RunProject)
 
 (data Command (FileCommand FileCommand)
               (ProjectCommand ProjectCommand)
-              (Version))
+              Version)
 
 (def experimental {String -> String}
      (() (<> "(EXPERIMENTAL) ")))

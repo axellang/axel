@@ -473,7 +473,15 @@ instance ToHaskell (DataDeclaration (Maybe SM.Expression)) where
     mkHaskell dataDeclaration "data " <>
     toHaskell (dataDeclaration ^. typeDefinition) <>
     mkHaskell dataDeclaration " = " <>
-    SM.delimit Pipes (map toHaskell $ dataDeclaration ^. constructors)
+    SM.delimit
+      Pipes
+      (map (tryRemoveSurroundingParentheses . toHaskell) $ dataDeclaration ^.
+       constructors)
+    where
+      tryRemoveSurroundingParentheses xs =
+        if "(" `T.isPrefixOf` (xs ^. _Wrapped . _head . unannotated)
+          then removeSurroundingParentheses xs
+          else xs
 
 removeSurroundingParentheses :: SM.Output -> SM.Output
 removeSurroundingParentheses = removeOpen . removeClosed

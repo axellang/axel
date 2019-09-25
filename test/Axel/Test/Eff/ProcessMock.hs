@@ -16,8 +16,6 @@ import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 import qualified Polysemy.State as Sem
 
-import Data.Functor
-
 import System.Exit
 
 import TestUtils
