@@ -47,6 +47,7 @@ renderError (NormalizeError filePath err context) =
 renderError (ParseError filePath err) = mkFileErrorMsg filePath err
 renderError (ProjectError err) = err
 
+-- | This should ONLY be used for truly impossible situations.
 fatal :: Text -> Text -> a
 fatal context message = error $ "[FATAL] " <> context <> " - " <> message
 

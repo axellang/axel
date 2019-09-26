@@ -78,9 +78,8 @@ convertFile path newPath = do
         groupFunctionDefinitions $ flattenFunctionApplications []
   FS.writeFile newPath newContents
   _ <-
-    fatal
-      "convertFile"
-      "In construction, see https://app.gitkraken.com/glo/board/Wunz108ztxUAEpyt/card/XYmtRxPb5QAPb0H9."
+    error
+      "Haskell to Axel conversion is in construction, see https://app.gitkraken.com/glo/board/Wunz108ztxUAEpyt/card/XYmtRxPb5QAPb0H9."
   pure newPath
 
 -- convertFile path newPath = do
