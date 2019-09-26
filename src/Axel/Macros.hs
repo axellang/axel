@@ -69,7 +69,7 @@ import Axel.Utils.List (filterMap, filterMapOut, head')
 import Axel.Utils.Recursion (bottomUpFmap, zipperTopDownTraverse)
 import Axel.Utils.Zipper (unsafeLeft, unsafeUp)
 
-import Control.Lens (_1, op, snoc)
+import Control.Lens (_1, isn't, op, snoc)
 import Control.Lens.Extras (is)
 import Control.Lens.Operators ((%~), (^.), (^?))
 import Control.Monad (guard, unless, when)
@@ -452,7 +452,10 @@ generateMacroProgram filePath' oldMacroName args = do
                       ]
                   ]
               ])
-  auxEnv <- Sem.get @[SMStatement]
+  prevStmts <- Sem.get @[SMStatement]
+  -- Mitigate the `::`/`=`-ordering problem (see the description of issue #65).
+  let auxEnv =
+        reverse . dropWhile (isn't _SMacroDefinition) . reverse $ prevStmts
   -- TODO If the file being transpiled has pragmas but no explicit module declaration,
   --      they will be erroneously included *after* the module declaration.
   --      Should we just require Axel files to have module declarations, or is there a

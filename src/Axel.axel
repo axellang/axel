@@ -13,8 +13,6 @@
 
 (import System.IO.Unsafe (unsafePerformIO))
 
-(import Control.Lens.Cons (snoc))
-
 (=macro applyInfix ([x op y])
         (pure [`(~op ~x ~y)]))
 
@@ -24,14 +22,12 @@
          (map (\ ((AST.SExpression _ {args : body})) `(=macro ~name (~args) ~@body))
               cases)))
 
--- The type signature must come after so that macro inside the function body
--- don't complain about the function not being defined.
 (defmacro def
     ({name : {typeSig : cases}}
            (pure
-            (snoc (map (\ (x) `(= ~name ~@x))
-                       cases)
-                  `(:: ~name ~@typeSig)))))
+            (: `(:: ~name ~@typeSig)
+               (map (\ (x) `(= ~name ~@x))
+                    cases)))))
 
 (defmacro syntaxQuote
     ([x]

@@ -15,9 +15,9 @@ import Options.Applicative(execParser)
 import qualified Polysemy as Sem
 import qualified Polysemy.State as Sem
 import Prelude hiding (putStrLn)
+app :: () => (((->) Command) (Sem.Sem AppEffs ()))
 app (FileCommand fileCommand) = (case fileCommand of {(ConvertFile filePath) -> (void (convertFileInPlace filePath));(FormatFile filePath) -> (formatFileInPlace filePath);(RunFile filePath) -> (void (Sem.evalState Map.empty (withStackGhci (transpileFileInPlace filePath))))})
 app (ProjectCommand projectCommand) = (case projectCommand of {(ConvertProject ) -> convertProject;(FormatProject ) -> formatProject;(RunProject ) -> ((>>) buildProject runProject)})
 app (Version ) = (putStrLn ((<>) "Axel version " axelStackageVersion))
-app :: () => (((->) Command) (Sem.Sem AppEffs ()))
-main  = ((>>=) (execParser commandParserInfo) (\modeCommand -> (runApp (app modeCommand))))
 main :: () => (IO ())
+main  = ((>>=) (execParser commandParserInfo) (\modeCommand -> (runApp (app modeCommand))))
