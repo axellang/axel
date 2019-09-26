@@ -32,7 +32,7 @@ import Axel.AST
   )
 import Axel.Denormalize (denormalizeStatement)
 import qualified Axel.Eff as Effs
-import Axel.Eff.Error (Error(MacroError), fatal)
+import Axel.Eff.Error (Error(MacroError, ParseError), fatal)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
 import qualified Axel.Eff.FileSystem as FS
 import qualified Axel.Eff.Ghci as Effs (Ghci)
@@ -128,14 +128,16 @@ processProgram expandFunApp expandFile filePath program = do
     mapM
       (Sem.runReader filePath . withExprCtxt . normalizeStatement)
       (unwrapCompoundExpressions newProgramExpr)
-  let addAstImport =
-        insertImports
-          [ SQualifiedImport $
-            QualifiedImport Nothing "Prelude" "GHCPrelude" (ImportAll Nothing)
-          , SQualifiedImport $
-            QualifiedImport Nothing "Axel.Parse.AST" "AST" (ImportAll Nothing)
-          ]
-  pure $ finalizeProgram $ addAstImport newStmts
+  withAstImports <-
+    insertImports
+      filePath
+      [ SQualifiedImport $
+        QualifiedImport Nothing "Prelude" "GHCPrelude" (ImportAll Nothing)
+      , SQualifiedImport $
+        QualifiedImport Nothing "Axel.Parse.AST" "AST" (ImportAll Nothing)
+      ]
+      newStmts
+  pure $ finalizeProgram withAstImports
 
 finalizeProgram :: [SMStatement] -> [SMStatement]
 finalizeProgram stmts =
@@ -358,13 +360,26 @@ lookupMacroDefinitions identifier =
 hygenisizeMacroDefinition :: MacroDefinition ann -> MacroDefinition ann
 hygenisizeMacroDefinition = functionDefinition . name %~ hygenisizeMacroName
 
-insertImports :: [SMStatement] -> [SMStatement] -> [SMStatement]
-insertImports newStmts program =
+insertImports ::
+     (Sem.Member (Sem.Error Error) effs)
+  => FilePath
+  -> [SMStatement]
+  -> [SMStatement]
+  -> Sem.Sem effs [SMStatement]
+insertImports filePath newStmts program =
   case split (whenElt $ is _SModuleDeclaration) program of
-    [preEnv, moduleDeclaration, postEnv] ->
-      preEnv <> moduleDeclaration <> newStmts <> postEnv
-    [_] -> newStmts <> program
-    _ -> fatal "insertImports" "0001" -- TODO Replace with error message indicating that only one module declaration is allowed!
+    [preEnv, [moduleDecl@(SModuleDeclaration _ _)], postEnv] ->
+      pure $ preEnv <> [moduleDecl] <> newStmts <> postEnv
+    [preEnv, [moduleDecl@(SModuleDeclaration _ _)]] ->
+      pure $ preEnv <> [moduleDecl] <> newStmts
+    [[moduleDecl@(SModuleDeclaration _ _)], postEnv] ->
+      pure $ [moduleDecl] <> newStmts <> postEnv
+    [[moduleDecl@(SModuleDeclaration _ _)]] -> pure $ [moduleDecl] <> newStmts
+    _ ->
+      Sem.throw $
+      ParseError
+        filePath
+        "Axel files must contain exactly one module declaration!"
 
 mkMacroTypeSignature :: Identifier -> SMStatement
 mkMacroTypeSignature =
@@ -460,12 +475,12 @@ generateMacroProgram filePath' oldMacroName args = do
   --      they will be erroneously included *after* the module declaration.
   --      Should we just require Axel files to have module declarations, or is there a
   --      less intrusive alternate solution?
-  let macroDefAndEnv =
-        let moduleDecl = SModuleDeclaration Nothing macroDefAndEnvModuleName
-            programStmts =
-              replaceModuleDecl moduleDecl $ insertImports header $ auxEnv <>
-              footer
-         in finalizeProgram programStmts
+  macroDefAndEnv <-
+    do let moduleDecl = SModuleDeclaration Nothing macroDefAndEnvModuleName
+       programStmts <-
+         insertImports filePath' header $ replaceModuleDecl moduleDecl $ auxEnv <>
+         footer
+       pure $ finalizeProgram programStmts
   pure $
     uncurry
       ((,) `on` toHaskell . statementsToProgram)
