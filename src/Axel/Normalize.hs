@@ -28,6 +28,7 @@ import Axel.AST
   , RecordDefinition(RecordDefinition)
   , RecordType(RecordType)
   , RestrictedImport(RestrictedImport)
+  , SMExpression
   , SMStatement
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
           SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
@@ -215,6 +216,20 @@ normalizeFunctionDefinition expr fnName arguments body whereDefs =
              "Each `where` binding must be either a function definition or a type signature!")
     whereDefs
 
+normalizeConstraints ::
+     (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath, Sem.Reader ExprCtxt] effs)
+  => SM.Expression
+  -> Sem.Sem effs [SMExpression]
+normalizeConstraints constraints =
+  normalizeExpression constraints >>= \case
+    EEmptySExpression _ -> pure []
+    EFunctionApplication (FunctionApplication _ constraintsHead constraintsRest) ->
+      pure $ constraintsHead : constraintsRest
+    _ ->
+      pushCtxt constraints $
+      throwNormalizeError
+        "Constraint lists must only contain type constructors!"
+
 normalizeStatement ::
      (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath, Sem.Reader ExprCtxt] effs)
   => SM.Expression
@@ -224,13 +239,14 @@ normalizeStatement expr@(Parse.SExpression _ items) =
   case items of
     Parse.Symbol _ "::":args ->
       case args of
-        [Parse.Symbol _ fnName, typeDef] ->
+        [Parse.Symbol _ fnName, constraints, typeDef] ->
           STypeSignature <$>
           (TypeSignature (Just expr) (T.pack fnName) <$>
+           normalizeConstraints constraints <*>
            normalizeExpression typeDef)
         _ ->
           throwNormalizeError
-            "`::` takes two arguments: 1) a function name and 2) a type."
+            "`::` takes three arguments: 1) a function name, 2) a list of constraints, and 3) a type."
     Parse.Symbol _ "=":args ->
       case args of
         Parse.Symbol _ fnName:Parse.SExpression _ arguments:body:whereDefs ->
@@ -332,16 +348,7 @@ normalizeStatement expr@(Parse.SExpression _ items) =
           throwNormalizeError
             "`importq` takes exactly three arguments: 1) a module name, 2) a module name, and 3) an import specification."
     Parse.Symbol _ "instance":instanceConstraints:instanceName:defs ->
-      let normalizedConstraints =
-            normalizeExpression instanceConstraints >>= \case
-              EEmptySExpression _ -> pure []
-              EFunctionApplication (FunctionApplication _ constraintsHead constraintsRest) ->
-                pure $ constraintsHead : constraintsRest
-              _ ->
-                pushCtxt instanceConstraints $
-                throwNormalizeError
-                  "`instance`'s constraint list must only contain type constructors!"
-          normalizedDefs =
+      let normalizedDefs =
             traverse
               (\x ->
                  normalizeStatement x >>= \case
@@ -353,7 +360,7 @@ normalizeStatement expr@(Parse.SExpression _ items) =
               defs
        in STypeclassInstance <$>
           (TypeclassInstance (Just expr) <$> normalizeExpression instanceName <*>
-           normalizedConstraints <*>
+           normalizeConstraints instanceConstraints <*>
            normalizedDefs)
     Parse.Symbol _ "pragma":args ->
       case args of

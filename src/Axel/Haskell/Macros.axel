@@ -8,7 +8,7 @@
 (import Data.MonoTraversable (onotElem))
 (importq Data.Text T all)
 
-(def hygenisizeMacroName {Text -> Text}
+(def hygenisizeMacroName (() {Text -> Text})
      ((oldName)
       (let ((suffix
              (if (isOperator oldName) "%%%%%%%%%%"

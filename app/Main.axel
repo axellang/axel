@@ -22,7 +22,7 @@
 
 (raw "import Prelude hiding (putStrLn)")
 
-(def app ((-> Command) (Sem.Sem AppEffs Unit))
+(def app (() ((-> Command) (Sem.Sem AppEffs Unit)))
      (((FileCommand fileCommand))
       (case fileCommand
             ((ConvertFile filePath) (void (convertFileInPlace filePath)))
@@ -38,6 +38,6 @@
      (((Version))
       (putStrLn (<> "Axel version " axelStackageVersion))))
 
-(def main (IO Unit)
+(def main (() (IO Unit))
      (() (>>= (execParser commandParserInfo)
               (\ (modeCommand) (runApp (app modeCommand))))))

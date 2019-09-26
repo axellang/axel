@@ -407,7 +407,8 @@ generateMacroProgram filePath' oldMacroName args = do
             mkId = EIdentifier Nothing
             mkQualId moduleName' identifier =
               EIdentifier Nothing $ moduleName' <> "." <> identifier
-            mkTySig fnName ty = STypeSignature $ TypeSignature Nothing fnName ty
+            mkTySig fnName ty =
+              STypeSignature $ TypeSignature Nothing fnName [] ty
             mkFnDef fnName args' body =
               SFunctionDefinition $
               FunctionDefinition Nothing fnName args' body []

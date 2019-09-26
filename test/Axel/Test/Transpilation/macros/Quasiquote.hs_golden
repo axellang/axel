@@ -3,12 +3,12 @@ import qualified Axel.Parse.AST as AST
 import Axel.Prelude
 import qualified Axel.Parse.AST as AST
 import qualified Axel.Sourcemap as SM
-assertEq expr expected = if ((==) ((<$) () expr) ((<$) () expected)) then (AST.SExpression (GHCPrelude.Just ((,) "axelTemp/4676419466500539525/result.axel" (SM.Position 1 73))) [(AST.Symbol (GHCPrelude.Just ((,) "axelTemp/4676419466500539525/result.axel" (SM.Position 1 73))) "raw"),(AST.LiteralString (GHCPrelude.Just ((,) "axelTemp/4676419466500539525/result.axel" (SM.Position 1 73))) "-- Passed!")]) else (error ((<>) (AST.toAxel expr) ((<>) " given, but " ((<>) (AST.toAxel expected) " expected!"))))
-assertEq :: ((->) (AST.Expression a) ((->) (AST.Expression b) SM.Expression))
+assertEq expr expected = if ((==) ((<$) () expr) ((<$) () expected)) then (AST.SExpression (GHCPrelude.Just ((,) "axelTemp/5876541925530856060/result.axel" (SM.Position 1 73))) [(AST.Symbol (GHCPrelude.Just ((,) "axelTemp/5876541925530856060/result.axel" (SM.Position 1 73))) "raw"),(AST.LiteralString (GHCPrelude.Just ((,) "axelTemp/5876541925530856060/result.axel" (SM.Position 1 73))) "-- Passed!")]) else (error ((<>) (AST.toAxel expr) ((<>) " given, but " ((<>) (AST.toAxel expected) " expected!"))))
+assertEq :: () => ((->) (AST.Expression a) ((->) (AST.Expression b) SM.Expression))
 sym x = (AST.Symbol Nothing x)
-sym :: ((->) String SM.Expression)
+sym :: () => ((->) String SM.Expression)
 sexp xs = (AST.SExpression Nothing xs)
-sexp :: ((->) ([] SM.Expression) SM.Expression)
+sexp :: () => ((->) ([] SM.Expression) SM.Expression)
 -- Passed!
 -- Passed!
 -- Passed!

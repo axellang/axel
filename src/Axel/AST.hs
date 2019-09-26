@@ -206,6 +206,7 @@ data TypeSignature ann =
   TypeSignature
     { _ann :: ann
     , _name :: Identifier
+    , _constraints :: [Expression ann]
     , _typeDefinition :: Expression ann
     }
   deriving (Data, Eq, Functor, Show)
@@ -445,6 +446,8 @@ instance ToHaskell (TypeSignature (Maybe SM.Expression)) where
   toHaskell typeSignature =
     toHaskell (EIdentifier (typeSignature ^. ann) (typeSignature ^. name)) <>
     mkHaskell typeSignature " :: " <>
+    constraintsToHaskell (typeSignature ^. constraints) <>
+    mkHaskell typeSignature " => " <>
     toHaskell (typeSignature ^. typeDefinition)
 
 instance ToHaskell (FunctionDefinition (Maybe SM.Expression)) where
@@ -621,13 +624,15 @@ instance ToHaskell (TopLevel (Maybe SM.Expression)) where
   toHaskell topLevel =
     SM.delimit Newlines $ map toHaskell (topLevel ^. statements)
 
+constraintsToHaskell :: [SMExpression] -> SM.Output
+constraintsToHaskell =
+  SM.surround Parentheses . SM.delimit Commas . map toHaskell
+
 instance ToHaskell (TypeclassDefinition (Maybe SM.Expression)) where
   toHaskell :: TypeclassDefinition (Maybe SM.Expression) -> SM.Output
   toHaskell typeclassDefinition =
     mkHaskell typeclassDefinition "class " <>
-    SM.surround
-      Parentheses
-      (SM.delimit Commas (map toHaskell (typeclassDefinition ^. constraints))) <>
+    constraintsToHaskell (typeclassDefinition ^. constraints) <>
     mkHaskell typeclassDefinition " => " <>
     toHaskell (typeclassDefinition ^. name) <>
     mkHaskell typeclassDefinition " where " <>
@@ -637,9 +642,7 @@ instance ToHaskell (TypeclassInstance (Maybe SM.Expression)) where
   toHaskell :: TypeclassInstance (Maybe SM.Expression) -> SM.Output
   toHaskell typeclassInstance =
     mkHaskell typeclassInstance "instance " <>
-    SM.surround
-      Parentheses
-      (SM.delimit Commas (map toHaskell (typeclassInstance ^. constraints))) <>
+    constraintsToHaskell (typeclassInstance ^. constraints) <>
     mkHaskell typeclassInstance " => " <>
     toHaskell (typeclassInstance ^. instanceName) <>
     mkHaskell typeclassInstance " where " <>

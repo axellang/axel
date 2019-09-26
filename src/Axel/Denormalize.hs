@@ -285,6 +285,9 @@ denormalizeStatement (STypeSignature typeSig) =
         ann'
         [ Parse.Symbol ann' "::"
         , Parse.Symbol ann' (T.unpack $ typeSig ^. name)
+        , Parse.SExpression
+            ann'
+            (map denormalizeExpression (typeSig ^. constraints))
         , denormalizeExpression (typeSig ^. typeDefinition)
         ]
 denormalizeStatement (STypeSynonym typeSynonym) =

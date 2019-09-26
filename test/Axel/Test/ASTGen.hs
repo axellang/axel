@@ -192,8 +192,11 @@ genTypeclassInstance =
   genConstraints <*>
   Gen.list (Range.linear 0 10) genFunctionDefinition
 
-genTypeSignature :: (MonadGen m) => m (AST.TypeSignature (Maybe SM.Expression))
-genTypeSignature = AST.TypeSignature Nothing <$> genIdentifier <*> genExpression
+genTypeSignature ::
+     (Alternative m, MonadGen m) => m (AST.TypeSignature (Maybe SM.Expression))
+genTypeSignature =
+  AST.TypeSignature Nothing <$> genIdentifier <*> genConstraints <*>
+  genExpression
 
 genTypeSynonym :: (MonadGen m) => m (AST.TypeSynonym (Maybe SM.Expression))
 genTypeSynonym = AST.TypeSynonym Nothing <$> genExpression <*> genExpression

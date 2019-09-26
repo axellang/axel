@@ -1,5 +1,5 @@
-(:: main (IO Unit))
+(:: main () (IO Unit))
 
-(:: foo Int)
+(:: foo () Int)
 
-(:: bar (-> Int (-> Char Bool)))
+(:: bar (Quux) (-> Int (-> Char Bool)))

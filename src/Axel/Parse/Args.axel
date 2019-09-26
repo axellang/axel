@@ -26,14 +26,14 @@
               (ProjectCommand ProjectCommand)
               Version)
 
-(def experimental {String -> String}
+(def experimental (() {String -> String})
      (() (<> "(EXPERIMENTAL) ")))
 
-(def command' {String -> {(ParserInfo a) -> (Parser a)}}
+(def command' (() {String -> {(ParserInfo a) -> (Parser a)}})
      ((name parserInfo)
       (hsubparser {(command name parserInfo) <> (metavar name)})))
 
-(def fileCommandParser (Parser FileCommand)
+(def fileCommandParser (() (Parser FileCommand))
      (()
       (asum [convertFileCommand formatFileCommand runFileCommand])
       (= convertFileCommand ()
@@ -54,7 +54,7 @@
                                         (argument str (metavar "FILE"))}
           (progDesc desc)))))
 
-(def projectCommandParser (Parser ProjectCommand)
+(def projectCommandParser (() (Parser ProjectCommand))
      (()
       (asum
        [convertProjectCommand formatProjectCommand runProjectCommand])
@@ -71,7 +71,7 @@
          (command' "run" (info (pure RunProject)
                                (progDesc "Build and run the project"))))))
 
-(def commandParserInfo (ParserInfo Command)
+(def commandParserInfo (() (ParserInfo Command))
      (()
       (let ((subparsers
              (asum [fileCommand projectCommand versionCommand])))
