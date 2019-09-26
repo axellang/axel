@@ -59,7 +59,7 @@ parseReadMacro prefix wrapper = do
   ann SExpression (pure [Symbol Nothing (T.unpack wrapper), expr])
 
 eol :: Parser ()
-eol = P.try (void P.eol) <|> P.eof
+eol = void P.eol <|> P.eof
 
 ignored :: Parser ()
 ignored = P.skipMany $ P.try comment <|> void P.spaceChar
@@ -108,8 +108,8 @@ symbol =
   ann
     Symbol
     (P.some
-       (P.try P.alphaNumChar <|> P.try (P.oneOf ['\'', '_']) <|>
-        P.try (P.oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols)) <|>
+       (P.alphaNumChar <|> P.oneOf ['\'', '_'] <|>
+        P.oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols) <|>
         P.oneOf (map fst haskellOperatorSymbols)))
 
 unquotedExpression :: Parser SM.Expression
@@ -122,14 +122,13 @@ comment =
 
 expression :: Parser SM.Expression
 expression =
-  P.try literalChar <|> P.try literalInt <|> P.try literalList <|>
-  P.try literalString <|>
-  P.try quotedExpression <|>
-  P.try quasiquotedExpression <|>
-  P.try spliceUnquotedExpression <|>
-  P.try unquotedExpression <|>
-  P.try sExpression <|>
-  P.try infixSExpression <|>
+  sExpression <|> infixSExpression <|> literalList <|> literalString <|>
+  quotedExpression <|>
+  quasiquotedExpression <|>
+  spliceUnquotedExpression <|>
+  unquotedExpression <|>
+  literalInt <|>
+  literalChar <|>
   symbol
 
 -- Adapted from Appendix A of "Quasiquotation in Lisp" by Alan Bawden.
@@ -189,4 +188,4 @@ parseSource filePath input =
   wrapCompoundExpressions <$> parseMultiple filePath input
 
 syntaxSymbols :: String
-syntaxSymbols = "()[]{}"
+syntaxSymbols = "()[]{}\""
