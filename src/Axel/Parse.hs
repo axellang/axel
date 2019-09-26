@@ -70,7 +70,7 @@ ignored :: Parser ()
 ignored = P.skipMany $ P.try comment <|> void P.spaceChar
 
 literalChar :: Parser SM.Expression
-literalChar = ann LiteralChar (P.string "#\\" *> P.anySingle)
+literalChar = ann LiteralChar (P.string "#\\" *> P.charLiteral)
 
 literalInt :: Parser SM.Expression
 literalInt = ann LiteralInt (P.signed mempty P.decimal)

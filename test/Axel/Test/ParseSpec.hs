@@ -24,8 +24,8 @@ spec_Parse :: SpecWith ()
 spec_Parse = do
   describe "parseSingle" $ do
     it "can parse a character literal" $ do
-      let result = LiteralChar () 'a'
-      parseSingle "#\\a" `shouldBe` result
+      parseSingle "#\\a" `shouldBe` LiteralChar () 'a'
+      parseSingle "#\\\\x1000" `shouldBe` LiteralChar () '\x1000'
     it "can parse an integer literal" $ do
       parseSingle "-123" `shouldBe` LiteralInt () (-123)
       parseSingle "456" `shouldBe` LiteralInt () 456
@@ -39,8 +39,8 @@ spec_Parse = do
               [Symbol () "list", LiteralInt () 1, LiteralChar () 'a']
       parseSingle "[1 #\\a]" `shouldBe` result
     it "can parse a string literal" $ do
-      let result = LiteralString () "a \"b"
-      parseSingle "\"a \\\"b\"" `shouldBe` result
+      let result = LiteralString () "a \x1000 \"b"
+      parseSingle "\"a \x1000 \\\"b\"" `shouldBe` result
     it "can parse a quasiquoted expression" $ do
       let result =
             SExpression
