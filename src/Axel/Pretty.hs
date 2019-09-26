@@ -74,6 +74,7 @@ privilegedFormToAxelPretty xs = sexp $ map toAxelPretty xs
 
 toAxelPretty :: Expression ann -> P.Doc a
 toAxelPretty (LiteralChar _ x) = "#\\" <> P.pretty x
+toAxelPretty (LiteralFloat _ x) = P.pretty x
 toAxelPretty (LiteralInt _ x) = P.pretty x
 toAxelPretty (LiteralString _ x) =
   P.dquotes $ P.pretty (under unpacked handleCharEscapes x)

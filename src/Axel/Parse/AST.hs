@@ -42,6 +42,7 @@ import GHC.Generics (Generic)
 --      on `Axel.Prelude` in user-facing code.
 data Expression ann
   = LiteralChar ann Char
+  | LiteralFloat ann Float
   | LiteralInt ann Int
   | LiteralString ann String
   | SExpression ann [Expression ann]
@@ -55,6 +56,7 @@ instance (Hashable ann) => Hashable (Expression ann)
 -- TODO Derive this automatically.
 getAnn :: Expression ann -> ann
 getAnn (LiteralChar ann _) = ann
+getAnn (LiteralFloat ann _) = ann
 getAnn (LiteralInt ann _) = ann
 getAnn (LiteralString ann _) = ann
 getAnn (SExpression ann _) = ann
@@ -73,6 +75,7 @@ instance (Data ann) => ZipperRecursive (Expression ann) where
         let recurse =
               case hole z of
                 LiteralChar _ _ -> pure
+                LiteralFloat _ _ -> pure
                 LiteralInt _ _ -> pure
                 LiteralString _ _ -> pure
                 SExpression _ [] -> pure
@@ -96,6 +99,7 @@ instance (Data ann) => ZipperRecursive (Expression ann) where
         let recurse =
               case x of
                 LiteralChar _ _ -> pure
+                LiteralFloat _ _ -> pure
                 LiteralInt _ _ -> pure
                 LiteralString _ _ -> pure
                 SExpression _ [] -> pure
@@ -116,6 +120,7 @@ bottomUpFmapSplicing f =
 
 toAxel :: Expression ann -> Text
 toAxel (LiteralChar _ x) = "#\\" <> T.singleton x
+toAxel (LiteralFloat _ x) = showText x
 toAxel (LiteralInt _ x) = showText x
 toAxel (LiteralString _ xs) = "\"" <> handleCharEscapes (T.pack xs) <> "\""
 toAxel (SExpression _ (Symbol _ "applyInfix":xs)) =
@@ -140,6 +145,10 @@ quoteExpression quoteAnn (LiteralChar ann x) =
   SExpression
     ann
     [Symbol ann "AST.LiteralChar", quoteAnn ann, LiteralChar ann x]
+quoteExpression quoteAnn (LiteralFloat ann x) =
+  SExpression
+    ann
+    [Symbol ann "AST.LiteralFloat", quoteAnn ann, LiteralFloat ann x]
 quoteExpression quoteAnn (LiteralInt ann x) =
   SExpression ann [Symbol ann "AST.LiteralInt", quoteAnn ann, LiteralInt ann x]
 quoteExpression quoteAnn (LiteralString ann x) =

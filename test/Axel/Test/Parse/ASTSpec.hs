@@ -27,6 +27,7 @@ spec_AST = do
                   ]
               ]
       let f (LiteralChar ann x) = LiteralChar (succ ann) x
+          f (LiteralFloat ann x) = LiteralFloat (succ ann) x
           f (LiteralInt ann x) = LiteralInt (succ ann) x
           f (LiteralString ann x) = LiteralString (succ ann) x
           f (SExpression ann xs) = SExpression (succ ann) xs

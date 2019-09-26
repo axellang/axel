@@ -22,6 +22,7 @@ genLiteral :: (MonadGen m) => m (AST.Literal (Maybe SM.Expression))
 genLiteral =
   Gen.choice
     [ AST.LChar Nothing <$> Gen.unicode
+    , AST.LFloat Nothing <$> Gen.float (Range.exponentialFloat (-10000) 10000)
     , AST.LInt Nothing <$> Gen.int Range.constantBounded
     , AST.LString Nothing <$> Gen.text (Range.linear 0 5) Gen.unicode
     ]

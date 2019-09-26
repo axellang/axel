@@ -10,9 +10,6 @@ import Axel.Prelude
 import Axel.Haskell.Language (isOperator)
 import Axel.Haskell.Macros (hygenisizeMacroName)
 import qualified Axel.Parse.AST as Parse
-  ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
-           Symbol)
-  )
 import Axel.Sourcemap
   ( Bracket(CurlyBraces, DoubleQuotes, Parentheses, SingleQuotes,
         SquareBrackets)
@@ -223,6 +220,7 @@ data TypeSynonym ann =
 
 data Literal ann
   = LChar ann Char
+  | LFloat ann Float
   | LInt ann Int
   | LString ann Text
   deriving (Data, Eq, Functor, Show)
@@ -354,15 +352,12 @@ instance {-# OVERLAPPING #-} HasAnnotation (Statement ann) ann where
 
 instance {-# OVERLAPPING #-} HasAnnotation (Parse.Expression ann) ann where
   getAnn :: Parse.Expression ann -> ann
-  getAnn (Parse.LiteralChar ann' _) = ann'
-  getAnn (Parse.LiteralInt ann' _) = ann'
-  getAnn (Parse.LiteralString ann' _) = ann'
-  getAnn (Parse.SExpression ann' _) = ann'
-  getAnn (Parse.Symbol ann' _) = ann'
+  getAnn = Parse.getAnn
 
 instance {-# OVERLAPPING #-} HasAnnotation (Literal ann) ann where
   getAnn :: Literal ann -> ann
   getAnn (LChar ann' _) = ann'
+  getAnn (LFloat ann' _) = ann'
   getAnn (LInt ann' _) = ann'
   getAnn (LString ann' _) = ann'
 
@@ -440,6 +435,7 @@ instance ToHaskell (Literal (Maybe SM.Expression)) where
   toHaskell literal@(LChar _ x) =
     mkHaskell literal $
     Display.surround SingleQuotes (handleCharEscapes (T.singleton x))
+  toHaskell literal@(LFloat _ x) = mkHaskell literal $ showText x
   toHaskell literal@(LInt _ x) = mkHaskell literal $ showText x
   toHaskell literal@(LString _ x) =
     mkHaskell literal $ Display.surround DoubleQuotes (handleCharEscapes x)

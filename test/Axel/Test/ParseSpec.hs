@@ -27,8 +27,11 @@ spec_Parse = do
       let result = LiteralChar () 'a'
       parseSingle "#\\a" `shouldBe` result
     it "can parse an integer literal" $ do
-      let result = LiteralInt () 123
-      parseSingle "123" `shouldBe` result
+      parseSingle "-123" `shouldBe` LiteralInt () (-123)
+      parseSingle "456" `shouldBe` LiteralInt () 456
+    it "can parse a float literal" $ do
+      parseSingle "-12.3" `shouldBe` LiteralFloat () (-12.3)
+      parseSingle "4.56" `shouldBe` LiteralFloat () 4.56
     it "can parse a list literal" $ do
       let result =
             SExpression

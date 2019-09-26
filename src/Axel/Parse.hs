@@ -7,8 +7,8 @@ import Axel.Prelude
 import Axel.Eff.Error (Error(ParseError))
 import Axel.Haskell.Language (haskellOperatorSymbols, haskellSyntaxSymbols)
 import Axel.Parse.AST
-  ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
-           Symbol)
+  ( Expression(LiteralChar, LiteralFloat, LiteralInt, LiteralString,
+           SExpression, Symbol)
   , bottomUpFmapSplicing
   , getAnn
   )
@@ -34,7 +34,12 @@ import qualified Polysemy.Error as Sem
 
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
-import qualified Text.Megaparsec.Char.Lexer as P (charLiteral)
+import qualified Text.Megaparsec.Char.Lexer as P
+  ( charLiteral
+  , decimal
+  , float
+  , signed
+  )
 
 type Parser = P.Parsec Void Text
 
@@ -68,7 +73,10 @@ literalChar :: Parser SM.Expression
 literalChar = ann LiteralChar (P.string "#\\" *> P.anySingle)
 
 literalInt :: Parser SM.Expression
-literalInt = ann LiteralInt (read <$> P.some P.digitChar)
+literalInt = ann LiteralInt (P.signed mempty P.decimal)
+
+literalFloat :: Parser SM.Expression
+literalFloat = ann LiteralFloat (P.signed mempty P.float)
 
 literalList :: Parser SM.Expression
 literalList =
@@ -122,12 +130,13 @@ comment =
 
 expression :: Parser SM.Expression
 expression =
-  sExpression <|> infixSExpression <|> literalList <|> literalString <|>
+  P.try literalFloat <|> P.try literalInt <|> sExpression <|> infixSExpression <|>
+  literalList <|>
+  literalString <|>
   quotedExpression <|>
   quasiquotedExpression <|>
   spliceUnquotedExpression <|>
   unquotedExpression <|>
-  literalInt <|>
   literalChar <|>
   symbol
 

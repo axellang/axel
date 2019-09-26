@@ -8,7 +8,7 @@ import Axel.AST
            ERawExpression, ERecordDefinition, ERecordType)
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
-  , Literal(LChar, LInt, LString)
+  , Literal(LChar, LFloat, LInt, LString)
   , SMExpression
   , SMStatement
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
@@ -46,10 +46,7 @@ import Axel.AST
   , wrappedType
   )
 import qualified Axel.Parse.AST as Parse
-  ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
-           Symbol)
-  )
-import qualified Axel.Sourcemap as SM (Expression)
+import qualified Axel.Sourcemap as SM
 
 import Control.Lens.Operators ((^.))
 
@@ -117,6 +114,7 @@ denormalizeExpression (ELetBlock letBlock) =
 denormalizeExpression (ELiteral x) =
   case x of
     LChar _ char -> Parse.LiteralChar (getAnn' x) char
+    LFloat _ float -> Parse.LiteralFloat (getAnn' x) float
     LInt _ int -> Parse.LiteralInt (getAnn' x) int
     LString _ string -> Parse.LiteralString (getAnn' x) (T.unpack string)
 denormalizeExpression expr'@(ERawExpression _ rawSource) =

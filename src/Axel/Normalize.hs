@@ -19,7 +19,7 @@ import Axel.AST
   , ImportSpecification(ImportAll, ImportOnly)
   , Lambda(Lambda)
   , LetBlock(LetBlock)
-  , Literal(LChar, LInt, LString)
+  , Literal(LChar, LFloat, LInt, LString)
   , MacroDefinition(MacroDefinition)
   , MacroImport(MacroImport)
   , NewtypeDeclaration(NewtypeDeclaration)
@@ -43,8 +43,8 @@ import Axel.AST
   )
 import Axel.Eff.Error (Error(NormalizeError), renderError, unsafeRunError)
 import qualified Axel.Parse.AST as Parse
-  ( Expression(LiteralChar, LiteralInt, LiteralString, SExpression,
-           Symbol)
+  ( Expression(LiteralChar, LiteralFloat, LiteralInt, LiteralString,
+           SExpression, Symbol)
   )
 import qualified Axel.Sourcemap as SM (Expression)
 
@@ -81,6 +81,8 @@ normalizeExpression ::
   -> Sem.Sem effs (Expression (Maybe SM.Expression))
 normalizeExpression expr@(Parse.LiteralChar _ char) =
   pure $ ELiteral (LChar (Just expr) char)
+normalizeExpression expr@(Parse.LiteralFloat _ float) =
+  pure $ ELiteral (LFloat (Just expr) float)
 normalizeExpression expr@(Parse.LiteralInt _ int) =
   pure $ ELiteral (LInt (Just expr) int)
 normalizeExpression expr@(Parse.LiteralString _ string) =
