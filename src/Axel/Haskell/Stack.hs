@@ -6,7 +6,7 @@ module Axel.Haskell.Stack where
 
 import Axel.Prelude
 
-import Axel.Eff.Console (putStrLn)
+import Axel.Eff.Console (putStr, putStrLn)
 import qualified Axel.Eff.Console as Effs
 import Axel.Eff.Error (Error(ProjectError), fatal)
 import qualified Axel.Eff.FileSystem as FS
@@ -107,7 +107,7 @@ buildStackProject moduleInfo projectPath = do
       createIndependentProcess "stack build --ghc-options='-ddump-json'"
     whileM (not <$> handleIsAtEnd stderrHandle) $ do
       stackOutputLine <- handleGetLine stderrHandle
-      putStrLn $ T.unlines $ processStackOutputLine moduleInfo stackOutputLine
+      putStr $ T.unlines $ processStackOutputLine moduleInfo stackOutputLine
     exitCode <- waitOnProcess processHandle
     case exitCode of
       ExitSuccess -> pure ()
