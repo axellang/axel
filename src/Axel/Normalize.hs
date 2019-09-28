@@ -9,12 +9,11 @@ import Axel.AST
   ( CaseBlock(CaseBlock)
   , DataDeclaration(DataDeclaration)
   , Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
-           EIdentifier, EIfBlock, ELambda, ELetBlock, ELiteral,
-           ERawExpression, ERecordDefinition, ERecordType)
+           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression,
+           ERecordDefinition, ERecordType)
   , FunctionApplication(FunctionApplication)
   , FunctionDefinition(FunctionDefinition)
   , Identifier
-  , IfBlock(IfBlock)
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Lambda(Lambda)
@@ -43,7 +42,6 @@ import Axel.AST
   , TypeclassInstance(TypeclassInstance)
   )
 import Axel.Eff.Error (Error(NormalizeError), renderError, unsafeRunError)
-import Axel.Haskell.Language (haskellOperatorSymbols, haskellSyntaxSymbols)
 import Axel.Parse (unhygenisizeIdentifier)
 import qualified Axel.Parse.AST as Parse
   ( Expression(LiteralChar, LiteralFloat, LiteralInt, LiteralString,
@@ -93,100 +91,104 @@ normalizeExpression expr@(Parse.LiteralString _ string) =
 normalizeExpression expr@(Parse.SExpression _ items) =
   pushCtxt expr $
   case items of
-    Parse.Symbol _ "case":var:cases ->
-      let normalizedCases =
-            traverse
-              (\case
-                 Parse.SExpression _ [pat, body] ->
-                   (,) <$> normalizeExpression pat <*> normalizeExpression body
-                 x ->
-                   pushCtxt x $
-                   throwNormalizeError
-                     "A `case` clause must be an s-expression containing: 1) a pattern and 2) a body.")
-              cases
-       in ECaseBlock <$>
-          (CaseBlock (Just expr) <$> normalizeExpression var <*> normalizedCases)
-    Parse.Symbol _ "\\":args ->
-      case args of
-        [Parse.SExpression _ args', body] ->
-          let normalizedArguments = traverse normalizeExpression args'
-           in ELambda <$>
-              (Lambda (Just expr) <$> normalizedArguments <*>
-               normalizeExpression body)
-        _ ->
-          throwNormalizeError
-            "`\\` takes exactly two arguments: 1) an argument list and 2) a body."
-    Parse.Symbol _ "if":args ->
-      case args of
-        [cond, ifTrue, ifFalse] ->
-          EIfBlock <$>
-          (IfBlock (Just expr) <$> normalizeExpression cond <*>
-           normalizeExpression ifTrue <*>
-           normalizeExpression ifFalse)
-        _ ->
-          throwNormalizeError
-            "`if` takes exactly three arguments: 1) the condition to test, 2) the value if it is true, and 3) the value if it is false."
-    Parse.Symbol _ "let":args ->
-      case args of
-        [Parse.SExpression _ bindings, body] ->
+    (Parse.Symbol sourceMetadata special):args ->
+      case unhygenisizeIdentifier special of
+        "case" ->
+          case args of
+            var:cases ->
+              let normalizedCases =
+                    traverse
+                      (\case
+                         Parse.SExpression _ [pat, body] ->
+                           (,) <$> normalizeExpression pat <*>
+                           normalizeExpression body
+                         x ->
+                           pushCtxt x $
+                           throwNormalizeError
+                             "A `case` clause must be an s-expression containing: 1) a pattern and 2) a body.")
+                      cases
+               in ECaseBlock <$>
+                  (CaseBlock (Just expr) <$> normalizeExpression var <*>
+                   normalizedCases)
+            _ ->
+              throwNormalizeError
+                "`case` takes an expression followed by `case` clauses."
+        "\\" ->
+          case args of
+            [Parse.SExpression _ args', body] ->
+              let normalizedArguments = traverse normalizeExpression args'
+               in ELambda <$>
+                  (Lambda (Just expr) <$> normalizedArguments <*>
+                   normalizeExpression body)
+            _ ->
+              throwNormalizeError
+                "`\\` takes exactly two arguments: 1) an argument list and 2) a body."
+        "let" ->
+          case args of
+            [Parse.SExpression _ bindings, body] ->
+              let normalizedBindings =
+                    traverse
+                      (\case
+                         Parse.SExpression _ [name, value] ->
+                           (,) <$> normalizeExpression name <*>
+                           normalizeExpression value
+                         x ->
+                           pushCtxt x $
+                           throwNormalizeError
+                             "Each `let` binding must be an s-expression containing: 1) a pattern and 2) a value!")
+                      bindings
+               in ELetBlock <$>
+                  (LetBlock (Just expr) <$> normalizedBindings <*>
+                   normalizeExpression body)
+            _ ->
+              throwNormalizeError
+                "`let` takes exactly two arguments: 1) a bindings list and 2) a body."
+        "raw" ->
+          case args of
+            [rawSource] ->
+              let normalizedRawSource =
+                    case rawSource of
+                      Parse.LiteralString _ x -> pure x
+                      x ->
+                        pushCtxt x $
+                        throwNormalizeError
+                          "`raw` takes strings representing the code to inject directly."
+               in ERawExpression (Just expr) . T.pack <$> normalizedRawSource
+            _ ->
+              throwNormalizeError
+                "`raw` takes exactly one argument: a string literal."
+        "record" ->
           let normalizedBindings =
                 traverse
-                  (\case
-                     Parse.SExpression _ [name, value] ->
-                       (,) <$> normalizeExpression name <*>
-                       normalizeExpression value
-                     x ->
-                       pushCtxt x $
-                       throwNormalizeError
-                         "Each `let` binding must be an s-expression containing: 1) a pattern and 2) a value!")
-                  bindings
-           in ELetBlock <$>
-              (LetBlock (Just expr) <$> normalizedBindings <*>
-               normalizeExpression body)
+                  (\x ->
+                     normalizeExpression x >>= \case
+                       EFunctionApplication (FunctionApplication _ (EIdentifier _ field) [val]) ->
+                         pure (field, val)
+                       _ ->
+                         pushCtxt x $
+                         throwNormalizeError
+                           "Each `record` field setter must be an s-expression containing: 1) a field name and 2) a value!")
+                  args
+           in ERecordDefinition <$>
+              (RecordDefinition (Just expr) <$> normalizedBindings)
+        "recordType" ->
+          let normalizedFields =
+                traverse
+                  (\x ->
+                     normalizeExpression x >>= \case
+                       EFunctionApplication (FunctionApplication _ (EIdentifier _ field) [ty]) ->
+                         pure (field, ty)
+                       _ ->
+                         pushCtxt x $
+                         throwNormalizeError
+                           "Each `recordType` field descriptor must be an s-expression containing: 1) a field name and 2) a type!")
+                  args
+           in ERecordType <$> (RecordType (Just expr) <$> normalizedFields)
         _ ->
-          throwNormalizeError
-            "`let` takes exactly two arguments: 1) a bindings list and 2) a body."
-    Parse.Symbol _ "raw":args ->
-      case args of
-        [rawSource] ->
-          let normalizedRawSource =
-                case rawSource of
-                  Parse.LiteralString _ x -> pure x
-                  x ->
-                    pushCtxt x $
-                    throwNormalizeError
-                      "`raw` takes strings representing the code to inject directly."
-           in ERawExpression (Just expr) . T.pack <$> normalizedRawSource
-        _ ->
-          throwNormalizeError
-            "`raw` takes exactly one argument: a string literal."
-    Parse.Symbol _ "record":bindings ->
-      let normalizedBindings =
-            traverse
-              (\x ->
-                 normalizeExpression x >>= \case
-                   EFunctionApplication (FunctionApplication _ (EIdentifier _ field) [val]) ->
-                     pure (field, val)
-                   _ ->
-                     pushCtxt x $
-                     throwNormalizeError
-                       "Each `record` field setter must be an s-expression containing: 1) a field name and 2) a value!")
-              bindings
-       in ERecordDefinition <$>
-          (RecordDefinition (Just expr) <$> normalizedBindings)
-    Parse.Symbol _ "recordType":fields ->
-      let normalizedFields =
-            traverse
-              (\x ->
-                 normalizeExpression x >>= \case
-                   EFunctionApplication (FunctionApplication _ (EIdentifier _ field) [ty]) ->
-                     pure (field, ty)
-                   _ ->
-                     pushCtxt x $
-                     throwNormalizeError
-                       "Each `recordType` field descriptor must be an s-expression containing: 1) a field name and 2) a type!")
-              fields
-       in ERecordType <$> (RecordType (Just expr) <$> normalizedFields)
+          EFunctionApplication <$>
+          (FunctionApplication (Just expr) <$>
+           normalizeExpression (Parse.Symbol sourceMetadata special) <*>
+           traverse normalizeExpression args)
     fn:args ->
       EFunctionApplication <$>
       (FunctionApplication (Just expr) <$> normalizeExpression fn <*>
@@ -240,10 +242,7 @@ normalizeStatement expr@(Parse.SExpression _ items) =
   pushCtxt expr $
   case items of
     Parse.Symbol _ special:args ->
-      case unhygenisizeIdentifier
-             haskellSyntaxSymbols
-             haskellOperatorSymbols
-             special of
+      case unhygenisizeIdentifier special of
         "::" ->
           case args of
             [Parse.Symbol _ fnName, constraints, typeDef] ->

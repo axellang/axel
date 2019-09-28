@@ -1,11 +1,12 @@
 module Quasiquote where
+import Axel
 import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
 import Axel.Prelude
 import qualified Axel.Parse.AST as AST
 import qualified Axel.Sourcemap as SM
 assertEq :: () => ((->) (AST.Expression a) ((->) (AST.Expression b) SM.Expression))
-assertEq expr expected = if ((==) ((<$) () expr) ((<$) () expected)) then (AST.SExpression (GHCPrelude.Just ((,) "axelTemp/3414851019635218044/result.axel" (SM.Position 2 73))) [(AST.Symbol (GHCPrelude.Just ((,) "axelTemp/3414851019635218044/result.axel" (SM.Position 2 73))) "raw"),(AST.LiteralString (GHCPrelude.Just ((,) "axelTemp/3414851019635218044/result.axel" (SM.Position 2 73))) "-- Passed!")]) else (error ((<>) (AST.toAxel expr) ((<>) " given, but " ((<>) (AST.toAxel expected) " expected!"))))
+assertEq expr expected = (aXEL_SYMBOL_IF_ ((==) ((<$) () expr) ((<$) () expected)) (AST.SExpression (GHCPrelude.Just ((,) "axelTemp/1364958129529869184/result.axel" (SM.Position 2 86))) [(AST.Symbol (GHCPrelude.Just ((,) "axelTemp/1364958129529869184/result.axel" (SM.Position 2 86))) "raw"),(AST.LiteralString (GHCPrelude.Just ((,) "axelTemp/1364958129529869184/result.axel" (SM.Position 2 86))) "-- Passed!")]) (error ((<>) (AST.toAxel expr) ((<>) " given, but " ((<>) (AST.toAxel expected) " expected!")))))
 sym :: () => ((->) String SM.Expression)
 sym x = (AST.Symbol Nothing x)
 sexp :: () => ((->) ([] SM.Expression) SM.Expression)

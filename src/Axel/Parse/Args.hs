@@ -1,4 +1,5 @@
 module Axel.Parse.Args where
+import Axel
 import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
 import Axel.Prelude

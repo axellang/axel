@@ -6,7 +6,8 @@ import Axel.Prelude
 
 import Axel.Eff.Error (Error(ParseError))
 import Axel.Haskell.Language
-  ( haskellOperatorSymbols
+  ( haskellKeywords
+  , haskellOperatorSymbols
   , haskellSyntaxSymbols
   , isOperator
   )
@@ -121,7 +122,7 @@ spliceUnquotedExpression = parseReadMacro "~@" "unquoteSplicing"
 symbol :: Parser SM.Expression
 symbol =
   ann Symbol $
-  hygenisizeIdentifier haskellSyntaxSymbols haskellOperatorSymbols <$>
+  hygenisizeIdentifier <$>
   P.some
     (P.alphaNumChar <|> P.oneOf ['\'', '_'] <|>
      P.oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols) <|>
@@ -222,28 +223,32 @@ charReplacements syntaxCharReplacements operatorCharReplacements x =
 valueHygienePrefix :: Text
 valueHygienePrefix = "aXEL_VALUE_"
 
-hygenisizeIdentifier :: [(Char, String)] -> [(Char, String)] -> String -> String
-hygenisizeIdentifier syntaxCharReplacements operatorCharReplacements x =
-  let prefix =
-        if unsafeHead x `elem` map fst replacements
-          then valueHygienePrefix
-          else ""
-   in T.unpack $
-      prefix <>
-      foldl'
-        (\acc (old, new) -> T.replace (T.singleton old) (T.pack new) acc)
-        (T.pack x)
-        replacements
+hygenisizeIdentifier :: String -> String
+hygenisizeIdentifier x
+  | [(_, new)] <- filter ((x ==) . fst) haskellKeywords = new
+  | otherwise =
+    let prefix =
+          if unsafeHead x `elem` map fst replacements
+            then valueHygienePrefix
+            else ""
+     in T.unpack $
+        prefix <>
+        foldl'
+          (\acc (old, new) -> T.replace (T.singleton old) (T.pack new) acc)
+          (T.pack x)
+          replacements
   where
     replacements =
-      charReplacements syntaxCharReplacements operatorCharReplacements x
+      charReplacements haskellSyntaxSymbols haskellOperatorSymbols x
 
-unhygenisizeIdentifier ::
-     [(Char, String)] -> [(Char, String)] -> String -> String
-unhygenisizeIdentifier syntaxCharReplacements operatorCharReplacements x =
-  T.unpack $
-  T.remove valueHygienePrefix $ -- The prefix isn't always there, in which case this just no-ops.
-  foldl'
-    (\acc (old, new) -> T.replace (T.pack new) (T.singleton old) acc)
-    (T.pack x) $
-  charReplacements syntaxCharReplacements operatorCharReplacements x
+unhygenisizeIdentifier :: String -> String
+unhygenisizeIdentifier x
+  | [(old, _)] <- filter ((x ==) . snd) haskellKeywords = old
+  | otherwise -- There _could_ be multiple matches, but that would be VERY, VERY BAD™.
+   =
+    T.unpack $
+    T.remove valueHygienePrefix $ -- The prefix isn't always there, in which case this just no-ops.
+    foldl'
+      (\acc (old, new) -> T.replace (T.pack new) (T.singleton old) acc)
+      (T.pack x) $
+    charReplacements haskellSyntaxSymbols haskellOperatorSymbols x

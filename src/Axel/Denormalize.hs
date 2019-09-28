@@ -4,8 +4,8 @@ import Axel.Prelude
 
 import Axel.AST
   ( Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
-           EIdentifier, EIfBlock, ELambda, ELetBlock, ELiteral,
-           ERawExpression, ERecordDefinition, ERecordType)
+           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression,
+           ERecordDefinition, ERecordType)
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Literal(LChar, LFloat, LInt, LString)
@@ -22,7 +22,6 @@ import Axel.AST
   , arguments
   , bindings
   , body
-  , cond
   , constraints
   , constructors
   , definition
@@ -32,8 +31,6 @@ import Axel.AST
   , function
   , functionDefinition
   , getAnn'
-  , ifFalse
-  , ifTrue
   , imports
   , instanceName
   , matches
@@ -76,15 +73,6 @@ denormalizeExpression (EFunctionApplication functionApplication) =
   map denormalizeExpression (functionApplication ^. arguments)
 denormalizeExpression expr'@(EIdentifier _ x) =
   Parse.Symbol (getAnn' expr') (T.unpack x)
-denormalizeExpression (EIfBlock ifBlock) =
-  let ann' = getAnn' ifBlock
-   in Parse.SExpression
-        ann'
-        [ Parse.Symbol ann' "if"
-        , denormalizeExpression (ifBlock ^. cond)
-        , denormalizeExpression (ifBlock ^. ifTrue)
-        , denormalizeExpression (ifBlock ^. ifFalse)
-        ]
 denormalizeExpression (ELambda lambda) =
   let ann' = getAnn' lambda
       denormalizedArguments =

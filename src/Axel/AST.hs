@@ -58,15 +58,6 @@ data FunctionApplication ann =
     }
   deriving (Data, Eq, Functor, Show)
 
-data IfBlock ann =
-  IfBlock
-    { _ann :: ann
-    , _cond :: Expression ann
-    , _ifTrue :: Expression ann
-    , _ifFalse :: Expression ann
-    }
-  deriving (Data, Eq, Functor, Show)
-
 data TopLevel ann =
   TopLevel
     { _ann :: ann
@@ -231,7 +222,6 @@ data Expression ann
   | EEmptySExpression ann
   | EFunctionApplication (FunctionApplication ann)
   | EIdentifier ann Identifier
-  | EIfBlock (IfBlock ann)
   | ELambda (Lambda ann)
   | ELetBlock (LetBlock ann)
   | ELiteral (Literal ann)
@@ -278,8 +268,6 @@ makeFieldsNoPrefix ''Lambda
 
 makeFieldsNoPrefix ''LetBlock
 
-makeFieldsNoPrefix ''IfBlock
-
 makeFieldsNoPrefix ''MacroDefinition
 
 makeFieldsNoPrefix ''MacroImport
@@ -325,7 +313,6 @@ instance {-# OVERLAPPING #-} HasAnnotation (Expression ann) ann where
   getAnn (EEmptySExpression ann') = ann'
   getAnn (EFunctionApplication fnApp) = fnApp ^. ann
   getAnn (EIdentifier ann' _) = ann'
-  getAnn (EIfBlock ifBlock) = ifBlock ^. ann
   getAnn (ELambda lambda) = lambda ^. ann
   getAnn (ELetBlock letBlock) = letBlock ^. ann
   getAnn (ELiteral literal) = getAnn literal
@@ -488,15 +475,6 @@ removeSurroundingParentheses = removeOpen . removeClosed
     removeOpen = _Wrapped . _head . unannotated %~ T.tail
     removeClosed = _Wrapped . _last . unannotated %~ T.init
 
-instance ToHaskell (IfBlock (Maybe SM.Expression)) where
-  toHaskell :: IfBlock (Maybe SM.Expression) -> SM.Output
-  toHaskell ifBlock =
-    mkHaskell ifBlock "if " <> toHaskell (ifBlock ^. cond) <>
-    mkHaskell ifBlock " then " <>
-    toHaskell (ifBlock ^. ifTrue) <>
-    mkHaskell ifBlock " else " <>
-    toHaskell (ifBlock ^. ifFalse)
-
 instance ToHaskell (NewtypeDeclaration (Maybe SM.Expression)) where
   toHaskell :: NewtypeDeclaration (Maybe SM.Expression) -> SM.Output
   toHaskell newtypeDeclaration =
@@ -577,7 +555,6 @@ instance ToHaskell (Expression (Maybe SM.Expression)) where
     if isOperator $ T.unpack x
       then Display.surround Parentheses x
       else x
-  toHaskell (EIfBlock x) = toHaskell x
   toHaskell (ELambda x) = toHaskell x
   toHaskell (ELetBlock x) = toHaskell x
   toHaskell (ELiteral x) = toHaskell x

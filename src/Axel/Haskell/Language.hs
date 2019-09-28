@@ -8,15 +8,15 @@ import Data.Char (isSymbol, toUpper)
 isOperator :: String -> Bool
 isOperator = all $ \x -> isSymbol x || x `elem` map fst haskellOperatorSymbols
 
-type SymbolReplacementMap = [(Char, String)]
+type SymbolReplacementMap = [(String, String)]
 
-mkHygenicSymbolReplacementMap :: SymbolReplacementMap -> SymbolReplacementMap
-mkHygenicSymbolReplacementMap =
+mkHygenicReplacementMap :: [(a, String)] -> [(a, String)]
+mkHygenicReplacementMap =
   map (\(symbol, name) -> (symbol, "aXEL_SYMBOL_" <> map toUpper name <> "_"))
 
-haskellOperatorSymbols :: SymbolReplacementMap
+haskellOperatorSymbols :: [(Char, String)]
 haskellOperatorSymbols =
-  mkHygenicSymbolReplacementMap
+  mkHygenicReplacementMap
     [ (':', "colon")
     , ('!', "bang")
     , ('#', "hash")
@@ -40,9 +40,9 @@ haskellOperatorSymbols =
     , (',', "comma")
     ]
 
-haskellSyntaxSymbols :: SymbolReplacementMap
+haskellSyntaxSymbols :: [(Char, String)]
 haskellSyntaxSymbols =
-  mkHygenicSymbolReplacementMap
+  mkHygenicReplacementMap
     [ (';', "semicolon")
     , ('[', "leftBracket")
     , (']', "rightBracket")
@@ -50,3 +50,8 @@ haskellSyntaxSymbols =
     , ('}', "leftBrace")
     , ('`', "tilde")
     ]
+
+-- TODO Add a test that this list has no duplicates.
+haskellKeywords :: [(String, String)]
+haskellKeywords =
+  mkHygenicReplacementMap $ map (\x -> (x, x)) ["do", "if", "let"]

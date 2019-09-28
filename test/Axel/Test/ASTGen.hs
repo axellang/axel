@@ -39,10 +39,6 @@ genFunctionApplication =
   Gen.filter (isn't AST._EEmptySExpression) genExpression <*>
   Gen.list (Range.linear 0 10) genExpression
 
-genIfBlock :: (MonadGen m) => m (AST.IfBlock (Maybe SM.Expression))
-genIfBlock =
-  AST.IfBlock Nothing <$> genExpression <*> genExpression <*> genExpression
-
 genLambda :: (MonadGen m) => m (AST.Lambda (Maybe SM.Expression))
 genLambda =
   AST.Lambda Nothing <$> Gen.list (Range.linear 0 10) genExpression <*>
@@ -80,7 +76,6 @@ genExpression =
     , AST.ELambda <$> genLambda
     , AST.ELetBlock <$> genLetBlock
     , AST.ELiteral <$> genLiteral
-    , AST.EIfBlock <$> genIfBlock
     , AST.ERawExpression Nothing <$> genRawExpression
     , AST.ERecordDefinition <$> genRecordDefinition
     , AST.ERecordType <$> genRecordType
