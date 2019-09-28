@@ -255,17 +255,25 @@ normalizeStatement expr@(Parse.SExpression _ items) =
                 "`::` takes three arguments: 1) a function name, 2) a list of constraints, and 3) a type."
         "=" ->
           case args of
-            Parse.Symbol _ fnName:Parse.SExpression _ arguments:body:whereDefs ->
+            fnSpecifier:body:whereDefs -> do
+              (fnName, arguments) <-
+                case fnSpecifier of
+                  Parse.Symbol _ fnName -> pure (fnName, [])
+                  Parse.SExpression _ (Parse.Symbol _ fnName:args') ->
+                    pure (fnName, args')
+                  _ ->
+                    throwNormalizeError
+                      "A function head specifier takes 1) a function name, followed by argument patterns."
               SFunctionDefinition <$>
-              normalizeFunctionDefinition
-                expr
-                (T.pack fnName)
-                arguments
-                body
-                whereDefs
+                normalizeFunctionDefinition
+                  expr
+                  (T.pack fnName)
+                  arguments
+                  body
+                  whereDefs
             _ ->
               throwNormalizeError
-                "`=` takes 1) a function name, 2) an argument list, 3) an expression, and 4) a list of statements."
+                "`=` takes 1) a function head specifier 2) and an expression, followed by `where` bindings."
         "begin" ->
           let normalizedStmts = traverse normalizeStatement args
            in STopLevel . TopLevel (Just expr) <$> normalizedStmts

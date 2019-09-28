@@ -4,5 +4,5 @@
   (Foo (recordType (foo^ Int) (bar String))))
 
 (:: foo () Foo)
-(= foo ()
+(= foo
    (Foo (record (foo^ 1) (bar "test"))))

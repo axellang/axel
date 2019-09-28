@@ -167,8 +167,10 @@ denormalizeStatement (SDataDeclaration dataDeclaration) =
 denormalizeStatement (SFunctionDefinition fnDef) =
   let ann' = getAnn' fnDef
    in Parse.SExpression ann' $ Parse.Symbol ann' "=" :
-      Parse.Symbol ann' (T.unpack $ fnDef ^. name) :
-      Parse.SExpression ann' (map denormalizeExpression (fnDef ^. arguments)) :
+      Parse.SExpression
+        ann'
+        (Parse.Symbol ann' (T.unpack $ fnDef ^. name) :
+         map denormalizeExpression (fnDef ^. arguments)) :
       denormalizeExpression (fnDef ^. body) :
       map denormalizeStatement (fnDef ^. whereBindings)
 denormalizeStatement (SMacroDefinition macroDef) =

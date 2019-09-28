@@ -26,7 +26,7 @@
     ({name : {typeSig : cases}}
            (pure
             (: `(:: ~name ~@typeSig)
-               (map (\ (x) `(= ~name ~@x))
+               (map (\ ((AST.SExpression _ {args : xs})) `(= (~name ~@args) ~@xs))
                     cases)))))
 
 (def if (() {Bool -> {a -> {a -> a}}})

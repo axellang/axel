@@ -1,6 +1,6 @@
 (module CaseSyntax)
 
-(= main ()
+(= main
   (case True
    (True (putStrLn "Yay!"))
    (False (error "Impossible!"))))

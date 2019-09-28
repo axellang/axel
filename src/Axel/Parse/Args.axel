@@ -36,19 +36,19 @@
 (def fileCommandParser (() (Parser FileCommand))
      (()
       (asum [convertFileCommand formatFileCommand runFileCommand])
-      (= convertFileCommand ()
+      (= convertFileCommand
          (command' "convert"
                    (filePathParser
                     ConvertFile
                     (experimental "Convert a Haskell file to Axel"))))
-      (= runFileCommand ()
+      (= runFileCommand
          (command'
           "run"
           (filePathParser RunFile "Transpile and run an Axel file")))
-      (= formatFileCommand ()
+      (= formatFileCommand
          (command' "format"
                    (filePathParser FormatFile "Format an Axel file")))
-      (= filePathParser (ctor desc)
+      (= (filePathParser ctor desc)
          (info
           {{ctor . {FilePath . T.pack}} <$>
                                         (argument str (metavar "FILE"))}
@@ -58,16 +58,16 @@
      (()
       (asum
        [convertProjectCommand formatProjectCommand runProjectCommand])
-      (= convertProjectCommand ()
+      (= convertProjectCommand
          (command'
           "convert"
           (info (pure ConvertProject)
                 (progDesc "Convert the Haskell project to Axel"))))
-      (= formatProjectCommand ()
+      (= formatProjectCommand
          (command'
           "format"
           (info (pure FormatProject) (progDesc "Format the project"))))
-      (= runProjectCommand ()
+      (= runProjectCommand
          (command' "run" (info (pure RunProject)
                                (progDesc "Build and run the project"))))))
 
@@ -76,15 +76,15 @@
       (let ((subparsers
              (asum [fileCommand projectCommand versionCommand])))
            (info {subparsers <**> helper} fullDesc))
-      (= fileCommand ()
+      (= fileCommand
          (command' "file"
                    (info {FileCommand <$> fileCommandParser}
                          (progDesc "Run file-specific commands"))))
-      (= projectCommand ()
+      (= projectCommand
          (command' "project"
                    (info {ProjectCommand <$> projectCommandParser}
                          (progDesc "Run project-wide commands"))))
-      (= versionCommand ()
+      (= versionCommand
          (command'
           "version"
           (info (pure Version)

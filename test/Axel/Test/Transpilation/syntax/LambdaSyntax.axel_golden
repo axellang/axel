@@ -1,4 +1,4 @@
 (module LambdaSyntax)
 
-(= main ()
+(= main
   ((\ (x <y) (>> (print x) (print <y))) True False))
