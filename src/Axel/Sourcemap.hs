@@ -13,10 +13,10 @@ import qualified Axel.Parse.AST as Parse
   ( Expression(LiteralInt, LiteralString, SExpression, Symbol)
   , quoteExpression
   )
-import Axel.Utils.Foldable (intercalate)
 import Axel.Utils.Text (Renderer)
 import Axel.Utils.Tuple (Annotated, annotate, annotation, unannotate)
 
+import Control.Lens ((|>))
 import Control.Lens.Operators ((^.))
 import Control.Lens.TH (makeFieldsNoPrefix, makeWrapped)
 import Control.Monad (when)
@@ -100,14 +100,19 @@ data Bracket
 
 surround :: Bracket -> Output -> Output
 surround bracket x =
-  let (open, closed) =
+  let (startMetadata, endMetadata) =
+        case x of
+          Output [] -> (Nothing, Nothing)
+          Output xs -> (head xs ^. annotation, last xs ^. annotation)
+      (open, closed) =
         case bracket of
           CurlyBraces -> ("{", "}")
           DoubleQuotes -> ("\"", "\"")
           Parentheses -> ("(", ")")
           SingleQuotes -> ("'", "'")
           SquareBrackets -> ("[", "]")
-   in unassociated open <> x <> unassociated closed
+   in Output [annotate startMetadata open] <>
+      x <> Output [annotate endMetadata closed]
 
 data Delimiter
   = Commas
@@ -117,8 +122,21 @@ data Delimiter
   | Spaces
 
 delimit :: Delimiter -> [Output] -> Output
-delimit delimiter = intercalate (unassociated $ renderDelimiter delimiter)
+delimit delimiter =
+  Output .
+  tryInit . -- Remove unneeded final delimiter
+  concatMap
+    (\(Output x) ->
+       let metadata =
+             case x of
+               [] -> Nothing
+               (x':_) -> x' ^. annotation
+        in x |> annotate metadata (renderDelimiter delimiter))
   where
+    tryInit :: [a] -> [a]
+    tryInit [] = []
+    tryInit xs = init xs
+    renderDelimiter :: Delimiter -> Text
     renderDelimiter Commas = ","
     renderDelimiter Newlines = "\n"
     renderDelimiter Pipes = "|"
