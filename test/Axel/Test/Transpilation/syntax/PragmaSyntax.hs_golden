@@ -1,3 +1,4 @@
+module PragmaSyntax where
 import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
 {-# LANGUAGE TypeOperators #-}

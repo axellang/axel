@@ -1,3 +1,5 @@
+(module TypeSignatureSyntax)
+
 (:: main () (IO Unit))
 
 (:: foo () Int)

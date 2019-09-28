@@ -1,3 +1,5 @@
+(module CaseSyntax)
+
 (= main ()
   (case True
    (True (putStrLn "Yay!"))

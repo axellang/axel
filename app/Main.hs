@@ -7,7 +7,6 @@ import Axel.Eff.Ghci(withStackGhci)
 import Axel.Haskell.File(convertFileInPlace,formatFileInPlace,transpileFileInPlace)
 import Axel.Haskell.Project(buildProject,convertProject,formatProject,runProject)
 import Axel.Haskell.Stack(axelStackageVersion)
-import qualified Axel.Parse.AST as AST
 import Axel.Parse.Args(Command(FileCommand,ProjectCommand,Version),FileCommand(ConvertFile,RunFile,FormatFile),ProjectCommand(ConvertProject,FormatProject,RunProject),commandParserInfo)
 import Control.Monad(void)
 import qualified Data.Map as Map(empty)

@@ -1,3 +1,5 @@
+(module NewtypeDefinitionSyntax)
+
 (newtype Foo Bar)
 (newtype (Bar a)
  (Baz (a Int)))

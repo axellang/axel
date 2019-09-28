@@ -1,4 +1,6 @@
-(data (Bar a b)
- (Foo (a Int))
+(module DataDefinitionSyntax)
+
+(data (Bar* a b)
+ (Fo#o (a Int))
  (Bar b String)
  Baz)

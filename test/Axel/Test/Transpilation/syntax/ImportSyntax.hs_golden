@@ -1,3 +1,4 @@
+module ImportSyntax where
 import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
 import Foo

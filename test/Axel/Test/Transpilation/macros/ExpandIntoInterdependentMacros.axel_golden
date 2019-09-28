@@ -1,3 +1,5 @@
+(module ExpandIntoInterdependentMacros)
+
 (import Axel.Prelude all)
 
 (defmacro generateMacroChain

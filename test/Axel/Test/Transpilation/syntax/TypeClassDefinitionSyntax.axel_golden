@@ -1,4 +1,6 @@
-(class () (Foo a b)
+(module TypeClassDefinitionSyntax)
+
+(class () (Foo^ a b)
  (:: foo () (-> a b)))
 (class (Quux) (Bar a b)
  (:: bar () (-> a b)))

@@ -1,3 +1,5 @@
+(module Quasiquote)
+
 -- If this file compiles, the tests have passed.
 
 (import Axel.Prelude all)

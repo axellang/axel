@@ -1,2 +1,4 @@
-(type Baz String)
-(type (Foo a) (Either a Baz))
+(module TypeSyntax)
+
+(type B%az String)
+(type (Foo a) (Either a %Baz))

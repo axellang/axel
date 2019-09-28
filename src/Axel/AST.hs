@@ -574,7 +574,7 @@ instance ToHaskell (Expression (Maybe SM.Expression)) where
   toHaskell (EFunctionApplication x) = toHaskell x
   toHaskell expr'@(EIdentifier _ x) =
     mkHaskell expr' $
-    if isOperator x
+    if isOperator $ T.unpack x
       then Display.surround Parentheses x
       else x
   toHaskell (EIfBlock x) = toHaskell x
@@ -606,7 +606,7 @@ instance ToHaskell (Import (Maybe SM.Expression)) where
   toHaskell :: Import (Maybe SM.Expression) -> SM.Output
   toHaskell import'@(ImportItem _ x) =
     mkHaskell import' $
-    if isOperator x
+    if isOperator $ T.unpack x
       then Display.surround Parentheses x
       else x
   toHaskell import'@(ImportType _ typeName imports') =

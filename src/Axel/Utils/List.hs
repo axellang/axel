@@ -21,7 +21,7 @@ import Data.Maybe (fromJust, listToMaybe)
 head' :: [a] -> Maybe a
 head' = listToMaybe
 
--- Alternatively, `unsafeHead = head`.
+-- | 'unsafeHead' == 'head'.
 unsafeHead :: [a] -> a
 unsafeHead = fromJust . listToMaybe
 

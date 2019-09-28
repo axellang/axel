@@ -8,7 +8,6 @@
 (import Axel.Haskell.Project
         (buildProject convertProject formatProject runProject))
 (import Axel.Haskell.Stack (axelStackageVersion))
-(importq Axel.Parse.AST AST all)
 (import Axel.Parse.Args
         ((Command FileCommand ProjectCommand Version)
          (FileCommand ConvertFile RunFile FormatFile)

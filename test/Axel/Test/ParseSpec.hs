@@ -63,8 +63,10 @@ spec_Parse = do
     it "can parse a symbol" $ do
       let result = Symbol () "abc123'''"
       parseSingle "abc123'''" `shouldBe` result
-    it "can parse a macro name" $ do
-      let result = Symbol () ",;foo"
+    it
+      "can parse a value-level name that starts with a Haskell-restricted character" $ do
+      let result =
+            Symbol () "aXEL_VALUE_aXEL_SYMBOL_COMMA_aXEL_SYMBOL_SEMICOLON_foo"
       parseSingle ",;foo" `shouldBe` result
     it "can parse an unquoted expression" $ do
       let result =
@@ -127,7 +129,12 @@ spec_Parse = do
                   , Symbol () "line"
                   , Symbol () "comment"
                   ]
-              , SExpression () [Symbol () "butThis-->IsASingleSymbol"]
+              , SExpression
+                  ()
+                  [ Symbol
+                      ()
+                      "butThisaXEL_SYMBOL_HYPHEN_aXEL_SYMBOL_HYPHEN_aXEL_SYMBOL_GREATERTHAN_IsASingleSymbol"
+                  ]
               ]
       case Sem.run . Sem.runError $ parseSource Nothing input of
         Left err -> failSpec $ renderError err

@@ -1,3 +1,4 @@
+module NewtypeDefinitionSyntax where
 import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
 newtype Foo = FooBar

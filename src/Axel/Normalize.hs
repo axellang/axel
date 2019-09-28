@@ -43,6 +43,8 @@ import Axel.AST
   , TypeclassInstance(TypeclassInstance)
   )
 import Axel.Eff.Error (Error(NormalizeError), renderError, unsafeRunError)
+import Axel.Haskell.Language (haskellOperatorSymbols, haskellSyntaxSymbols)
+import Axel.Parse (unhygenisizeIdentifier)
 import qualified Axel.Parse.AST as Parse
   ( Expression(LiteralChar, LiteralFloat, LiteralInt, LiteralString,
            SExpression, Symbol)
@@ -237,182 +239,210 @@ normalizeStatement ::
 normalizeStatement expr@(Parse.SExpression _ items) =
   pushCtxt expr $
   case items of
-    Parse.Symbol _ "::":args ->
-      case args of
-        [Parse.Symbol _ fnName, constraints, typeDef] ->
-          STypeSignature <$>
-          (TypeSignature (Just expr) (T.pack fnName) <$>
-           normalizeConstraints constraints <*>
-           normalizeExpression typeDef)
-        _ ->
-          throwNormalizeError
-            "`::` takes three arguments: 1) a function name, 2) a list of constraints, and 3) a type."
-    Parse.Symbol _ "=":args ->
-      case args of
-        Parse.Symbol _ fnName:Parse.SExpression _ arguments:body:whereDefs ->
-          SFunctionDefinition <$>
-          normalizeFunctionDefinition
-            expr
-            (T.pack fnName)
-            arguments
-            body
-            whereDefs
-        _ ->
-          throwNormalizeError
-            "`=` takes 1) a function name, 2) an argument list, 3) an expression, and 4) a list of statements."
-    Parse.Symbol _ "begin":stmts ->
-      let normalizedStmts = traverse normalizeStatement stmts
-       in STopLevel . TopLevel (Just expr) <$> normalizedStmts
-    Parse.Symbol _ "class":classConstraints:className:sigs ->
-      let normalizedConstraints =
-            normalizeExpression classConstraints >>= \case
-              EEmptySExpression _ -> pure []
-              EFunctionApplication (FunctionApplication _ constraintsHead constraintsRest) ->
-                pure $ constraintsHead : constraintsRest
-              _ ->
-                pushCtxt classConstraints $
-                throwNormalizeError
-                  "A `class` constraint list must only contain type constructors!"
-          normalizedSigs =
-            traverse
-              (\x ->
-                 normalizeStatement x >>= \case
-                   STypeSignature tySig -> pure tySig
-                   _ ->
-                     pushCtxt x $
-                     throwNormalizeError
-                       "`class`'s body must contain type signatures!")
-              sigs
-       in STypeclassDefinition <$>
-          (TypeclassDefinition (Just expr) <$> normalizeExpression className <*>
-           normalizedConstraints <*>
-           normalizedSigs)
-    Parse.Symbol _ "data":typeDef:constructors ->
-      normalizeExpression typeDef >>= \case
-        EFunctionApplication typeConstructor ->
-          SDataDeclaration <$>
-          (DataDeclaration
-             (Just expr)
-             (TypeConstructor (Just expr) typeConstructor) <$>
-           traverse normalizeExpression constructors)
-        EIdentifier _ properType ->
-          SDataDeclaration <$>
-          (DataDeclaration (Just expr) (ProperType (Just expr) properType) <$>
-           traverse normalizeExpression constructors)
-        _ -> pushCtxt typeDef $ throwNormalizeError "Invalid type constructor!"
-    Parse.Symbol _ "newtype":args ->
-      case args of
-        [typeDef, wrappedType] ->
-          normalizeExpression typeDef >>= \case
-            EFunctionApplication typeConstructor ->
-              SNewtypeDeclaration <$>
-              (NewtypeDeclaration
-                 (Just expr)
-                 (TypeConstructor (Just expr) typeConstructor) <$>
-               normalizeExpression wrappedType)
-            EIdentifier _ properType ->
-              SNewtypeDeclaration <$>
-              (NewtypeDeclaration
-                 (Just expr)
-                 (ProperType (Just expr) properType) <$>
-               normalizeExpression wrappedType)
+    Parse.Symbol _ special:args ->
+      case unhygenisizeIdentifier
+             haskellSyntaxSymbols
+             haskellOperatorSymbols
+             special of
+        "::" ->
+          case args of
+            [Parse.Symbol _ fnName, constraints, typeDef] ->
+              STypeSignature <$>
+              (TypeSignature (Just expr) (T.pack fnName) <$>
+               normalizeConstraints constraints <*>
+               normalizeExpression typeDef)
             _ ->
-              pushCtxt typeDef $ throwNormalizeError "Invalid type constructor!"
-        _ ->
-          throwNormalizeError
-            "`newtype` takes exactly two arguments: 1) a type constructor and 2) a type."
-    Parse.Symbol _ "import":args ->
-      case args of
-        [Parse.Symbol _ moduleName, importSpec] ->
-          SRestrictedImport <$>
-          (RestrictedImport (Just expr) (T.pack moduleName) <$>
-           normalizeImportSpec importSpec)
-        _ ->
-          throwNormalizeError
-            "`import` takes exactly two arguments: 1) a module name and 2) an import specification."
-    Parse.Symbol _ "importm":args ->
-      case args of
-        [Parse.Symbol _ moduleName, macroImportSpec] ->
-          SMacroImport . MacroImport (Just expr) (T.pack moduleName) <$>
-          normalizeMacroImportSpec macroImportSpec
-        _ ->
-          throwNormalizeError
-            "`importm` takes exactly two arguments: 1) a module name and 2) a list of macro names."
-    Parse.Symbol _ "importq":args ->
-      case args of
-        [Parse.Symbol _ moduleName, Parse.Symbol _ alias, importSpec] ->
-          SQualifiedImport <$>
-          (QualifiedImport (Just expr) (T.pack moduleName) (T.pack alias) <$>
-           normalizeImportSpec importSpec)
-        _ ->
-          throwNormalizeError
-            "`importq` takes exactly three arguments: 1) a module name, 2) a module name, and 3) an import specification."
-    Parse.Symbol _ "instance":instanceConstraints:instanceName:defs ->
-      let normalizedDefs =
-            traverse
-              (\x ->
-                 normalizeStatement x >>= \case
-                   SFunctionDefinition fnDef -> pure fnDef
-                   _ ->
-                     pushCtxt x $
-                     throwNormalizeError
-                       "`instance`'s body must only contain function definitions!")
-              defs
-       in STypeclassInstance <$>
-          (TypeclassInstance (Just expr) <$> normalizeExpression instanceName <*>
-           normalizeConstraints instanceConstraints <*>
-           normalizedDefs)
-    Parse.Symbol _ "pragma":args ->
-      case args of
-        [Parse.LiteralString _ pragma] ->
-          pure $ SPragma (Pragma (Just expr) (T.pack pragma))
-        _ ->
-          throwNormalizeError
-            "`pragma` takes exactly one argument: a string literal."
-    Parse.Symbol _ "=macro":args ->
-      case args of
-        Parse.Symbol _ macroName:Parse.SExpression _ arguments:body:whereBindings ->
-          SMacroDefinition . MacroDefinition (Just expr) <$>
-          normalizeFunctionDefinition
-            expr
-            (T.pack macroName)
-            arguments
-            body
-            whereBindings
-        _ ->
-          throwNormalizeError
-            "`=macro` takes 1) an identifier, 2) an argument list, 3) an expression, and 4) a list of statements."
-    Parse.Symbol _ "module":args ->
-      case args of
-        [Parse.Symbol _ moduleName] ->
-          pure $ SModuleDeclaration (Just expr) (T.pack moduleName)
-        _ ->
-          throwNormalizeError
-            "`module` takes exactly one argument: a module name."
-    Parse.Symbol _ "raw":args ->
-      case args of
-        [rawSource] ->
-          let normalizedRawSource =
-                case rawSource of
-                  Parse.LiteralString _ x -> pure $ T.pack x
-                  x ->
-                    pushCtxt x $
-                    throwNormalizeError
-                      "`raw` takes strings representing the code to inject directly."
-           in SRawStatement (Just expr) <$> normalizedRawSource
-        _ ->
-          throwNormalizeError
-            "`raw` takes exactly one argument: a string literal."
-    Parse.Symbol _ "type":args ->
-      case args of
-        [alias, def] ->
-          let normalizedAlias = normalizeExpression alias
-              normalizedDef = normalizeExpression def
-           in STypeSynonym <$>
-              (TypeSynonym (Just expr) <$> normalizedAlias <*> normalizedDef)
-        _ ->
-          throwNormalizeError
-            "`type` takes exactly two arguments: 1) a type constructor and 2) a type."
+              throwNormalizeError
+                "`::` takes three arguments: 1) a function name, 2) a list of constraints, and 3) a type."
+        "=" ->
+          case args of
+            Parse.Symbol _ fnName:Parse.SExpression _ arguments:body:whereDefs ->
+              SFunctionDefinition <$>
+              normalizeFunctionDefinition
+                expr
+                (T.pack fnName)
+                arguments
+                body
+                whereDefs
+            _ ->
+              throwNormalizeError
+                "`=` takes 1) a function name, 2) an argument list, 3) an expression, and 4) a list of statements."
+        "begin" ->
+          let normalizedStmts = traverse normalizeStatement args
+           in STopLevel . TopLevel (Just expr) <$> normalizedStmts
+        "class" ->
+          case args of
+            classConstraints:className:sigs ->
+              let normalizedConstraints =
+                    normalizeExpression classConstraints >>= \case
+                      EEmptySExpression _ -> pure []
+                      EFunctionApplication (FunctionApplication _ constraintsHead constraintsRest) ->
+                        pure $ constraintsHead : constraintsRest
+                      _ ->
+                        pushCtxt classConstraints $
+                        throwNormalizeError
+                          "A `class` constraint list must only contain type constructors!"
+                  normalizedSigs =
+                    traverse
+                      (\x ->
+                         normalizeStatement x >>= \case
+                           STypeSignature tySig -> pure tySig
+                           _ ->
+                             pushCtxt x $
+                             throwNormalizeError
+                               "`class`'s body must contain type signatures!")
+                      sigs
+               in STypeclassDefinition <$>
+                  (TypeclassDefinition (Just expr) <$>
+                   normalizeExpression className <*>
+                   normalizedConstraints <*>
+                   normalizedSigs)
+            _ ->
+              throwNormalizeError
+                "`class` takes a constraint list, a type constructor, and type signatures!"
+        "data" ->
+          case args of
+            typeDef:constructors ->
+              normalizeExpression typeDef >>= \case
+                EFunctionApplication typeConstructor ->
+                  SDataDeclaration <$>
+                  (DataDeclaration
+                     (Just expr)
+                     (TypeConstructor (Just expr) typeConstructor) <$>
+                   traverse normalizeExpression constructors)
+                EIdentifier _ properType ->
+                  SDataDeclaration <$>
+                  (DataDeclaration
+                     (Just expr)
+                     (ProperType (Just expr) properType) <$>
+                   traverse normalizeExpression constructors)
+                _ ->
+                  pushCtxt typeDef $
+                  throwNormalizeError "Invalid type constructor!"
+            _ ->
+              throwNormalizeError
+                "`data` takes a type constructor followed by type constructors!"
+        "newtype" ->
+          case args of
+            [typeDef, wrappedType] ->
+              normalizeExpression typeDef >>= \case
+                EFunctionApplication typeConstructor ->
+                  SNewtypeDeclaration <$>
+                  (NewtypeDeclaration
+                     (Just expr)
+                     (TypeConstructor (Just expr) typeConstructor) <$>
+                   normalizeExpression wrappedType)
+                EIdentifier _ properType ->
+                  SNewtypeDeclaration <$>
+                  (NewtypeDeclaration
+                     (Just expr)
+                     (ProperType (Just expr) properType) <$>
+                   normalizeExpression wrappedType)
+                _ ->
+                  pushCtxt typeDef $
+                  throwNormalizeError "Invalid type constructor!"
+            _ ->
+              throwNormalizeError
+                "`newtype` takes exactly two arguments: 1) a type constructor and 2) a type."
+        "import" ->
+          case args of
+            [Parse.Symbol _ moduleName, importSpec] ->
+              SRestrictedImport <$>
+              (RestrictedImport (Just expr) (T.pack moduleName) <$>
+               normalizeImportSpec importSpec)
+            _ ->
+              throwNormalizeError
+                "`import` takes exactly two arguments: 1) a module name and 2) an import specification."
+        "importm" ->
+          case args of
+            [Parse.Symbol _ moduleName, macroImportSpec] ->
+              SMacroImport . MacroImport (Just expr) (T.pack $ moduleName) <$>
+              normalizeMacroImportSpec macroImportSpec
+            _ ->
+              throwNormalizeError
+                "`importm` takes exactly two arguments: 1) a module name and 2) a list of macro names."
+        "importq" ->
+          case args of
+            [Parse.Symbol _ moduleName, Parse.Symbol _ alias, importSpec] ->
+              SQualifiedImport <$>
+              (QualifiedImport (Just expr) (T.pack moduleName) (T.pack alias) <$>
+               normalizeImportSpec importSpec)
+            _ ->
+              throwNormalizeError
+                "`importq` takes exactly three arguments: 1) a module name, 2) a module name, and 3) an import specification."
+        "instance" ->
+          case args of
+            instanceConstraints:instanceName:defs ->
+              let normalizedDefs =
+                    traverse
+                      (\x ->
+                         normalizeStatement x >>= \case
+                           SFunctionDefinition fnDef -> pure fnDef
+                           _ ->
+                             pushCtxt x $
+                             throwNormalizeError
+                               "`instance`'s body must only contain function definitions!")
+                      defs
+               in STypeclassInstance <$>
+                  (TypeclassInstance (Just expr) <$>
+                   normalizeExpression instanceName <*>
+                   normalizeConstraints instanceConstraints <*>
+                   normalizedDefs)
+            _ ->
+              throwNormalizeError
+                "`instance` takes a constraint list, an expression, and a list of function definitions!"
+        "pragma" ->
+          case args of
+            [Parse.LiteralString _ pragma] ->
+              pure $ SPragma (Pragma (Just expr) (T.pack pragma))
+            _ ->
+              throwNormalizeError
+                "`pragma` takes exactly one argument: a string literal."
+        "=macro" ->
+          case args of
+            Parse.Symbol _ macroName:Parse.SExpression _ arguments:body:whereBindings ->
+              SMacroDefinition . MacroDefinition (Just expr) <$>
+              normalizeFunctionDefinition
+                expr
+                (T.pack macroName)
+                arguments
+                body
+                whereBindings
+            _ ->
+              throwNormalizeError
+                "`=macro` takes 1) an identifier, 2) an argument list, 3) an expression, and 4) a list of statements."
+        "module" ->
+          case args of
+            [Parse.Symbol _ moduleName] ->
+              pure $ SModuleDeclaration (Just expr) (T.pack moduleName)
+            _ ->
+              throwNormalizeError
+                "`module` takes exactly one argument: a module name."
+        "raw" ->
+          case args of
+            [rawSource] ->
+              let normalizedRawSource =
+                    case rawSource of
+                      Parse.LiteralString _ x -> pure $ T.pack x
+                      x ->
+                        pushCtxt x $
+                        throwNormalizeError
+                          "`raw` takes strings representing the code to inject directly."
+               in SRawStatement (Just expr) <$> normalizedRawSource
+            _ ->
+              throwNormalizeError
+                "`raw` takes exactly one argument: a string literal."
+        "type" ->
+          case args of
+            [alias, def] ->
+              let normalizedAlias = normalizeExpression alias
+                  normalizedDef = normalizeExpression def
+               in STypeSynonym <$>
+                  (TypeSynonym (Just expr) <$> normalizedAlias <*> normalizedDef)
+            _ ->
+              throwNormalizeError
+                "`type` takes exactly two arguments: 1) a type constructor and 2) a type."
+        _ -> throwNormalizeError "Invalid statement!"
     _ -> throwNormalizeError "Invalid statement!"
   where
     normalizeMacroImportSpec importSpec =

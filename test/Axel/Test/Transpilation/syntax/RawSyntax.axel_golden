@@ -1,3 +1,5 @@
+(module RawSyntax)
+
 (raw "makeLenses ''Foo")
 
 (= main ()

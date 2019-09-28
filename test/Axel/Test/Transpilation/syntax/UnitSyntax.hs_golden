@@ -1,3 +1,4 @@
+module UnitSyntax where
 import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
 main :: () => (IO ())

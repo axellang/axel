@@ -1,4 +1,5 @@
+module TypeSyntax where
 import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
-type Baz = String
-type (Foo a) = (Either a Baz)
+type BaXEL_SYMBOL_PERCENT_az = String
+type (Foo a) = (Either a aXEL_VALUE_aXEL_SYMBOL_PERCENT_Baz)

@@ -1,2 +1,4 @@
+(module UnitSyntax)
+
 (:: main () (IO Unit))
 (= main () (pure unit))

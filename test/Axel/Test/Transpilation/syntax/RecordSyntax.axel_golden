@@ -1,6 +1,8 @@
+(module RecordSyntax)
+
 (data Foo
-  (Foo (recordType (foo Int) (bar String))))
+  (Foo (recordType (foo^ Int) (bar String))))
 
 (:: foo () Foo)
 (= foo ()
-   (Foo (record (foo 1) (bar "test"))))
+   (Foo (record (foo^ 1) (bar "test"))))

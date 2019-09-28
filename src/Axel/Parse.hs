@@ -5,7 +5,11 @@ module Axel.Parse where
 import Axel.Prelude
 
 import Axel.Eff.Error (Error(ParseError))
-import Axel.Haskell.Language (haskellOperatorSymbols, haskellSyntaxSymbols)
+import Axel.Haskell.Language
+  ( haskellOperatorSymbols
+  , haskellSyntaxSymbols
+  , isOperator
+  )
 import Axel.Parse.AST
   ( Expression(LiteralChar, LiteralFloat, LiteralInt, LiteralString,
            SExpression, Symbol)
@@ -19,13 +23,16 @@ import Axel.Sourcemap
   , quoteSourceMetadata
   , wrapCompoundExpressions
   )
+import Axel.Utils.List (remove, unsafeHead)
+import qualified Axel.Utils.Text as T (remove)
 
 import Control.Applicative ((<|>))
 import Control.Lens (op)
 import Control.Monad (void)
 
-import Data.List ((\\))
+import Data.List ((\\), foldl')
 import Data.Maybe (fromMaybe)
+import Data.MonoTraversable (onotElem)
 import qualified Data.Text as T
 import Data.Void (Void)
 
@@ -113,12 +120,12 @@ spliceUnquotedExpression = parseReadMacro "~@" "unquoteSplicing"
 
 symbol :: Parser SM.Expression
 symbol =
-  ann
-    Symbol
-    (P.some
-       (P.alphaNumChar <|> P.oneOf ['\'', '_'] <|>
-        P.oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols) <|>
-        P.oneOf (map fst haskellOperatorSymbols)))
+  ann Symbol $
+  hygenisizeIdentifier haskellSyntaxSymbols haskellOperatorSymbols <$>
+  P.some
+    (P.alphaNumChar <|> P.oneOf ['\'', '_'] <|>
+     P.oneOf (map fst haskellSyntaxSymbols \\ syntaxSymbols) <|>
+     P.oneOf (map fst haskellOperatorSymbols))
 
 unquotedExpression :: Parser SM.Expression
 unquotedExpression = parseReadMacro "~" "unquote"
@@ -198,3 +205,45 @@ parseSource filePath input =
 
 syntaxSymbols :: String
 syntaxSymbols = "()[]{}\""
+
+charReplacements ::
+     [(Char, String)] -> [(Char, String)] -> String -> [(Char, String)]
+charReplacements syntaxCharReplacements operatorCharReplacements x =
+  let targetCharReplacements =
+        syntaxCharReplacements <>
+        if isOperator x
+          then []
+          else operatorCharReplacements
+   in allowQualifiedNames $
+      filter (\(sym, _) -> sym `onotElem` syntaxSymbols) targetCharReplacements
+  where
+    allowQualifiedNames = remove $ (== '.') . fst
+
+valueHygienePrefix :: Text
+valueHygienePrefix = "aXEL_VALUE_"
+
+hygenisizeIdentifier :: [(Char, String)] -> [(Char, String)] -> String -> String
+hygenisizeIdentifier syntaxCharReplacements operatorCharReplacements x =
+  let prefix =
+        if unsafeHead x `elem` map fst replacements
+          then valueHygienePrefix
+          else ""
+   in T.unpack $
+      prefix <>
+      foldl'
+        (\acc (old, new) -> T.replace (T.singleton old) (T.pack new) acc)
+        (T.pack x)
+        replacements
+  where
+    replacements =
+      charReplacements syntaxCharReplacements operatorCharReplacements x
+
+unhygenisizeIdentifier ::
+     [(Char, String)] -> [(Char, String)] -> String -> String
+unhygenisizeIdentifier syntaxCharReplacements operatorCharReplacements x =
+  T.unpack $
+  T.remove valueHygienePrefix $ -- The prefix isn't always there, in which case this just no-ops.
+  foldl'
+    (\acc (old, new) -> T.replace (T.pack new) (T.singleton old) acc)
+    (T.pack x) $
+  charReplacements syntaxCharReplacements operatorCharReplacements x

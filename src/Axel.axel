@@ -4,7 +4,8 @@
 
 (import Axel.Prelude all)
 
-(importq Axel.Parse.AST AST all)
+(import Axel.Haskell.Language (haskellOperatorSymbols haskellSyntaxSymbols))
+(import Axel.Parse (hygenisizeIdentifier))
 (importq Axel.Sourcemap SM all)
 (import Axel.Utils.FilePath (takeFileName))
 
@@ -72,4 +73,4 @@
       {(== (FilePath "Axel.axel")) . takeFileName}))
 
 -- TODO Automatically generate this (wrap the whole file with a macro that finds all macro definitions and creates this list?)
-(def preludeMacros (() ([] Text)) (() ["applyInfix" "defmacro" "def" "do'" "\\case" "syntaxQuote"]))
+(def preludeMacros (() ([] Text)) (() (map {T.pack . (hygenisizeIdentifier haskellSyntaxSymbols haskellOperatorSymbols)} ["applyInfix" "defmacro" "def" "do'" "\\case" "syntaxQuote"])))

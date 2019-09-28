@@ -1,3 +1,4 @@
+module DataDefinitionSyntax where
 import qualified Prelude as GHCPrelude
 import qualified Axel.Parse.AST as AST
-data (Bar a b) = Foo (a Int)|Bar b String|Baz
+data (BaraXEL_SYMBOL_ASTERISK_ a b) = FoaXEL_SYMBOL_HASH_o (a Int)|Bar b String|Baz
