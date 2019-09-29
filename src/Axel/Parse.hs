@@ -177,18 +177,27 @@ expandQuasiquoteInList expr =
   let ann' = getAnn expr
    in SExpression ann' [Symbol ann' "list", expandQuasiquote expr]
 
-parseMultiple ::
+parseMultiple' ::
      (Sem.Member (Sem.Error Error) effs)
-  => Maybe FilePath
+  => ([SM.Expression] -> [SM.Expression])
+  -> Maybe FilePath
   -> Text
   -> Sem.Sem effs [SM.Expression]
-parseMultiple maybeFilePath input =
-  either throwErr (pure . expandQuasiquotes) $
+parseMultiple' postProcess maybeFilePath input =
+  either throwErr (pure . postProcess) $
   P.parse program (T.unpack $ op FilePath filePath) input
   where
     filePath = fromMaybe (FilePath "") maybeFilePath
     program = P.some (ignored *> expression <* ignored) <* P.eof
     throwErr = Sem.throw . ParseError filePath . T.pack . P.errorBundlePretty
+
+parseMultiple ::
+     (Sem.Member (Sem.Error Error) effs)
+  => Maybe FilePath
+  -> Text
+  -> Sem.Sem effs [SM.Expression]
+parseMultiple = parseMultiple' expandQuasiquotes
+  where
     expandQuasiquotes =
       map $
       bottomUpFmapSplicing

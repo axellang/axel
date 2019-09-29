@@ -2,8 +2,11 @@ module Axel.Pretty where
 
 import Axel.Prelude
 
+import Axel.Parse (unhygenisizeIdentifier)
 import Axel.Parse.AST
+import qualified Axel.Sourcemap as SM
 import Axel.Utils.Foldable (mapWithPrev)
+import Axel.Utils.Recursion (bottomUpFmap)
 import Axel.Utils.Text (handleCharEscapes)
 
 import Control.Lens (ala, under)
@@ -90,7 +93,7 @@ toAxelPretty (SExpression _ [Symbol _ "unquoteSplicing", x]) =
 toAxelPretty (Symbol _ x) = P.pretty x
 toAxelPretty (SExpression _ xs) = P.parens $ privilegedFormToAxelPretty xs
 
-spaceStatements :: [Expression ann] -> [P.Doc a]
+spaceStatements :: [SM.Expression] -> [P.Doc a]
 spaceStatements =
   mapWithPrev $ \prev x ->
     let isImport (SExpression _ (Symbol _ id':_)) =
@@ -101,7 +104,11 @@ spaceStatements =
           if needsSpacing
             then P.line
             else mempty
-     in toAxelPretty x <> maybeSpacer
+        unhygenisize =
+          bottomUpFmap $ \case
+            Symbol ann symbol -> Symbol ann $ unhygenisizeIdentifier symbol
+            node -> node
+     in toAxelPretty (unhygenisize x) <> maybeSpacer
 
-prettifyProgram :: [Expression ann] -> Text
+prettifyProgram :: [SM.Expression] -> Text
 prettifyProgram = render . P.vsep . spaceStatements

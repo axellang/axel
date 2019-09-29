@@ -24,7 +24,7 @@ import qualified Axel.Eff.Restartable as Effs (Restartable)
 import Axel.Haskell.Convert (convertFile)
 import Axel.Macros (handleFunctionApplication, processProgram)
 import Axel.Normalize (normalizeStatement, withExprCtxt)
-import Axel.Parse (parseMultiple, parseSource)
+import Axel.Parse (parseMultiple', parseSource)
 import Axel.Parse.AST (Expression(Symbol))
 import Axel.Pretty (prettifyProgram)
 import qualified Axel.Sourcemap as SM
@@ -153,6 +153,6 @@ formatFileInPlace ::
 formatFileInPlace path = do
   contents <- FS.readFile path
   putStrLn $ "Formatting " <> op FilePath path <> "..."
-  program <- parseMultiple (Just path) contents
+  program <- parseMultiple' id (Just path) contents
   let prettifiedContents = prettifyProgram program
   FS.writeFile path prettifiedContents

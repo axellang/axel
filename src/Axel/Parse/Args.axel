@@ -36,56 +36,46 @@
 (def fileCommandParser (() (Parser FileCommand))
      (()
       (asum [convertFileCommand formatFileCommand runFileCommand])
-      (= convertFileCommand
-         (command' "convert"
-                   (filePathParser
-                    ConvertFile
-                    (experimental "Convert a Haskell file to Axel"))))
-      (= runFileCommand
-         (command'
-          "run"
-          (filePathParser RunFile "Transpile and run an Axel file")))
-      (= formatFileCommand
-         (command' "format"
-                   (filePathParser FormatFile "Format an Axel file")))
-      (= (filePathParser ctor desc)
-         (info
-          {{ctor . {FilePath . T.pack}} <$>
-                                        (argument str (metavar "FILE"))}
-          (progDesc desc)))))
+      (= convertFileCommand (command' "convert"
+                                      (filePathParser
+                                       ConvertFile
+                                       (experimental "Convert a Haskell file to Axel"))))
+      (= runFileCommand (command'
+                         "run"
+                         (filePathParser RunFile "Transpile and run an Axel file")))
+      (= formatFileCommand (command' "format"
+                                     (filePathParser FormatFile "Format an Axel file")))
+      (= (filePathParser ctor desc) (info
+                                     {{ctor . {FilePath . T.pack}} <$>
+                                                                   (argument str (metavar "FILE"))}
+                                     (progDesc desc)))))
 
 (def projectCommandParser (() (Parser ProjectCommand))
      (()
       (asum
        [convertProjectCommand formatProjectCommand runProjectCommand])
-      (= convertProjectCommand
-         (command'
-          "convert"
-          (info (pure ConvertProject)
-                (progDesc "Convert the Haskell project to Axel"))))
-      (= formatProjectCommand
-         (command'
-          "format"
-          (info (pure FormatProject) (progDesc "Format the project"))))
-      (= runProjectCommand
-         (command' "run" (info (pure RunProject)
-                               (progDesc "Build and run the project"))))))
+      (= convertProjectCommand (command'
+                                "convert"
+                                (info (pure ConvertProject)
+                                      (progDesc "Convert the Haskell project to Axel"))))
+      (= formatProjectCommand (command'
+                               "format"
+                               (info (pure FormatProject) (progDesc "Format the project"))))
+      (= runProjectCommand (command' "run" (info (pure RunProject)
+                                                 (progDesc "Build and run the project"))))))
 
 (def commandParserInfo (() (ParserInfo Command))
      (()
       (let ((subparsers
              (asum [fileCommand projectCommand versionCommand])))
            (info {subparsers <**> helper} fullDesc))
-      (= fileCommand
-         (command' "file"
-                   (info {FileCommand <$> fileCommandParser}
-                         (progDesc "Run file-specific commands"))))
-      (= projectCommand
-         (command' "project"
-                   (info {ProjectCommand <$> projectCommandParser}
-                         (progDesc "Run project-wide commands"))))
-      (= versionCommand
-         (command'
-          "version"
-          (info (pure Version)
-                (progDesc "Display the version of the Axel compiler"))))))
+      (= fileCommand (command' "file"
+                               (info {FileCommand <$> fileCommandParser}
+                                     (progDesc "Run file-specific commands"))))
+      (= projectCommand (command' "project"
+                                  (info {ProjectCommand <$> projectCommandParser}
+                                        (progDesc "Run project-wide commands"))))
+      (= versionCommand (command'
+                         "version"
+                         (info (pure Version)
+                               (progDesc "Display the version of the Axel compiler"))))))
