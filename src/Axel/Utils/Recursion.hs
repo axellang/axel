@@ -1,6 +1,7 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- | Utilities for recursing over data structures.
 module Axel.Utils.Recursion where
 
 import Axel.Prelude
@@ -27,12 +28,14 @@ mkFmapFromTraverse :: Traverse Identity focus a -> Fmap focus a
 mkFmapFromTraverse traverseFn f = runIdentity . traverseFn (pure . f)
 
 class Recursive a where
-  bottomUpTraverse :: Traverse m a a
-  topDownTraverse :: Traverse m a a
+  bottomUpTraverse :: Traverse m a a -- ^ Modify every node of a data structure from bottom-up, in a monadic context.
+  topDownTraverse :: Traverse m a a -- ^ Modify every node of a data structure from top-down, in a monadic context.
 
+-- | Modify every node of a data structure from bottom-up.
 bottomUpFmap :: (Recursive a) => Fmap a a
 bottomUpFmap = mkFmapFromTraverse bottomUpTraverse
 
+-- | Modify every node of a data structure from top-down.
 topDownFmap :: (Recursive a) => Fmap a a
 topDownFmap = mkFmapFromTraverse topDownTraverse
 

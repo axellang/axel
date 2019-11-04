@@ -1,0 +1,5 @@
+(module Sourcemap1)
+
+(=macro test () undefinedFunction)
+
+(test)

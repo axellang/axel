@@ -2,6 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
+-- | The definition of and utilities for Axel's Abstract Syntax Tree (AST).
 module Axel.Parse.AST where
 
 import Axel.Prelude
@@ -40,13 +41,14 @@ import GHC.Generics (Generic)
 --      (Maybe all macros have the argument automatically `fromFix`-ed to make consumption simpler?)
 -- NOTE We're using `String` instead of `Text` so that we don't have to rely
 --      on `Axel.Prelude` in user-facing code.
+-- | An Axel form's AST. All Axel code is parsed into nested applications of this data structure.
 data Expression ann
-  = LiteralChar ann Char
-  | LiteralFloat ann Float
-  | LiteralInt ann Int
-  | LiteralString ann String
-  | SExpression ann [Expression ann]
-  | Symbol ann String
+  = LiteralChar ann Char -- ^ A character literal, e.g. @#\a@.
+  | LiteralInt ann Int -- ^ An integer literal, e.g. @123@.
+  | LiteralFloat ann Float -- ^ A floating point literal, e.g. @1.23@.
+  | LiteralString ann String -- ^ A string literal, e.g @"test"@.
+  | SExpression ann [Expression ann] -- ^ A parenthesized list of expressions, e.g. @(foo a b c)@.
+  | Symbol ann String -- ^ An identifier, e.g. @foo@.
   deriving (Eq, Data, Functor, Generic, Show)
 
 makePrisms ''Expression
@@ -54,6 +56,7 @@ makePrisms ''Expression
 instance (Hashable ann) => Hashable (Expression ann)
 
 -- TODO Derive this automatically.
+-- | Get the source metadata from an 'Expression'.
 getAnn :: Expression ann -> ann
 getAnn (LiteralChar ann _) = ann
 getAnn (LiteralFloat ann _) = ann
@@ -108,6 +111,9 @@ instance (Data ann) => ZipperRecursive (Expression ann) where
                 Symbol _ _ -> pure
         recurse z'
 
+-- | Modify an 'Expression' tree bottom-up, replacing each node with multiple 'Expression's.
+--   This works with every expression in an Axel program, including top-level statements.
+--   Also see the methods in 'Axel.Utils.Recursion'.
 bottomUpFmapSplicing ::
      (Data ann)
   => (Expression ann -> [Expression ann])
@@ -136,11 +142,20 @@ toAxel (Symbol _ x) = T.pack x
 
 -- NOTE We're using `String` instead of `Text` so that we don't have to rely
 --      on `Axel.Prelude` in user-facing code.
+-- | NOTE This is for internal use; you likely don't need to use this directly.
+--
+--   Convert an 'Expression' to valid Axel source.
 toAxel' :: Expression ann -> String
 toAxel' = T.unpack . toAxel
 
 -- TODO Derive this with Template Haskell (it's currently very brittle)
-quoteExpression :: (ann -> Expression ann) -> Expression ann -> Expression ann
+-- | Quote an 'Expression' (this is what the @quote@ special form uses under-the-hood).
+quoteExpression ::
+     (ann -> Expression ann) -- ^ Process the source metadata attached to the expression.
+                           --   The returned 'Expression', when rendered via 'toAxel'',
+                           --   must evaluate to a valid Axel expression.
+  -> Expression ann -- ^ The expression to quote.
+  -> Expression ann
 quoteExpression quoteAnn (LiteralChar ann x) =
   SExpression
     ann
@@ -165,8 +180,10 @@ quoteExpression quoteAnn (SExpression ann xs) =
 quoteExpression quoteAnn (Symbol ann x) =
   SExpression ann [Symbol ann "AST.Symbol", quoteAnn ann, LiteralString ann x]
 
--- | This allows splice-unquoting of both `[Expression]`s and `SExpression`s,
--- | without requiring special syntax for each.
+-- | NOTE This is for internal use; you likely don't need to use this directly.
+--
+--   This allows splice-unquoting of both `[Expression]`s and `SExpression`s,
+--   without requiring special syntax for each.
 class ToExpressionList a where
   type Annotation a
   toExpressionList :: a -> [Expression (Annotation a)]
@@ -176,9 +193,11 @@ instance ToExpressionList [Expression ann] where
   toExpressionList :: [Expression ann] -> [Expression ann]
   toExpressionList = id
 
--- | Because we do not have a way to statically ensure an `SExpression` is passed
--- | (and not another one of `Expression`'s constructors instead),
--- | we will error at compile-time if a macro attempts to splice-unquote inappropriately.
+-- | NOTE This is for internal use; you likely don't need to use this directly.
+--
+--   Because we do not have a way to statically ensure an `SExpression` is passed
+--   (and not another one of `Expression`'s constructors instead),
+--   we will error at compile-time if a macro attempts to splice-unquote inappropriately.
 instance ToExpressionList (Expression ann) where
   type Annotation (Expression ann) = ann
   toExpressionList :: Expression ann -> [Expression ann]

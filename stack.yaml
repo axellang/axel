@@ -59,3 +59,9 @@ extra-package-dbs: []
 #
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor
+
+# https://github.com/haskell/haddock/issues/900#issuecomment-501846469
+build:
+  haddock-arguments:
+    haddock-args:
+      - --optghc=-fdefer-type-errors

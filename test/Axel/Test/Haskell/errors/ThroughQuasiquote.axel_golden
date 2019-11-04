@@ -1,0 +1,9 @@
+(module ThroughQuasiquote)
+
+(import Axel.Prelude all)
+
+(=macro test ([x]) (pure [`(~x arg1 arg2)]))
+
+(=macro test2 () (test undefinedFunction))
+
+(test2)

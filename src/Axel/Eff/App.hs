@@ -16,7 +16,7 @@ import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
 type AppEffs
-   = '[ Log, Console, Sem.Error Error, FileSystem, Ghci, Process, Resource, Random, Time, Sem.Embed IO]
+   = '[ Sem.Error Error, Log, Console, FileSystem, Ghci, Process, Resource, Random, Time, Sem.Embed IO]
 
 runApp :: Sem.Sem AppEffs a -> IO a
 runApp =
@@ -27,5 +27,6 @@ runApp =
   runProcess .
   runStackGhci .
   runFileSystem .
-  unsafeRunError renderError .
-  runConsole . runLogAsFileSystem (FilePath "axelCompilation.log")
+  runConsole .
+  runLogAsFileSystem (FilePath "axelCompilation.log") .
+  unsafeRunError renderError

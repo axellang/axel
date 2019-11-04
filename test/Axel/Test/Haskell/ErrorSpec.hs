@@ -1,4 +1,4 @@
-module Axel.Test.Transpilation.TranspilationSpec where
+module Axel.Test.Haskell.ErrorSpec where
 
 import Axel.Prelude
 
@@ -25,12 +25,13 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 import qualified Polysemy as Sem
+import qualified Polysemy.Error as Sem
 import qualified Polysemy.State as Sem
 
 import Test.Tasty
 import Test.Tasty.Golden
 
-runApp :: Sem.Sem AppEffs a -> IO a
+runApp :: Sem.Sem AppEffs a -> IO (Either Effs.Error a)
 runApp =
   Sem.runM .
   Effs.runTime .
@@ -38,18 +39,17 @@ runApp =
   Effs.runResource .
   Effs.runProcess .
   Effs.runStackGhci .
-  Effs.runFileSystem .
-  Effs.runConsole . Effs.ignoreLog . Effs.unsafeRunError Effs.renderError
+  Effs.runFileSystem . Effs.runConsole . Effs.ignoreLog . Sem.runError
 
-test_transpilation_golden :: IO TestTree
-test_transpilation_golden = do
+test_errors_golden :: IO TestTree
+test_errors_golden = do
   axelFiles <-
     map (FilePath . T.pack) <$>
-    findByExtension [".axel_golden"] "test/Axel/Test/Transpilation"
+    findByExtension [".axel_golden"] "test/Axel/Test/Haskell/errors"
   pure $
-    testGroup "transpilation golden tests" $ do
+    testGroup "error golden tests" $ do
       axelFile <- axelFiles
-      let hsFile = replaceExtension axelFile "hs_golden"
+      let hsFile = replaceExtension axelFile "error_golden"
       let transpiled = do
             axelSource <- T.readFile $ T.unpack (op FilePath axelFile)
             output <-
@@ -57,8 +57,11 @@ test_transpilation_golden = do
               Sem.evalState (M.empty :: ModuleInfo) $
               Ghci.withStackGhci $
               transpileSource (takeBaseName axelFile) axelSource
-            let newSource = encodeUtf8Lazy $ SM.raw output
-            pure $ newSource <> "\n"
+            case output of
+              Right _ ->
+                error $
+                op FilePath axelFile <> " should have errored, but it didn't!"
+              Left err -> pure $ encodeUtf8Lazy $ Effs.renderError err
       pure $
         goldenVsString
           (T.unpack . op FilePath $ takeBaseName axelFile)

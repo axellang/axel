@@ -149,6 +149,7 @@ renderBlock = surround CurlyBraces . delimit Semicolons
 -- | Given a position in some transpiled output, find the corresponding
 --   metadata in the original source.
 --   Behavior is undefined if `column transPos == 0`.
+--
 --   TODO Make algorithm functional (assuming this can be cleanly done so).
 findOriginalPosition ::
      forall ann. [Annotated ann Text] -> Position -> Maybe ann

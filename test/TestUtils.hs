@@ -58,7 +58,7 @@ assertEqual msg expected actual =
        Nothing -> "")
 
 -- | Will error at runtime if a parse error occurs.
--- | If multiple expressions are able to be parsed, only the first will be returned.
+--  If multiple expressions are able to be parsed, only the first will be returned.
 unsafeParseSingle :: Maybe FilePath -> Text -> SM.Expression
 unsafeParseSingle filePath =
   head . Sem.run . unsafeRunError renderError . parseMultiple filePath

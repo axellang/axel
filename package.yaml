@@ -23,7 +23,8 @@ ghc-options:
   - -Wno-safe
   - -Wno-unsafe
   - -optP-Wno-nonportable-include-path # https://github.com/haskell/cabal/issues/4739
-  # Polysemy https://github.com/polysemy-research/polysemy#necessary-language-extensions
+
+  # https://github.com/polysemy-research/polysemy#necessary-language-extensions
   - -fplugin=Polysemy.Plugin
   - -flate-specialise
   - -fspecialise-aggressively

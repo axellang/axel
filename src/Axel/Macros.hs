@@ -199,12 +199,12 @@ isStatementFocused zipper =
    in isCompoundExpr && not isCompoundExprWrapper
 
 -- | Fully expand a top-level expression.
--- | Macro expansion is top-down: it proceeds top to bottom, outwards to inwards,
--- | and left to right. Whenever a macro is successfully expanded to yield new
--- | expressions in place of the macro call in question, the substitution is made
--- | and macro expansion is repeated from the beginning. As new definitions, etc.
--- | are found at the top level while the program tree is being traversed, they
--- | will be added to the environment accessible to macros during expansion.
+--   Macro expansion is top-down: it proceeds top to bottom, outwards to inwards,
+--   and left to right. Whenever a macro is successfully expanded to yield new
+--   expressions in place of the macro call in question, the substitution is made
+--   and macro expansion is repeated from the beginning. As new definitions, etc.
+--   are found at the top level while the program tree is being traversed, they
+--   will be added to the environment accessible to macros during expansion.
 expandProgramExpr ::
      forall funAppExpanderEffs fileExpanderEffs effs innerEffs.
      ( innerEffs ~ (Sem.State [SMStatement] : Effs.Restartable SM.Expression ': effs)
@@ -500,7 +500,7 @@ typeMacroDefinitions = map mkMacroTypeSignature . getMacroNames
     getMacroNames = nub . map (^. functionDefinition . name)
 
 -- | Source metadata is lost.
--- | Use only for logging and such where that doesn't matter.
+--   Use only for logging and such where that doesn't matter.
 losslyReconstructMacroCall :: Identifier -> [SM.Expression] -> SM.Expression
 losslyReconstructMacroCall macroName args =
   Parse.SExpression

@@ -49,7 +49,7 @@ import Control.Lens.Operators ((^.))
 
 import qualified Data.Text as T
 
--- | Metadata is only approximately restored. Thus, `normalizeExpression` and
+-- | Metadata is only approximately restored. Thus, `Axel.Normalize.normalizeExpression` and
 -- | `denormalizeExpression` are only inverses if metadata information is
 -- | ignored, although they should be pretty close either way.
 denormalizeExpression :: SMExpression -> SM.Expression
