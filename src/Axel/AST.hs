@@ -45,75 +45,94 @@ type Identifier = Text
 data CaseBlock ann =
   CaseBlock
     { _ann :: ann
-    , _expr :: Expression ann
-    , _matches :: [(Expression ann, Expression ann)]
+    , _expr :: Expression ann -- ^ The expression being matched on.
+    , _matches :: [(Expression ann, Expression ann)] -- ^ The (pattern, value) clauses.
     }
   deriving (Data, Eq, Functor, Show)
 
 data FunctionApplication ann =
   FunctionApplication
     { _ann :: ann
-    , _function :: Expression ann
-    , _arguments :: [Expression ann]
+    , _function :: Expression ann -- ^ The function being applied.
+    , _arguments :: [Expression ann] -- ^ The arguments to the function.
     }
   deriving (Data, Eq, Functor, Show)
 
+-- | This is so that macros can return multiple statements at the top-level without
+--   pervasive use of `begin`- or `progn`-esque special forms. Because entire programs
+--   are wrapped in this special form, individual macros are able to return multiple
+--   forms directly (i.e. returning them as an array).
+--
+--   This should not be created, manipulated, etc. in Axel programs. It's generated and
+--   manipulated internally, and using it directly in Axel programs should be considered
+--   undefined behavior.
 data TopLevel ann =
   TopLevel
     { _ann :: ann
-    , _statements :: [Statement ann]
+    , _statements :: [Statement ann] -- ^ The top-level statements in the program.
     }
   deriving (Data, Eq, Functor, Show)
 
+-- TODO Name this more clearly.
+-- TODO Do `ProperType` and `TypeConstructor` need to be separate cases, since they only
+--      differ in arity?
+-- | The left-hand side of e.g. a @data@ clause (that is, @data <TypeDefinition> = ...@).
 data TypeDefinition ann
-  = ProperType ann Identifier
-  | TypeConstructor ann (FunctionApplication ann)
+  = ProperType ann Identifier -- ^ A type that has no arguments, e.g. @Foo@.
+  | TypeConstructor ann (FunctionApplication ann) -- ^ A type with arguments, e.g. @Foo a@.
   deriving (Data, Eq, Functor, Show)
 
+-- | An ADT definition.
 data DataDeclaration ann =
   DataDeclaration
     { _ann :: ann
-    , _typeDefinition :: TypeDefinition ann
-    , _constructors :: [Expression ann]
+    , _typeDefinition :: TypeDefinition ann -- ^ The type being defined.
+    , _constructors :: [Expression ann] -- ^ The data constructors.
     }
   deriving (Data, Eq, Functor, Show)
 
+-- | A newtype definition.
 data NewtypeDeclaration ann =
   NewtypeDeclaration
     { _ann :: ann
-    , _typeDefinition :: TypeDefinition ann
-    , _wrappedType :: Expression ann
+    , _typeDefinition :: TypeDefinition ann -- ^ The newtype being defined.
+    , _wrappedType :: Expression ann -- ^ The old type being wrapped (for example, @Bar@ in @newtype Foo = Foo Bar@).
     }
   deriving (Data, Eq, Functor, Show)
 
+-- | A value-level definition.
 data FunctionDefinition ann =
   FunctionDefinition
     { _ann :: ann
-    , _name :: Identifier
-    , _arguments :: [Expression ann]
-    , _body :: Expression ann
-    , _whereBindings :: [Statement ann]
+    , _name :: Identifier -- ^ The name of the function being defined.
+    , _arguments :: [Expression ann] -- ^ The argument list of the function being defined.
+    , _body :: Expression ann -- ^ The value the function is defined to compute.
+    , _whereBindings :: [Statement ann] -- ^ The function's @where@-bindings.
     }
   deriving (Data, Eq, Functor, Show)
 
+-- | An element of an import list.
 data Import ann
-  = ImportItem ann Identifier
-  | ImportType ann Identifier [Identifier]
+  = ImportItem ann Identifier -- ^ An identifier to import.
+  | ImportType ann Identifier [Identifier] -- ^ A type with sub-definitions, e.g @Foo(Bar, Baz)@.
   deriving (Data, Eq, Functor, Show)
 
+-- | Specifies what to import from a module.
 data ImportSpecification ann
-  = ImportAll ann
-  | ImportOnly ann [Import ann]
+  = ImportAll ann -- ^ Import everything from the module.
+  | ImportOnly ann [Import ann] -- ^ Import only specific items from the module.
   deriving (Data, Eq, Functor, Show)
 
+-- | A lambda expression.
 data Lambda ann =
   Lambda
     { _ann :: ann
-    , _arguments :: [Expression ann]
-    , _body :: Expression ann
+    , _arguments :: [Expression ann] -- ^ The arguments to the lambda.
+    , _body :: Expression ann -- ^ The value computed by the lambda.
     }
   deriving (Data, Eq, Functor, Show)
 
+-- | A @let@-block.
 data LetBlock ann =
   LetBlock
     { _ann :: ann
