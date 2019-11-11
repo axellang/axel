@@ -22,7 +22,12 @@ import qualified Axel.Eff.Process as Effs (Process)
 import qualified Axel.Eff.Resource as Effs (Resource)
 import qualified Axel.Eff.Restartable as Effs (Restartable)
 import Axel.Haskell.Convert (convertFile)
-import Axel.Macros (handleFunctionApplication, processProgram)
+import Axel.Macros
+  ( HaskellBackendEffs
+  , handleFunctionApplication
+  , haskellBackend
+  , processProgram
+  )
 import Axel.Normalize (normalizeStatement, withExprCtxt)
 import Axel.Parse (parseMultiple', parseSource)
 import Axel.Parse.AST (Expression(Symbol))
@@ -102,13 +107,16 @@ transpileSource ::
   -> Sem.Sem effs SM.Output
 transpileSource filePath source =
   toHaskell . statementsToProgram <$>
-  (parseSource (Just filePath) source >>=
-   processProgram
-     @fileExpanderEffs
-     @funAppExpanderEffs
-     handleFunctionApplication
-     (void . transpileFileInPlace)
-     filePath)
+  Sem.runReader
+    haskellBackend
+    (parseSource (Just filePath) source >>=
+     processProgram
+       @fileExpanderEffs
+       @funAppExpanderEffs
+       @HaskellBackendEffs
+       handleFunctionApplication
+       (void . transpileFileInPlace)
+       filePath)
 
 convertFileInPlace ::
      (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error, Effs.FileSystem] effs)
