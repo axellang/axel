@@ -72,8 +72,8 @@ newProject projectName = do
     ]
 
 data ProjectFileType
-  = Axel
-  | Backend
+  = AxelFile
+  | BackendFile
 
 getProjectFiles ::
      (Sem.Member Effs.FileSystem effs)
@@ -86,34 +86,38 @@ getProjectFiles fileType = do
       [FilePath "app", FilePath "src", FilePath "test"]
   let ext =
         case fileType of
-          Axel -> ".axel"
-          Backend -> ".hs"
+          AxelFile -> ".axel"
+          BackendFile -> ".hs"
   pure $ filter (\filePath -> ext `T.isSuffixOf` op FilePath filePath) files
 
 transpileProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
-  => Sem.Sem effs ModuleInfo
-transpileProject =
+  => Backend backendEffs
+  -> Sem.Sem effs ModuleInfo
+transpileProject backend =
   Ghci.withGhci $ do
-    axelFiles <- getProjectFiles Axel
+    axelFiles <- getProjectFiles AxelFile
     initialModuleInfo <- readModuleInfo axelFiles
     (moduleInfo, _) <-
-      Sem.runState initialModuleInfo $ mapM transpileFileInPlace axelFiles
+      Sem.runState initialModuleInfo $
+      mapM (transpileFileInPlace backend) axelFiles
     pure moduleInfo
 
 buildProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
-  => Sem.Sem effs ()
-buildProject = do
+  => Backend backendEffs
+  -> Sem.Sem effs ()
+buildProject backend = do
   void $ passthroughProcess "hpack"
   projectPath <- getCurrentDirectory
-  transpiledFiles <- transpileProject
+  transpiledFiles <- transpileProject backend
   Cabal.buildProject transpiledFiles projectPath
 
 convertProject ::
      (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
   => Sem.Sem effs ()
-convertProject = getProjectFiles Backend >>= void . traverse convertFileInPlace
+convertProject =
+  getProjectFiles BackendFile >>= void . traverse convertFileInPlace
 
 runProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
@@ -123,4 +127,4 @@ runProject = getCurrentDirectory >>= Cabal.runProject
 formatProject ::
      (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error] effs)
   => Sem.Sem effs ()
-formatProject = getProjectFiles Axel >>= void . traverse formatFileInPlace
+formatProject = getProjectFiles AxelFile >>= void . traverse formatFileInPlace

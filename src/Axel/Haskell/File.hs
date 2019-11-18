@@ -23,7 +23,7 @@ import qualified Axel.Eff.Resource as Effs (Resource)
 import qualified Axel.Eff.Restartable as Effs (Restartable)
 import Axel.Haskell.Convert (convertFile)
 import Axel.Macros
-  ( HaskellBackendEffs
+  ( Backend
   , handleFunctionApplication
   , haskellBackend
   , processProgram
@@ -96,27 +96,27 @@ readModuleInfo axelFiles = do
   pure $ M.fromList $ catMaybes modules
 
 transpileSource ::
-     forall effs fileExpanderEffs funAppExpanderEffs.
+     forall effs fileExpanderEffs funAppExpanderEffs backendEffs.
      ( fileExpanderEffs ~ '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo]
      , funAppExpanderEffs ~ (Sem.Reader FilePath ': Effs.Restartable SM.Expression ': Sem.State [SMStatement] ': fileExpanderEffs)
      , Sem.Members '[ Sem.Error Error, Effs.Ghci, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs
      , Sem.Members fileExpanderEffs effs
+     , Sem.Members backendEffs effs
      )
-  => FilePath
+  => Backend backendEffs
+  -> FilePath
   -> Text
   -> Sem.Sem effs SM.Output
-transpileSource filePath source =
+transpileSource backend filePath source =
   toHaskell . statementsToProgram <$>
-  Sem.runReader
-    haskellBackend
-    (parseSource (Just filePath) source >>=
-     processProgram
-       @fileExpanderEffs
-       @funAppExpanderEffs
-       @HaskellBackendEffs
-       handleFunctionApplication
-       (void . transpileFileInPlace)
-       filePath)
+  (parseSource (Just filePath) source >>=
+   processProgram
+     @fileExpanderEffs
+     @funAppExpanderEffs
+     backend
+     handleFunctionApplication
+     (\backend -> void . transpileFileInPlace backend)
+     filePath)
 
 convertFileInPlace ::
      (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error, Effs.FileSystem] effs)
@@ -129,28 +129,30 @@ convertFileInPlace path = do
 
 transpileFile ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs)
-  => FilePath
+  => Backend backendEffs
+  -> FilePath
   -> FilePath
   -> Sem.Sem effs ()
-transpileFile path newPath = do
+transpileFile backend path newPath = do
   fileContents <- FS.readFile path
-  newContents <- transpileSource path fileContents
+  newContents <- transpileSource backend path fileContents
   putStrLn $ op FilePath path <> " => " <> op FilePath newPath
   FS.writeFile newPath (SM.raw newContents)
   Sem.modify $ M.adjust (_2 ?~ newContents) path
 
 transpileFileInPlace ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs)
-  => FilePath
+  => Backend backendEffs
+  -> FilePath
   -> Sem.Sem effs FilePath
-transpileFileInPlace path = do
+transpileFileInPlace backend path = do
   moduleInfo <- Sem.gets $ M.lookup path
   let alreadyCompiled =
         case moduleInfo of
           Just (_, Just _) -> True
           _ -> False
   let newPath = replaceExtension path "hs"
-  unless alreadyCompiled $ transpileFile path newPath
+  unless alreadyCompiled $ transpileFile backend path newPath
   pure newPath
 
 formatFileInPlace ::

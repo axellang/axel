@@ -14,6 +14,7 @@ import qualified Axel.Eff.Random as Effs
 import qualified Axel.Eff.Resource as Effs
 import qualified Axel.Eff.Time as Effs
 import Axel.Haskell.File
+import Axel.Macros (haskellBackend)
 import Axel.Sourcemap as SM
 import Axel.Utils.FilePath
 import Axel.Utils.Text
@@ -55,7 +56,8 @@ test_transpilation_golden = do
             output <-
               runApp $
               Sem.evalState (M.empty :: ModuleInfo) $
-              Ghci.withGhci $ transpileSource (takeBaseName axelFile) axelSource
+              Ghci.withGhci $
+              transpileSource haskellBackend (takeBaseName axelFile) axelSource
             let newSource = encodeUtf8Lazy $ SM.raw output
             pure $ newSource <> "\n"
       pure $
