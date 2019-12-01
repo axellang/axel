@@ -1,0 +1,7 @@
+11/25/2019
+  - [WIP] Still working on the issue from last week. However, there's a good chance it's actually not a bug in Polysemy after all (but I'm continuing the conversation with @isovector to try to fully understand what's going wrong).
+  - Researched how to integrate the PureScript compiler. I'm having difficulty getting `purescript` to install via Stack(age). Now that Cabal 3.0.0 has been released, it might finally be time to switch to Cabal for good.
+
+11/17/2019
+  - [WIP] Continued work from last week. While wiring everything up, Polysemy became very, very unhappy. I spent some time trying to figure out what I was doing wrong, but with no luck. Eventually, I ended up removing `Sem.Reader (Backend backendEffs)` altogether in favor of just passing `Backend backendEffs` around as a parameter. I've since been running into what I think is a variation of https://github.com/polysemy-research/polysemy/issues/280 (which I opened yesterday after finding an MVCE).
+    I'm not too great with typeclass-fu, so this is taking a bit longer than I had anticipated (unfortunately).
