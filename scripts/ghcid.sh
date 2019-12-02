@@ -1,1 +1,1 @@
-ghcid --command "stack repl axel:lib axel:test:axel-test --ghci-options=-fno-code"
+ghcid --command "cabal repl -fno-code"

@@ -36,7 +36,7 @@ runStackGhci =
       Sem.embed $
       fst <$>
       startGhci
-        "stack repl --no-load --ghc-options='-ignore-dot-ghci'" -- We don't want to load any of the project's modules
+        "cabal exec -- ghci -ignore-dot-ghci" -- We don't want to load any of the project's modules
                                                                 -- unless a macro explicitly requires them
                                                                 -- (they might not even have been compiled yet!)
         Nothing
