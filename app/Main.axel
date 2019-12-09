@@ -2,12 +2,12 @@
 
 (import Axel.Eff.App (AppEffs runApp))
 (import Axel.Eff.Console (putStrLn))
-(import Axel.Eff.Ghci (withStackGhci))
+(import Axel.Eff.Ghci (withGhci))
+(import Axel.Haskell.Cabal (axelVersion))
 (import Axel.Haskell.File
         (convertFileInPlace formatFileInPlace transpileFileInPlace))
 (import Axel.Haskell.Project
         (buildProject convertProject formatProject runProject))
-(import Axel.Haskell.Stack (axelStackageVersion))
 (import Axel.Parse.Args
         ((Command FileCommand ProjectCommand Version)
          (FileCommand ConvertFile RunFile FormatFile)
@@ -29,13 +29,13 @@
             ((RunFile filePath)
              (void (Sem.evalState
                     Map.empty
-                    (withStackGhci (transpileFileInPlace filePath)))))))
+                    (withGhci (transpileFileInPlace filePath)))))))
      (((ProjectCommand projectCommand))
       (case projectCommand ((ConvertProject) convertProject)
                            ((FormatProject) formatProject)
                            ((RunProject) (>> buildProject runProject))))
      (((Version))
-      (putStrLn (<> "Axel version " axelStackageVersion))))
+      (putStrLn (<> "Axel version " axelVersion))))
 
 (def main (() (IO Unit))
      (() (>>= (execParser commandParserInfo)

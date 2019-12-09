@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4170eb14af2a0cf57eba97a97df495152708203ad5ed24692877b10e5d102a49
+-- hash: ecafd6a539a45c0faaf7616bb56a7ecc1ee00bb901a2caa3eef6e8cb47d4f149
 
 name:           axel
 version:        0.0.12
@@ -66,13 +66,13 @@ library
       Axel.Eff.Restartable
       Axel.Eff.Time
       Axel.Eff.Unsafe
+      Axel.Haskell.Cabal
       Axel.Haskell.Convert
       Axel.Haskell.Error
       Axel.Haskell.File
       Axel.Haskell.Language
       Axel.Haskell.Macros
       Axel.Haskell.Project
-      Axel.Haskell.Stack
       Axel.Macros
       Axel.Normalize
       Axel.Parse
@@ -141,6 +141,7 @@ library
     , transformers ==0.5.6.2
     , typed-process ==0.2.6.0
     , uniplate ==1.6.12
+    , unordered-containers ==0.2.10.0
     , vector ==0.12.0.3
     , yaml ==0.11.1.2
   default-language: Haskell2010
@@ -196,6 +197,7 @@ executable axel
     , transformers ==0.5.6.2
     , typed-process ==0.2.6.0
     , uniplate ==1.6.12
+    , unordered-containers ==0.2.10.0
     , vector ==0.12.0.3
     , yaml ==0.11.1.2
   default-language: Haskell2010
@@ -275,6 +277,7 @@ test-suite axel-test
     , transformers ==0.5.6.2
     , typed-process ==0.2.6.0
     , uniplate ==1.6.12
+    , unordered-containers ==0.2.10.0
     , vector ==0.12.0.3
     , yaml ==0.11.1.2
   default-language: Haskell2010

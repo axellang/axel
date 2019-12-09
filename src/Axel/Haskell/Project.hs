@@ -21,18 +21,18 @@ import qualified Axel.Eff.Process as Effs (Process)
 import Axel.Eff.Process (passthroughProcess)
 import Axel.Eff.Resource (getResourcePath, newProjectTemplate)
 import qualified Axel.Eff.Resource as Effs (Resource)
+import qualified Axel.Haskell.Cabal as Cabal
+  ( addDependency
+  , axelPackageId
+  , buildProject
+  , createProject
+  , runProject
+  )
 import Axel.Haskell.File
   ( convertFileInPlace
   , formatFileInPlace
   , readModuleInfo
   , transpileFileInPlace
-  )
-import Axel.Haskell.Stack
-  ( addStackDependency
-  , axelStackageId
-  , buildStackProject
-  , createStackProject
-  , runStackProject
   )
 import Axel.Sourcemap (ModuleInfo)
 import Axel.Utils.FilePath ((<.>), (</>))
@@ -54,9 +54,9 @@ newProject ::
   => Text
   -> Sem.Sem effs ()
 newProject projectName = do
-  createStackProject projectName
+  Cabal.createProject projectName
   let projectPath = FilePath projectName
-  addStackDependency axelStackageId projectPath
+  Cabal.addDependency Cabal.axelPackageId projectPath
   templatePath <- getResourcePath newProjectTemplate
   let copyAxel filePath = do
         copyFile
@@ -94,7 +94,7 @@ transpileProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
   => Sem.Sem effs ModuleInfo
 transpileProject =
-  Ghci.withStackGhci $ do
+  Ghci.withGhci $ do
     axelFiles <- getProjectFiles Axel
     initialModuleInfo <- readModuleInfo axelFiles
     (moduleInfo, _) <-
@@ -108,7 +108,7 @@ buildProject = do
   void $ passthroughProcess "hpack"
   projectPath <- getCurrentDirectory
   transpiledFiles <- transpileProject
-  buildStackProject transpiledFiles projectPath
+  Cabal.buildProject transpiledFiles projectPath
 
 convertProject ::
      (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
@@ -118,7 +118,7 @@ convertProject = getProjectFiles Backend >>= void . traverse convertFileInPlace
 runProject ::
      (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
   => Sem.Sem effs ()
-runProject = getCurrentDirectory >>= runStackProject
+runProject = getCurrentDirectory >>= Cabal.runProject
 
 formatProject ::
      (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error] effs)

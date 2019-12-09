@@ -1,3 +1,6 @@
+12/8/2019
+  - Finish migrating bootstrapping-critical functionality to Cabal 3.
+
 12/1/2019
   - [WIP] I now believe the issue from last week is a bug in Polysemy after all (involving polysemy-research/polysemy#114 and existential types). Regardless, I've spent way too much time on this issue, so I've tried to bake in the fact that `Sem.Reader ExpansionId` must be the first item in `openEffs`. This... also doesn't work, and I'm not sure why. It's likely my mistake, but reasoning about this (and pinpointing errors) is very difficult (for me, at least). See stash 46f7170d3106d46dad25c67e1b88fa5dd1cb4431. Next week, I am going to try to, instead of only prepending `firstEff` to `openEffs` in the constraint, also do so in the result type effects list.
   - [WIP] Began migrating to Cabal 3. Migrating the basic infrastructure itself was trivially easy (much more so than I had expected), but I forgot about what this would mean for Axel's usage of Stack under-the-hood! Specifically, since Axel relies on projects using Stack, it's not able to compile itself anymore. I don't think it'll be particularly difficult to replace the Stack dependency with one on Cabal (in e.g. the project generation code), but it'll probably be time-consuming.

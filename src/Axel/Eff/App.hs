@@ -5,7 +5,7 @@ import Axel.Prelude
 import Axel.Eff.Console (Console, runConsole)
 import Axel.Eff.Error (Error, renderError, unsafeRunError)
 import Axel.Eff.FileSystem (FileSystem, runFileSystem)
-import Axel.Eff.Ghci (Ghci, runStackGhci)
+import Axel.Eff.Ghci (Ghci, runGhci)
 import Axel.Eff.Log (Log, runLogAsFileSystem)
 import Axel.Eff.Process (Process, runProcess)
 import Axel.Eff.Random (Random, runRandom)
@@ -25,7 +25,7 @@ runApp =
   runRandom .
   runResource .
   runProcess .
-  runStackGhci .
+  runGhci .
   runFileSystem .
   runConsole .
   runLogAsFileSystem (FilePath "axelCompilation.log") .

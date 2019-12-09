@@ -24,11 +24,11 @@ data Ghci m a where
 
 Sem.makeSem ''Ghci
 
-runStackGhci ::
+runGhci ::
      (Sem.Member (Sem.Embed IO) effs)
   => Sem.Sem (Ghci ': effs) a
   -> Sem.Sem effs a
-runStackGhci =
+runGhci =
   Sem.interpret $ \case
     Exec ghci command ->
       Sem.embed $ map T.pack <$> Ghci.exec ghci (T.unpack command)
@@ -36,9 +36,9 @@ runStackGhci =
       Sem.embed $
       fst <$>
       startGhci
-        "cabal exec -- ghci -ignore-dot-ghci" -- We don't want to load any of the project's modules
-                                                                -- unless a macro explicitly requires them
-                                                                -- (they might not even have been compiled yet!)
+        "cabal repl --repl-options='-ignore-dot-ghci'" -- We don't want to load any of the project's modules
+                                                       -- unless a macro explicitly requires them
+                                                       -- (they might not even have been compiled yet!)
         Nothing
         mempty
     Stop ghci -> Sem.embed $ stopGhci ghci
@@ -51,11 +51,11 @@ addFiles ghci filePaths =
 enableJsonErrors :: (Sem.Member Ghci effs) => Ghci.Ghci -> Sem.Sem effs ()
 enableJsonErrors ghci = void $ exec ghci ":set -ddump-json"
 
-withStackGhci ::
+withGhci ::
      (Sem.Member Ghci effs)
   => Sem.Sem (Sem.Reader Ghci.Ghci ': effs) a
   -> Sem.Sem effs a
-withStackGhci x = do
+withGhci x = do
   ghci <- start
   enableJsonErrors ghci
   result <- Sem.runReader ghci x
