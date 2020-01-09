@@ -1,0 +1,3 @@
+with-compiler: ghc-8.8.1
+
+packages: .

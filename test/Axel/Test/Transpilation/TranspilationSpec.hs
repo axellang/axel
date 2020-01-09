@@ -37,7 +37,7 @@ runApp =
   Effs.runRandom .
   Effs.runResource .
   Effs.runProcess .
-  Effs.runStackGhci .
+  Effs.runGhci .
   Effs.runFileSystem .
   Effs.runConsole . Effs.ignoreLog . Effs.unsafeRunError Effs.renderError
 
@@ -55,8 +55,7 @@ test_transpilation_golden = do
             output <-
               runApp $
               Sem.evalState (M.empty :: ModuleInfo) $
-              Ghci.withStackGhci $
-              transpileSource (takeBaseName axelFile) axelSource
+              Ghci.withGhci $ transpileSource (takeBaseName axelFile) axelSource
             let newSource = encodeUtf8Lazy $ SM.raw output
             pure $ newSource <> "\n"
       pure $

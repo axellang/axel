@@ -38,7 +38,7 @@ runApp =
   Effs.runRandom .
   Effs.runResource .
   Effs.runProcess .
-  Effs.runStackGhci .
+  Effs.runGhci .
   Effs.runFileSystem . Effs.runConsole . Effs.ignoreLog . Sem.runError
 
 test_errors_golden :: IO TestTree
@@ -55,8 +55,7 @@ test_errors_golden = do
             output <-
               runApp $
               Sem.evalState (M.empty :: ModuleInfo) $
-              Ghci.withStackGhci $
-              transpileSource (takeBaseName axelFile) axelSource
+              Ghci.withGhci $ transpileSource (takeBaseName axelFile) axelSource
             case output of
               Right _ ->
                 error $

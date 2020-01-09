@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
-module Axel.Test.Haskell.StackSpec where
+module Axel.Test.Haskell.CabalSpec where
 
 import Axel.Prelude
 
@@ -10,14 +10,14 @@ import Test.Tasty.Hspec
 
 -- TODO Flesh out `ProcessMock.runProcess` with the new `Process` actions,
 --      so that we can re-enable this test suite.
-spec_Stack :: SpecWith ()
-spec_Stack = pure ()
+spec_Cabal :: SpecWith ()
+spec_Cabal = pure ()
 {-
 
 import Axel.Eff.Error
 import Axel.Eff.FileSystem as FS
 import Axel.Eff.Process
-import Axel.Haskell.Stack as Stack
+import Axel.Haskell.Cabal as Cabal
 import Axel.Test.Eff.ConsoleMock as Mock
 import Axel.Test.Eff.FileSystemMock as Mock
 import Axel.Test.Eff.ProcessMock as Mock
@@ -34,12 +34,12 @@ import System.Exit
 
 import TestUtils
 
-spec_Stack :: SpecWith ()
-spec_Stack = do
-  describe "addStackDependency" $ do
-    it "adds a Stackage dependency to a Stack project" $ do
+spec_Cabal :: SpecWith ()
+spec_Cabal = do
+  describe "addDependency" $ do
+    it "adds a package dependency to a project" $ do
       let action =
-            Stack.addStackDependency "foo-1.2.3.4" (FilePath "project/path")
+            Cabal.addDependency "foo-1.2.3.4" (FilePath "project/path")
       let origFSState =
             Mock.mkFileSystemState
               [ Mock.Directory
@@ -61,9 +61,9 @@ spec_Stack = do
       case Sem.run . Sem.runError . Mock.runFileSystem origFSState $ action of
         Left err -> failSpec err
         Right (result, ()) -> result `shouldBe` expectedFSState
-  describe "buildStackProject" $ do
-    it "builds a Stack project" $ do
-      let action = Stack.buildStackProject M.empty (FilePath "project/foo")
+  describe "buildProject" $ do
+    it "builds a project" $ do
+      let action = Cabal.buildProject M.empty (FilePath "project/foo")
       let origConsoleState = Mock.mkConsoleState
       let origFSState =
             Mock.mkFileSystemState
@@ -90,9 +90,9 @@ spec_Stack = do
         Right (Left err) -> failSpec err
         Right (Right (fsState, (procState, (consoleState, x)))) ->
           expectation x (consoleState, fsState, procState)
-  describe "createStackProject" $ do
-    it "creates a new Stack project" $ do
-      let action = Stack.createStackProject "newProject"
+  describe "createProject" $ do
+    it "creates a new project" $ do
+      let action = Cabal.createProject "newProject"
       let origFSState = Mock.mkFileSystemState []
       let origProcState =
             Mock.mkProcessState
@@ -121,9 +121,9 @@ spec_Stack = do
         Right (Left err) -> failSpec err
         Right (Right (fsState, (procState, x))) ->
           expectation x (fsState, procState)
-  describe "runStackProject" $ do
-    it "runs a Stack project" $ do
-      let action = Stack.runStackProject (FilePath "project/foo")
+  describe "runProject" $ do
+    it "runs a project" $ do
+      let action = Cabal.runProject (FilePath "project/foo")
       let origConsoleState = Mock.mkConsoleState
       let origFSState =
             Mock.mkFileSystemState

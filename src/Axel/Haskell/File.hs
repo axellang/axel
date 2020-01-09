@@ -40,13 +40,12 @@ import Axel.Utils.Recursion (bottomUpFmap)
 import Control.Lens (op)
 import Control.Lens.Operators ((<&>), (?~))
 import Control.Lens.Tuple (_2)
-import Control.Monad (forM, mapM, unless, void)
+import Control.Monad (forM, unless, void)
 
 import Data.Data (Data)
 import qualified Data.Map as M (adjust, fromList, lookup)
 import Data.Maybe (catMaybes)
 import Data.Monoid (Alt(Alt))
-import Data.Semigroup ((<>))
 
 import qualified Language.Haskell.Ghcid as Ghci (Ghci)
 

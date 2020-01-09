@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LiberalTypeSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Axel.Macros where
@@ -83,7 +84,6 @@ import Data.List.Extra (mconcatMap)
 import Data.List.Split (split, whenElt)
 import qualified Data.Map as M
 import Data.Maybe (isNothing)
-import Data.Semigroup ((<>))
 import qualified Data.Text as T
 
 import qualified Language.Haskell.Ghcid as Ghcid

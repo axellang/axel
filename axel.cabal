@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ecafd6a539a45c0faaf7616bb56a7ecc1ee00bb901a2caa3eef6e8cb47d4f149
+-- hash: 74d14c78ef50fea84fee133b2acf5198e2dc789f0dab0a0d82f621a8255c2cff
 
 name:           axel
 version:        0.0.12
@@ -98,34 +98,33 @@ library
   hs-source-dirs:
       src
   default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
-  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively
   build-tool-depends:
       hpack:hpack
     , tasty-discover:tasty-discover
   build-depends:
       aeson ==1.4.4.0
     , ansi-terminal ==0.9.1
-    , base ==4.12.0.0
-    , bytestring ==0.10.8.2
-    , containers ==0.6.0.1
-    , directory ==1.3.3.0
+    , base ==4.13.0.0
+    , bytestring ==0.10.9.0
+    , containers ==0.6.2.1
+    , directory ==1.3.3.2
     , extra ==1.6.18
     , filepath ==1.4.2.1
-    , freer-simple ==1.2.1.0
     , ghcid ==0.7.5
-    , hashable ==1.2.7.0
-    , haskell-src-exts ==1.21.0
-    , hedgehog ==1.0
-    , hpack ==0.31.2
-    , lens ==4.17.1
+    , hashable ==1.3.0.0
+    , haskell-src-exts ==1.22.0
+    , hedgehog ==1.0.1
+    , hpack ==0.33.0
+    , lens ==4.18.1
     , lens-aeson ==1.0.2
     , megaparsec ==7.0.5
     , mono-traversable ==1.0.12.0
-    , optparse-applicative ==0.14.3.0
-    , polysemy ==1.0.0.0
-    , polysemy-plugin ==0.2.2.0
-    , prettyprinter ==1.2.1.1
-    , process ==1.6.5.0
+    , optparse-applicative ==0.15.1.0
+    , polysemy ==1.2.3.0
+    , polysemy-plugin ==0.2.4.0
+    , prettyprinter ==1.5.1
+    , process ==1.6.5.1
     , profunctors ==5.3
     , random ==1.1
     , split ==0.2.3.3
@@ -135,15 +134,15 @@ library
     , tasty-hedgehog ==1.0.0.1
     , tasty-hspec ==1.1.5.1
     , tasty-hunit ==0.10.0.2
-    , template-haskell ==2.14.0.0
-    , text ==1.2.3.1
-    , time ==1.8.0.2
+    , template-haskell ==2.15.0.0
+    , text ==1.2.4.0
+    , time ==1.9.3
     , transformers ==0.5.6.2
     , typed-process ==0.2.6.0
     , uniplate ==1.6.12
     , unordered-containers ==0.2.10.0
     , vector ==0.12.0.3
-    , yaml ==0.11.1.2
+    , yaml ==0.11.2.0
   default-language: Haskell2010
 
 executable axel
@@ -153,7 +152,7 @@ executable axel
   hs-source-dirs:
       app
   default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
-  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       hpack:hpack
     , tasty-discover:tasty-discover
@@ -161,27 +160,26 @@ executable axel
       aeson ==1.4.4.0
     , ansi-terminal ==0.9.1
     , axel
-    , base ==4.12.0.0
-    , bytestring ==0.10.8.2
-    , containers ==0.6.0.1
-    , directory ==1.3.3.0
+    , base ==4.13.0.0
+    , bytestring ==0.10.9.0
+    , containers ==0.6.2.1
+    , directory ==1.3.3.2
     , extra ==1.6.18
     , filepath ==1.4.2.1
-    , freer-simple ==1.2.1.0
     , ghcid ==0.7.5
-    , hashable ==1.2.7.0
-    , haskell-src-exts ==1.21.0
-    , hedgehog ==1.0
-    , hpack ==0.31.2
-    , lens ==4.17.1
+    , hashable ==1.3.0.0
+    , haskell-src-exts ==1.22.0
+    , hedgehog ==1.0.1
+    , hpack ==0.33.0
+    , lens ==4.18.1
     , lens-aeson ==1.0.2
     , megaparsec ==7.0.5
     , mono-traversable ==1.0.12.0
-    , optparse-applicative ==0.14.3.0
-    , polysemy ==1.0.0.0
-    , polysemy-plugin ==0.2.2.0
-    , prettyprinter ==1.2.1.1
-    , process ==1.6.5.0
+    , optparse-applicative ==0.15.1.0
+    , polysemy ==1.2.3.0
+    , polysemy-plugin ==0.2.4.0
+    , prettyprinter ==1.5.1
+    , process ==1.6.5.1
     , profunctors ==5.3
     , random ==1.1
     , split ==0.2.3.3
@@ -191,15 +189,15 @@ executable axel
     , tasty-hedgehog ==1.0.0.1
     , tasty-hspec ==1.1.5.1
     , tasty-hunit ==0.10.0.2
-    , template-haskell ==2.14.0.0
-    , text ==1.2.3.1
-    , time ==1.8.0.2
+    , template-haskell ==2.15.0.0
+    , text ==1.2.4.0
+    , time ==1.9.3
     , transformers ==0.5.6.2
     , typed-process ==0.2.6.0
     , uniplate ==1.6.12
     , unordered-containers ==0.2.10.0
     , vector ==0.12.0.3
-    , yaml ==0.11.1.2
+    , yaml ==0.11.2.0
   default-language: Haskell2010
 
 test-suite axel-test
@@ -217,8 +215,8 @@ test-suite axel-test
       Axel.Test.Eff.ProcessMock
       Axel.Test.Eff.ResourceMock
       Axel.Test.Eff.ResourceSpec
+      Axel.Test.Haskell.CabalSpec
       Axel.Test.Haskell.ErrorSpec
-      Axel.Test.Haskell.StackSpec
       Axel.Test.MacrosSpec
       Axel.Test.NormalizeSpec
       Axel.Test.Parse.ASTGen
@@ -233,7 +231,7 @@ test-suite axel-test
   hs-source-dirs:
       test
   default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
-  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       hpack:hpack
     , tasty-discover:tasty-discover
@@ -241,27 +239,26 @@ test-suite axel-test
       aeson ==1.4.4.0
     , ansi-terminal ==0.9.1
     , axel
-    , base ==4.12.0.0
-    , bytestring ==0.10.8.2
-    , containers ==0.6.0.1
-    , directory ==1.3.3.0
+    , base ==4.13.0.0
+    , bytestring ==0.10.9.0
+    , containers ==0.6.2.1
+    , directory ==1.3.3.2
     , extra ==1.6.18
     , filepath ==1.4.2.1
-    , freer-simple ==1.2.1.0
     , ghcid ==0.7.5
-    , hashable ==1.2.7.0
-    , haskell-src-exts ==1.21.0
-    , hedgehog ==1.0
-    , hpack ==0.31.2
-    , lens ==4.17.1
+    , hashable ==1.3.0.0
+    , haskell-src-exts ==1.22.0
+    , hedgehog ==1.0.1
+    , hpack ==0.33.0
+    , lens ==4.18.1
     , lens-aeson ==1.0.2
     , megaparsec ==7.0.5
     , mono-traversable ==1.0.12.0
-    , optparse-applicative ==0.14.3.0
-    , polysemy ==1.0.0.0
-    , polysemy-plugin ==0.2.2.0
-    , prettyprinter ==1.2.1.1
-    , process ==1.6.5.0
+    , optparse-applicative ==0.15.1.0
+    , polysemy ==1.2.3.0
+    , polysemy-plugin ==0.2.4.0
+    , prettyprinter ==1.5.1
+    , process ==1.6.5.1
     , profunctors ==5.3
     , random ==1.1
     , split ==0.2.3.3
@@ -271,13 +268,13 @@ test-suite axel-test
     , tasty-hedgehog ==1.0.0.1
     , tasty-hspec ==1.1.5.1
     , tasty-hunit ==0.10.0.2
-    , template-haskell ==2.14.0.0
-    , text ==1.2.3.1
-    , time ==1.8.0.2
+    , template-haskell ==2.15.0.0
+    , text ==1.2.4.0
+    , time ==1.9.3
     , transformers ==0.5.6.2
     , typed-process ==0.2.6.0
     , uniplate ==1.6.12
     , unordered-containers ==0.2.10.0
     , vector ==0.12.0.3
-    , yaml ==0.11.1.2
+    , yaml ==0.11.2.0
   default-language: Haskell2010

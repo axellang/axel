@@ -34,7 +34,6 @@ import Control.Lens.Wrapped (_Wrapped)
 import Control.Monad ((>=>))
 
 import Data.Data (Data)
-import Data.Semigroup ((<>))
 import qualified Data.Text as T
 
 class ToHaskell a where

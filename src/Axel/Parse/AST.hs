@@ -31,7 +31,6 @@ import Data.Generics.Uniplate.Zipper
   )
 import Data.Hashable (Hashable)
 import Data.MonoTraversable (oconcatMap)
-import Data.Semigroup ((<>))
 import qualified Data.Text as T
 
 import GHC.Generics (Generic)
