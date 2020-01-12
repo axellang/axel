@@ -86,6 +86,7 @@ import Data.List.Split (split, whenElt)
 import qualified Data.Map as M
 import Data.Maybe (isNothing)
 import qualified Data.Text as T
+import Data.Type.Equality ((:~:)(Refl))
 
 import qualified Language.Haskell.Ghcid as Ghcid
 
@@ -240,13 +241,17 @@ type FileExpanderArgs a = FilePath -> a
 
 type FileExpander effs = Effs.Callback effs FileExpanderArgs ()
 
+-- By the time the function application expander callback will be called,
+-- we'll have added these effects.
+type SupportsFunAppExpanderEffs subEffs effs
+   = Sem.Members subEffs (Sem.State [SMStatement] ': Effs.Restartable SM.Expression ': Sem.Reader FilePath ': effs)
+
 -- | Fully expand a program, and add macro definition type signatures.
 processProgram ::
-     forall fileExpanderEffs funAppExpanderEffs backendEffs effs innerEffs.
-     ( innerEffs ~ (Sem.State [SMStatement] ': Effs.Restartable SM.Expression ': Sem.Reader FilePath ': effs)
-     , Sem.Members '[ Sem.Error Error, Effs.Ghci, Sem.Reader Ghcid.Ghci, Sem.State ModuleInfo] effs
-     , Sem.Members fileExpanderEffs innerEffs
-     , Sem.Members funAppExpanderEffs innerEffs
+     forall fileExpanderEffs funAppExpanderEffs backendEffs effs.
+     ( Sem.Members '[ Sem.Error Error, Effs.Ghci, Sem.Reader Ghcid.Ghci, Sem.State ModuleInfo] effs
+     , SupportsFunAppExpanderEffs fileExpanderEffs effs -- GHC refuses to compile if this is `Sem.Members fileExpanderEffs effs`, for some reason.
+     , SupportsFunAppExpanderEffs funAppExpanderEffs effs
      )
   => Backend backendEffs
   -> (Backend backendEffs -> FunctionApplicationExpander funAppExpanderEffs)
@@ -345,7 +350,7 @@ isStatementFocused zipper =
 --   will be added to the environment accessible to macros during expansion.
 expandProgramExpr ::
      forall funAppExpanderEffs fileExpanderEffs effs innerEffs.
-     ( innerEffs ~ (Sem.State [SMStatement] : Effs.Restartable SM.Expression ': effs)
+     ( innerEffs ~ (Sem.State [SMStatement] ': Effs.Restartable SM.Expression ': effs)
      , Sem.Members '[ Sem.Error Error, Sem.State ModuleInfo, Sem.Reader Ghcid.Ghci, Sem.Reader FilePath] effs
      , Sem.Members funAppExpanderEffs innerEffs
      , Sem.Members fileExpanderEffs innerEffs
@@ -451,11 +456,14 @@ addStatementToMacroEnvironment expandFile newExpr = do
     ensureCompiledDependency @fileExpanderEffs expandFile
   Sem.modify @[SMStatement] (`snoc` stmt)
 
+type FunAppExpanderEffs
+   = '[ Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Sem.State ModuleInfo, Sem.Reader Ghcid.Ghci, Sem.Reader FilePath, Sem.State [SMStatement]]
+
 -- | If a function application is a macro call, expand it.
 handleFunctionApplication ::
      forall backendEffs effs.
-     ( Sem.Members '[ Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Sem.State ModuleInfo, Sem.Reader Ghcid.Ghci, Sem.Reader FilePath, Sem.State [SMStatement]] effs
-     , Sem.Members backendEffs (Sem.Reader ExpansionId ': effs)
+     ( Sem.Members FunAppExpanderEffs effs
+     , Sem.Members backendEffs FunAppExpanderEffs
      )
   => Backend backendEffs
   -> SM.Expression
@@ -466,7 +474,23 @@ handleFunctionApplication backend fnApp@(Parse.SExpression ann (Parse.Symbol _ f
     then Just <$>
          withExpansionId
            fnApp
-           (expandMacroApplication backend ann (T.pack functionName) args)
+           (case Effs.prfMembersTransitive
+                   @backendEffs
+                   @FunAppExpanderEffs
+                   @effs of
+              Refl ->
+                case Effs.prfMembersUnderCons
+                       @(Sem.Reader ExpansionId)
+                       @backendEffs
+                       @effs of
+                  Refl ->
+                    (expandMacroApplication
+                       @backendEffs
+                       @(Sem.Reader ExpansionId ': effs)
+                       backend
+                       ann
+                       (T.pack functionName)
+                       args))
     else pure Nothing
 handleFunctionApplication _ _ = pure Nothing
 

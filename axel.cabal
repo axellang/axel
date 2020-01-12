@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 74d14c78ef50fea84fee133b2acf5198e2dc789f0dab0a0d82f621a8255c2cff
+-- hash: 1ac6317303739057d516da593b61a3c1090b73f0b40ba036d1783a2e8a40af5b
 
 name:           axel
 version:        0.0.12
@@ -98,7 +98,7 @@ library
   hs-source-dirs:
       src
   default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
-  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively
+  ghc-options: -g -debug -dcore-lint -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively
   build-tool-depends:
       hpack:hpack
     , tasty-discover:tasty-discover
@@ -152,7 +152,7 @@ executable axel
   hs-source-dirs:
       app
   default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
-  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -g -debug -dcore-lint -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively -rtsopts
   build-tool-depends:
       hpack:hpack
     , tasty-discover:tasty-discover
@@ -231,7 +231,7 @@ test-suite axel-test
   hs-source-dirs:
       test
   default-extensions: BangPatterns ConstraintKinds DataKinds DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable FlexibleContexts FlexibleInstances FunctionalDependencies GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MultiParamTypeClasses MultiWayIf NoImplicitPrelude OverloadedStrings PolyKinds RankNTypes StandaloneDeriving TupleSections TypeApplications TypeOperators
-  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -g -debug -dcore-lint -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-safe -Wno-unsafe -optP-Wno-nonportable-include-path -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively -rtsopts
   build-tool-depends:
       hpack:hpack
     , tasty-discover:tasty-discover

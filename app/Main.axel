@@ -8,6 +8,7 @@
         (convertFileInPlace formatFileInPlace transpileFileInPlace))
 (import Axel.Haskell.Project
         (buildProject convertProject formatProject runProject))
+(import Axel.Macros (Backend HaskellBackendEffs haskellBackend))
 (import Axel.Parse.Args
         ((Command FileCommand ProjectCommand Version)
          (FileCommand ConvertFile RunFile FormatFile)
@@ -21,6 +22,9 @@
 
 (raw "import Prelude hiding (putStrLn)")
 
+(:: backend (Backend HaskellBackendEffs))
+(= backend haskellBackend)
+
 (def app (() ((-> Command) (Sem.Sem AppEffs Unit)))
      (((FileCommand fileCommand))
       (case fileCommand
@@ -29,11 +33,11 @@
             ((RunFile filePath)
              (void (Sem.evalState
                     Map.empty
-                    (withGhci (transpileFileInPlace filePath)))))))
+                    (withGhci (transpileFileInPlace backend filePath)))))))
      (((ProjectCommand projectCommand))
       (case projectCommand ((ConvertProject) convertProject)
                            ((FormatProject) formatProject)
-                           ((RunProject) (>> buildProject runProject))))
+                           ((RunProject) (>> (buildProject backend) runProject))))
      (((Version))
       (putStrLn (<> "Axel version " axelVersion))))
 

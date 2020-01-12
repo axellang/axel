@@ -6,8 +6,7 @@ module Axel.Haskell.File where
 import Axel.Prelude
 
 import Axel.AST
-  ( SMStatement
-  , Statement(SModuleDeclaration)
+  ( Statement(SModuleDeclaration)
   , ToHaskell(toHaskell)
   , statementsToProgram
   )
@@ -20,24 +19,19 @@ import qualified Axel.Eff.Ghci as Effs (Ghci)
 import qualified Axel.Eff.Log as Effs (Log)
 import qualified Axel.Eff.Process as Effs (Process)
 import qualified Axel.Eff.Resource as Effs (Resource)
-import qualified Axel.Eff.Restartable as Effs (Restartable)
 import Axel.Haskell.Convert (convertFile)
 import Axel.Macros
   ( Backend
+  , FunAppExpanderEffs
+  , SupportsFunAppExpanderEffs
   , handleFunctionApplication
-  , haskellBackend
   , processProgram
   )
 import Axel.Normalize (normalizeStatement, withExprCtxt)
 import Axel.Parse (parseMultiple', parseSource)
 import Axel.Parse.AST (Expression(Symbol))
 import Axel.Pretty (prettifyProgram)
-import qualified Axel.Sourcemap as SM
-  ( Expression
-  , Output
-  , raw
-  , unwrapCompoundExpressions
-  )
+import qualified Axel.Sourcemap as SM (Output, raw, unwrapCompoundExpressions)
 import Axel.Sourcemap (ModuleInfo)
 import Axel.Utils.FilePath (replaceExtension)
 import Axel.Utils.Recursion (bottomUpFmap)
@@ -96,12 +90,12 @@ readModuleInfo axelFiles = do
   pure $ M.fromList $ catMaybes modules
 
 transpileSource ::
-     forall effs fileExpanderEffs funAppExpanderEffs backendEffs.
-     ( fileExpanderEffs ~ '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo]
-     , funAppExpanderEffs ~ (Sem.Reader FilePath ': Effs.Restartable SM.Expression ': Sem.State [SMStatement] ': fileExpanderEffs)
-     , Sem.Members '[ Sem.Error Error, Effs.Ghci, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs
-     , Sem.Members fileExpanderEffs effs
-     , Sem.Members backendEffs effs
+     forall effs backendEffs.
+     ( Sem.Members '[ Sem.Error Error, Effs.Ghci, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs
+     , Sem.Members FileExpanderEffs effs
+     , SupportsFunAppExpanderEffs FunAppExpanderEffs effs
+     , Sem.Members backendEffs FunAppExpanderEffs
+     , Sem.Members backendEffs FileExpanderEffs
      )
   => Backend backendEffs
   -> FilePath
@@ -111,11 +105,12 @@ transpileSource backend filePath source =
   toHaskell . statementsToProgram <$>
   (parseSource (Just filePath) source >>=
    processProgram
-     @fileExpanderEffs
-     @funAppExpanderEffs
+     @FileExpanderEffs
+     @FunAppExpanderEffs
+     @backendEffs
      backend
      handleFunctionApplication
-     (\backend -> void . transpileFileInPlace backend)
+     ((void .) . transpileFileInPlace)
      filePath)
 
 convertFileInPlace ::
@@ -128,7 +123,11 @@ convertFileInPlace path = do
   pure newPath
 
 transpileFile ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs)
+     ( Sem.Members FileExpanderEffs effs
+     , SupportsFunAppExpanderEffs FunAppExpanderEffs effs
+     , Sem.Members backendEffs FileExpanderEffs
+     , Sem.Members backendEffs FunAppExpanderEffs
+     )
   => Backend backendEffs
   -> FilePath
   -> FilePath
@@ -140,8 +139,15 @@ transpileFile backend path newPath = do
   FS.writeFile newPath (SM.raw newContents)
   Sem.modify $ M.adjust (_2 ?~ newContents) path
 
+type FileExpanderEffs
+   = '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo]
+
 transpileFileInPlace ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs)
+     ( Sem.Members FileExpanderEffs effs
+     , SupportsFunAppExpanderEffs FunAppExpanderEffs effs
+     , Sem.Members backendEffs FunAppExpanderEffs
+     , Sem.Members backendEffs FileExpanderEffs
+     )
   => Backend backendEffs
   -> FilePath
   -> Sem.Sem effs FilePath

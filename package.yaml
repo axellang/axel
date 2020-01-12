@@ -12,6 +12,9 @@ extra-source-files:
   - README.org
   - scripts/**/*
 ghc-options:
+  - -g
+  - -debug
+  - -dcore-lint
   - -Weverything
   - -Wno-all-missed-specialisations
   - -Wno-implicit-prelude
@@ -111,9 +114,9 @@ executables:
     main: Main.hs
     source-dirs: app
     ghc-options:
-      - -threaded
+      # - -threaded
       - -rtsopts
-      - -with-rtsopts=-N
+      # - -with-rtsopts=-N
     dependencies:
       - axel
 tests:
@@ -121,8 +124,8 @@ tests:
     main: Main.hs
     source-dirs: test
     ghc-options:
-      - -threaded
+      # - -threaded
       - -rtsopts
-      - -with-rtsopts=-N
+      # - -with-rtsopts=-N
     dependencies:
       - axel

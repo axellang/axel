@@ -29,11 +29,13 @@ import qualified Axel.Haskell.Cabal as Cabal
   , runProject
   )
 import Axel.Haskell.File
-  ( convertFileInPlace
+  ( FileExpanderEffs
+  , convertFileInPlace
   , formatFileInPlace
   , readModuleInfo
   , transpileFileInPlace
   )
+import Axel.Macros (Backend, FunAppExpanderEffs)
 import Axel.Sourcemap (ModuleInfo)
 import Axel.Utils.FilePath ((<.>), (</>))
 
@@ -91,7 +93,10 @@ getProjectFiles fileType = do
   pure $ filter (\filePath -> ext `T.isSuffixOf` op FilePath filePath) files
 
 transpileProject ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
+     ( Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs
+     , Sem.Members backendEffs FileExpanderEffs
+     , Sem.Members backendEffs FunAppExpanderEffs
+     )
   => Backend backendEffs
   -> Sem.Sem effs ModuleInfo
 transpileProject backend =
@@ -104,7 +109,10 @@ transpileProject backend =
     pure moduleInfo
 
 buildProject ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
+     ( Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs
+     , Sem.Members backendEffs FileExpanderEffs
+     , Sem.Members backendEffs FunAppExpanderEffs
+     )
   => Backend backendEffs
   -> Sem.Sem effs ()
 buildProject backend = do
