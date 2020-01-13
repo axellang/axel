@@ -1,3 +1,7 @@
+01/12/2020
+  - When I tried to `cabal build` after returning from break, it refused to compile (for reasons that came out-of-nowhere0, and I think it's because I hadn't actually pinned the version of GHC I want to use. (Stack includes the GHC version in the snapshot, and I had neglected to pin that when I migrated to Cabal.) While I was at it, I decided to upgrade GHC and played around a bit with dependency package versions until I was able to get everything to build. From there, I seemed to have made it back to where I had left off before break.
+  - Keep working on the Polysemy issue. I've moved on to trying to coax GHC (via `unsafeCoerce`) to accept logical constraints. I don't know very much about how type families work in GHC, so I've asked on the Haskell subreddit (https://www.reddit.com/r/haskell/comments/emj06h/force_ghc_to_accept_constraint/) and seem to be making progress. Currently, my conversation with TheMatten seems the most promising, since judging from their username, they're actually a Polysemy maintainer! I'm currently waiting for them to respond with any further hints.
+
 12/8/2019
   - Finish migrating bootstrapping-critical functionality to Cabal 3.
 
