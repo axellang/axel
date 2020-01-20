@@ -97,15 +97,20 @@ genDataDeclaration =
 
 genFunctionDefinition ::
      (Alternative m, MonadGen m)
-  => m (AST.FunctionDefinition (Maybe SM.Expression))
-genFunctionDefinition =
-  AST.FunctionDefinition Nothing <$> genIdentifier <*>
-  Gen.list (Range.linear 0 10) genExpression <*>
-  genExpression <*>
-  Gen.list
-    (Range.linear 0 10)
-    ((AST.STypeSignature <$> genTypeSignature) <|>
-     (AST.SFunctionDefinition <$> genFunctionDefinition))
+  => Maybe Int
+  -> m (AST.FunctionDefinition (Maybe SM.Expression))
+genFunctionDefinition numArgs =
+  let genArgs =
+        case numArgs of
+          Just n -> Range.linear n n
+          Nothing -> Range.linear 0 10
+   in AST.FunctionDefinition Nothing <$> genIdentifier <*>
+      Gen.list genArgs genExpression <*>
+      genExpression <*>
+      Gen.list
+        (Range.linear 0 10)
+        ((AST.STypeSignature <$> genTypeSignature) <|>
+         (AST.SFunctionDefinition <$> genFunctionDefinition Nothing))
 
 genPragma :: (MonadGen m) => m (AST.Pragma (Maybe SM.Expression))
 genPragma = AST.Pragma Nothing <$> Gen.text (Range.linear 0 10) Gen.ascii
@@ -113,7 +118,8 @@ genPragma = AST.Pragma Nothing <$> Gen.text (Range.linear 0 10) Gen.ascii
 genMacroDefinition ::
      (Alternative m, MonadGen m)
   => m (AST.MacroDefinition (Maybe SM.Expression))
-genMacroDefinition = AST.MacroDefinition Nothing <$> genFunctionDefinition
+genMacroDefinition =
+  AST.MacroDefinition Nothing <$> genFunctionDefinition (Just 1)
 
 genImport :: (MonadGen m) => m (AST.Import (Maybe SM.Expression))
 genImport =
@@ -185,7 +191,7 @@ genTypeclassInstance =
   ((AST.EFunctionApplication <$> genFunctionApplication) <|>
    (AST.EIdentifier Nothing <$> genIdentifier)) <*>
   genConstraints <*>
-  Gen.list (Range.linear 0 10) genFunctionDefinition
+  Gen.list (Range.linear 0 10) (genFunctionDefinition Nothing)
 
 genTypeSignature ::
      (Alternative m, MonadGen m) => m (AST.TypeSignature (Maybe SM.Expression))
@@ -213,6 +219,6 @@ genStatement =
     , AST.STypeSynonym <$> genTypeSynonym
     ]
     [ AST.STopLevel <$> genTopLevel
-    , AST.SFunctionDefinition <$> genFunctionDefinition
+    , AST.SFunctionDefinition <$> genFunctionDefinition Nothing
     , AST.SMacroDefinition <$> genMacroDefinition
     ]

@@ -1,8 +1,8 @@
 (module TypeClassInstanceSyntax)
 
-(instance () (Foo^ Int String)
+(instance [] (Foo^ Int String)
  (= foo unit))
-(instance (Quux) (Bar Int String)
+(instance [Quux] (Bar Int String)
  (= bar unit))
-(instance ((SuperFoo a) (SuperFoo b)) (Baz Int String)
+(instance [(SuperFoo a) (SuperFoo b)] (Baz Int String)
  (= (baz a b c) unit))

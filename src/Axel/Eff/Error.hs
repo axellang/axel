@@ -11,7 +11,6 @@ import Axel.Utils.Text (Renderer)
 
 import Control.Monad ((>=>))
 
-import Data.Semigroup ((<>))
 import qualified Data.Text as T
 
 import qualified Polysemy as Sem

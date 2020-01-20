@@ -7,8 +7,8 @@
   #+CAPTION: Build Status
   [[https://travis-ci.org/axellang/axel.svg?branch=master]]
 ** Code Style
-   Run ~scripts/format.sh~ to format code and ~scripts/lint.sh~ to maintain code quality.
+   Run ~scripts/format.sh~ to format code and ~scripts/lint.sh~ to run the linter.
 ** Running
-   Run ~scripts/build.sh~ to build the project, ~stack run -- <arguments>~ to run the project, and ~scripts/test.sh~ to test the project.
+   Run ~cabal run -- axel <arguments>~ to build and run the project and ~scripts/test.sh~ to test the project.
 ** Examples
-   See the `.axel` files in this repository for example Axel programs.
+   See the ~.axel~ files in this repository for example Axel programs.

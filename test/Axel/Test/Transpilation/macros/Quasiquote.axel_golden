@@ -7,17 +7,17 @@
 (importq Axel.Parse.AST AST all)
 (importq Axel.Sourcemap SM all)
 
-(def assertEq (() {(AST.Expression a) -> {(AST.Expression b) -> SM.Expression}})
- ((expr expected)
+(def assertEq ([] {(AST.Expression a) -> {(AST.Expression b) -> SM.Expression}})
+ ([expr expected]
   (if {{unit <$ expr} == {unit <$ expected}}
     '(raw "-- Passed!")
     (error {(AST.toAxel expr) <> {" given, but " <> {(AST.toAxel expected) <> " expected!"}}}))))
 
-(def sym (() {String -> SM.Expression})
-     ((x) (AST.Symbol Nothing x)))
+(def sym ([] {String -> SM.Expression})
+     ([x] (AST.Symbol Nothing x)))
 
-(def sexp (() {(List SM.Expression) -> SM.Expression})
-     ((xs) (AST.SExpression Nothing xs)))
+(def sexp ([] {(List SM.Expression) -> SM.Expression})
+     ([xs] (AST.SExpression Nothing xs)))
 
 (defmacro testQuasiquote
  (_

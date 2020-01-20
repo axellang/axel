@@ -1,3 +1,10 @@
+1/27/2020
+  - Update the tests and bootstrapped files to use the new `[]`-based syntax (from last week).
+
+1/20/2020
+  Tabling the Polysemy issue for now (until transitivity can hopefullybe implemented library-side).
+  - Use lists where appropriate in syntactic forms: Wherever lists of things are used in syntactic forms, e.g. bindings in `let <bindings> <body>`, we now wrap them with `[]` instead of `()`. This makes the structure of the command a bit clearer, and also allows for more flexibility. Specifically, this will pave the way for a `[]`-delimited list at the end of a `data` form to be the list of typeclasses to derive (since otherwise, we'd have to 1) have a different `data` form, 2) wrap the data constructors in a parenthesized list (which would add a lot of syntactic noise), or 3) add some sort of `deriving` keyword).
+
 12/8/2019
   - Finish migrating bootstrapping-critical functionality to Cabal 3.
 

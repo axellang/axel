@@ -27,7 +27,6 @@ import Axel.AST
   , RecordDefinition(RecordDefinition)
   , RecordType(RecordType)
   , RestrictedImport(RestrictedImport)
-  , SMExpression
   , SMStatement
   , Statement(SDataDeclaration, SFunctionDefinition, SMacroDefinition,
           SMacroImport, SModuleDeclaration, SNewtypeDeclaration, SPragma,
@@ -115,7 +114,7 @@ normalizeExpression expr@(Parse.SExpression _ items) =
                 "`case` takes an expression followed by `case` clauses."
         "\\" ->
           case args of
-            [Parse.SExpression _ args', body] ->
+            [Parse.SExpression _ (Parse.Symbol _ "list":args'), body] ->
               let normalizedArguments = traverse normalizeExpression args'
                in ELambda <$>
                   (Lambda (Just expr) <$> normalizedArguments <*>
@@ -125,7 +124,7 @@ normalizeExpression expr@(Parse.SExpression _ items) =
                 "`\\` takes exactly two arguments: 1) an argument list and 2) a body."
         "let" ->
           case args of
-            [Parse.SExpression _ bindings, body] ->
+            [Parse.SExpression _ (Parse.Symbol _ "list":bindings), body] ->
               let normalizedBindings =
                     traverse
                       (\case
@@ -220,20 +219,6 @@ normalizeFunctionDefinition expr fnName arguments body whereDefs =
              "Each `where` binding must be either a function definition or a type signature!")
     whereDefs
 
-normalizeConstraints ::
-     (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath, Sem.Reader ExprCtxt] effs)
-  => SM.Expression
-  -> Sem.Sem effs [SMExpression]
-normalizeConstraints constraints =
-  normalizeExpression constraints >>= \case
-    EEmptySExpression _ -> pure []
-    EFunctionApplication (FunctionApplication _ constraintsHead constraintsRest) ->
-      pure $ constraintsHead : constraintsRest
-    _ ->
-      pushCtxt constraints $
-      throwNormalizeError
-        "Constraint lists must only contain type constructors!"
-
 normalizeStatement ::
      (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath, Sem.Reader ExprCtxt] effs)
   => SM.Expression
@@ -245,10 +230,10 @@ normalizeStatement expr@(Parse.SExpression _ items) =
       case unhygenisizeIdentifier special of
         "::" ->
           case args of
-            [Parse.Symbol _ fnName, constraints, typeDef] ->
+            [Parse.Symbol _ fnName, Parse.SExpression _ (Parse.Symbol _ "list":constraints), typeDef] ->
               STypeSignature <$>
               (TypeSignature (Just expr) (T.pack fnName) <$>
-               normalizeConstraints constraints <*>
+               traverse normalizeExpression constraints <*>
                normalizeExpression typeDef)
             _ ->
               throwNormalizeError
@@ -279,17 +264,8 @@ normalizeStatement expr@(Parse.SExpression _ items) =
            in STopLevel . TopLevel (Just expr) <$> normalizedStmts
         "class" ->
           case args of
-            classConstraints:className:sigs ->
-              let normalizedConstraints =
-                    normalizeExpression classConstraints >>= \case
-                      EEmptySExpression _ -> pure []
-                      EFunctionApplication (FunctionApplication _ constraintsHead constraintsRest) ->
-                        pure $ constraintsHead : constraintsRest
-                      _ ->
-                        pushCtxt classConstraints $
-                        throwNormalizeError
-                          "A `class` constraint list must only contain type constructors!"
-                  normalizedSigs =
+            Parse.SExpression _ (Parse.Symbol _ "list":classConstraints):className:sigs ->
+              let normalizedSigs =
                     traverse
                       (\x ->
                          normalizeStatement x >>= \case
@@ -302,7 +278,7 @@ normalizeStatement expr@(Parse.SExpression _ items) =
                in STypeclassDefinition <$>
                   (TypeclassDefinition (Just expr) <$>
                    normalizeExpression className <*>
-                   normalizedConstraints <*>
+                   traverse normalizeExpression classConstraints <*>
                    normalizedSigs)
             _ ->
               throwNormalizeError
@@ -379,7 +355,7 @@ normalizeStatement expr@(Parse.SExpression _ items) =
                 "`importq` takes exactly three arguments: 1) a module name, 2) a module name, and 3) an import specification."
         "instance" ->
           case args of
-            instanceConstraints:instanceName:defs ->
+            Parse.SExpression _ (Parse.Symbol _ "list":instanceConstraints):instanceName:defs ->
               let normalizedDefs =
                     traverse
                       (\x ->
@@ -393,7 +369,7 @@ normalizeStatement expr@(Parse.SExpression _ items) =
                in STypeclassInstance <$>
                   (TypeclassInstance (Just expr) <$>
                    normalizeExpression instanceName <*>
-                   normalizeConstraints instanceConstraints <*>
+                   traverse normalizeExpression instanceConstraints <*>
                    normalizedDefs)
             _ ->
               throwNormalizeError
@@ -407,12 +383,12 @@ normalizeStatement expr@(Parse.SExpression _ items) =
                 "`pragma` takes exactly one argument: a string literal."
         "=macro" ->
           case args of
-            Parse.Symbol _ macroName:Parse.SExpression _ arguments:body:whereBindings ->
+            Parse.Symbol _ macroName:argument:body:whereBindings ->
               SMacroDefinition . MacroDefinition (Just expr) <$>
               normalizeFunctionDefinition
                 expr
                 (T.pack macroName)
-                arguments
+                [argument]
                 body
                 whereBindings
             _ ->
@@ -454,7 +430,7 @@ normalizeStatement expr@(Parse.SExpression _ items) =
   where
     normalizeMacroImportSpec importSpec =
       case importSpec of
-        Parse.SExpression _ macroImportList ->
+        Parse.SExpression _ (Parse.Symbol _ "list":macroImportList) ->
           traverse
             (\case
                Parse.Symbol _ import' -> pure $ T.pack import'
@@ -469,7 +445,8 @@ normalizeStatement expr@(Parse.SExpression _ items) =
     normalizeImportSpec importSpec =
       case importSpec of
         Parse.Symbol _ "all" -> pure $ ImportAll (Just expr)
-        Parse.SExpression _ importList -> normalizeImportList importList
+        Parse.SExpression _ (Parse.Symbol _ "list":importList) ->
+          normalizeImportList importList
         x ->
           pushCtxt x $
           throwNormalizeError

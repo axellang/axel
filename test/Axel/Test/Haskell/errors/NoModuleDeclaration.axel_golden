@@ -1,2 +1,2 @@
-(:: foo () Int)
+(:: foo [] Int)
 (= foo 1)

@@ -1,11 +1,10 @@
 (module Axel.Parse.Args)
 
 (import Axel.Prelude all)
-(import Control.Applicative (<**>))
-(import Data.Foldable (asum))
-(import Data.Semigroup (<>))
+(import Control.Applicative [<**>])
+(import Data.Foldable [asum])
 (importq Data.Text T all)
-(import Options.Applicative (Parser ParserInfo
+(import Options.Applicative [Parser ParserInfo
                                     argument
                                     command
                                     fullDesc
@@ -14,7 +13,7 @@
                                     info
                                     metavar
                                     progDesc
-                                    str))
+                                    str])
 
 (data FileCommand (ConvertFile FilePath)
                   (RunFile FilePath)
@@ -26,56 +25,57 @@
               (ProjectCommand ProjectCommand)
               Version)
 
-(def experimental (() {String -> String})
-     (() (<> "(EXPERIMENTAL) ")))
+(:: experimental [] {String -> String})
 
-(def command' (() {String -> {(ParserInfo a) -> (Parser a)}})
-     ((name parserInfo)
-      (hsubparser {(command name parserInfo) <> (metavar name)})))
+(= experimental (<> "(EXPERIMENTAL) "))
 
-(def fileCommandParser (() (Parser FileCommand))
-     (()
-      (asum [convertFileCommand formatFileCommand runFileCommand])
-      (= convertFileCommand (command' "convert"
-                                      (filePathParser
-                                       ConvertFile
-                                       (experimental "Convert a Haskell file to Axel"))))
-      (= runFileCommand (command'
-                         "run"
-                         (filePathParser RunFile "Transpile and run an Axel file")))
-      (= formatFileCommand (command' "format"
-                                     (filePathParser FormatFile "Format an Axel file")))
-      (= (filePathParser ctor desc) (info
-                                     {{ctor . {FilePath . T.pack}} <$>
-                                                                   (argument str (metavar "FILE"))}
-                                     (progDesc desc)))))
+(:: command' [] {String -> {(ParserInfo a) -> (Parser a)}})
 
-(def projectCommandParser (() (Parser ProjectCommand))
-     (()
-      (asum
-       [convertProjectCommand formatProjectCommand runProjectCommand])
-      (= convertProjectCommand (command'
-                                "convert"
-                                (info (pure ConvertProject)
-                                      (progDesc "Convert the Haskell project to Axel"))))
-      (= formatProjectCommand (command'
-                               "format"
-                               (info (pure FormatProject) (progDesc "Format the project"))))
-      (= runProjectCommand (command' "run" (info (pure RunProject)
-                                                 (progDesc "Build and run the project"))))))
+(= (command' name parserInfo) (hsubparser {(command name parserInfo) <> (metavar name)}))
 
-(def commandParserInfo (() (ParserInfo Command))
-     (()
-      (let ((subparsers
-             (asum [fileCommand projectCommand versionCommand])))
-           (info {subparsers <**> helper} fullDesc))
-      (= fileCommand (command' "file"
-                               (info {FileCommand <$> fileCommandParser}
-                                     (progDesc "Run file-specific commands"))))
-      (= projectCommand (command' "project"
-                                  (info {ProjectCommand <$> projectCommandParser}
-                                        (progDesc "Run project-wide commands"))))
-      (= versionCommand (command'
-                         "version"
-                         (info (pure Version)
-                               (progDesc "Display the version of the Axel compiler"))))))
+(:: fileCommandParser [] (Parser FileCommand))
+
+(= fileCommandParser (asum [convertFileCommand formatFileCommand runFileCommand])
+   (= convertFileCommand (command' "convert"
+                                   (filePathParser
+                                    ConvertFile
+                                    (experimental "Convert a Haskell file to Axel"))))
+   (= runFileCommand (command'
+                      "run"
+                      (filePathParser RunFile "Transpile and run an Axel file")))
+   (= formatFileCommand (command' "format"
+                                  (filePathParser FormatFile "Format an Axel file")))
+   (= (filePathParser ctor desc) (info
+                                  {{ctor . {FilePath . T.pack}} <$>
+                                                                (argument str (metavar "FILE"))}
+                                  (progDesc desc))))
+
+(:: projectCommandParser [] (Parser ProjectCommand))
+
+(= projectCommandParser (asum
+                         [convertProjectCommand formatProjectCommand runProjectCommand])
+   (= convertProjectCommand (command'
+                             "convert"
+                             (info (pure ConvertProject)
+                                   (progDesc "Convert the Haskell project to Axel"))))
+   (= formatProjectCommand (command'
+                            "format"
+                            (info (pure FormatProject) (progDesc "Format the project"))))
+   (= runProjectCommand (command' "run" (info (pure RunProject)
+                                              (progDesc "Build and run the project")))))
+
+(:: commandParserInfo [] (ParserInfo Command))
+
+(= commandParserInfo (let [(subparsers
+                            (asum [fileCommand projectCommand versionCommand]))]
+                          (info {subparsers <**> helper} fullDesc))
+   (= fileCommand (command' "file"
+                            (info {FileCommand <$> fileCommandParser}
+                                  (progDesc "Run file-specific commands"))))
+   (= projectCommand (command' "project"
+                               (info {ProjectCommand <$> projectCommandParser}
+                                     (progDesc "Run project-wide commands"))))
+   (= versionCommand (command'
+                      "version"
+                      (info (pure Version)
+                            (progDesc "Display the version of the Axel compiler")))))

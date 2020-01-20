@@ -3,8 +3,6 @@
 -- This module disables some errors and warnings during the Haddock pass (caused by compiler plugins and hs-boot).
 module Main where
 
-import Data.Semigroup ((<>))
-
 import Distribution.Simple
 import Distribution.Simple.Setup
 

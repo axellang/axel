@@ -44,6 +44,7 @@ import Axel.AST
   )
 import qualified Axel.Parse.AST as Parse
 import qualified Axel.Sourcemap as SM
+import Axel.Utils.List (unsafeHead)
 
 import Control.Lens.Operators ((^.))
 
@@ -76,7 +77,8 @@ denormalizeExpression expr'@(EIdentifier _ x) =
 denormalizeExpression (ELambda lambda) =
   let ann' = getAnn' lambda
       denormalizedArguments =
-        Parse.SExpression ann' $ map denormalizeExpression (lambda ^. arguments)
+        Parse.SExpression ann' $ Parse.Symbol ann' "list" :
+        map denormalizeExpression (lambda ^. arguments)
    in Parse.SExpression
         ann'
         [ Parse.Symbol ann' "\\"
@@ -86,7 +88,7 @@ denormalizeExpression (ELambda lambda) =
 denormalizeExpression (ELetBlock letBlock) =
   let ann' = getAnn' letBlock
       denormalizedBindings =
-        Parse.SExpression ann' $
+        Parse.SExpression ann' $ Parse.Symbol ann' "list" :
         map
           (\(var, val) ->
              Parse.SExpression
@@ -138,7 +140,9 @@ denormalizeImportSpecification ::
 denormalizeImportSpecification importSpec@(ImportAll _) =
   Parse.Symbol (getAnn' importSpec) "all"
 denormalizeImportSpecification importSpec@(ImportOnly _ importList) =
-  Parse.SExpression (getAnn' importSpec) $ map denormalizeImport importList
+  let ann' = getAnn' importSpec
+   in Parse.SExpression ann' $ Parse.Symbol ann' "list" :
+      map denormalizeImport importList
   where
     denormalizeImport importList'@(ImportItem _ item) =
       Parse.Symbol (getAnn' importList') (T.unpack item)
@@ -177,9 +181,8 @@ denormalizeStatement (SMacroDefinition macroDef) =
   let ann' = getAnn' macroDef
    in Parse.SExpression ann' $ Parse.Symbol ann' "=macro" :
       Parse.Symbol ann' (T.unpack $ macroDef ^. functionDefinition . name) :
-      Parse.SExpression
-        ann'
-        (map denormalizeExpression (macroDef ^. functionDefinition . arguments)) :
+      denormalizeExpression
+        (unsafeHead $ macroDef ^. functionDefinition . arguments) :
       denormalizeExpression (macroDef ^. functionDefinition . body) :
       map denormalizeStatement (macroDef ^. functionDefinition . whereBindings)
 denormalizeStatement (SMacroImport macroImport) =
@@ -188,7 +191,7 @@ denormalizeStatement (SMacroImport macroImport) =
         ann'
         [ Parse.Symbol ann' "importm"
         , Parse.Symbol ann' (T.unpack $ macroImport ^. moduleName)
-        , Parse.SExpression ann' $
+        , Parse.SExpression ann' $ Parse.Symbol ann' "list" :
           map (Parse.Symbol ann' . T.unpack) (macroImport ^. imports)
         ]
 denormalizeStatement stmt@(SModuleDeclaration _ identifier) =
@@ -252,7 +255,8 @@ denormalizeStatement (STypeclassDefinition typeclassDefinition) =
         (Parse.Symbol ann' "class" :
          Parse.SExpression
            ann'
-           (map denormalizeExpression (typeclassDefinition ^. constraints)) :
+           (Parse.Symbol ann' "list" :
+            map denormalizeExpression (typeclassDefinition ^. constraints)) :
          denormalizeExpression (typeclassDefinition ^. name) :
          map
            (denormalizeStatement . STypeSignature)
@@ -264,7 +268,8 @@ denormalizeStatement (STypeclassInstance typeclassInstance) =
         (Parse.Symbol ann' "instance" :
          Parse.SExpression
            ann'
-           (map denormalizeExpression (typeclassInstance ^. constraints)) :
+           (Parse.Symbol ann' "list" :
+            map denormalizeExpression (typeclassInstance ^. constraints)) :
          denormalizeExpression (typeclassInstance ^. instanceName) :
          map
            (denormalizeStatement . SFunctionDefinition)
@@ -277,7 +282,8 @@ denormalizeStatement (STypeSignature typeSig) =
         , Parse.Symbol ann' (T.unpack $ typeSig ^. name)
         , Parse.SExpression
             ann'
-            (map denormalizeExpression (typeSig ^. constraints))
+            (Parse.Symbol ann' "list" :
+             map denormalizeExpression (typeSig ^. constraints))
         , denormalizeExpression (typeSig ^. typeDefinition)
         ]
 denormalizeStatement (STypeSynonym typeSynonym) =

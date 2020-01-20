@@ -1,7 +1,7 @@
 (module TypeSignatureSyntax)
 
-(:: main () (IO Unit))
+(:: main [] (IO Unit))
 
-(:: foo () Int)
+(:: foo [] Int)
 
-(:: bar (Quux) (-> Int (-> Char Bool)))
+(:: bar [Quux] (-> Int (-> Char Bool)))

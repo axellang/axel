@@ -12,7 +12,7 @@ import Axel.Utils.Text (handleCharEscapes)
 import Control.Lens (ala, under)
 
 import Data.Maybe (fromMaybe)
-import Data.Semigroup (Max(Max), (<>))
+import Data.Semigroup (Max(Max))
 import qualified Data.Text as T
 import Data.Text.Lens (unpacked)
 import qualified Data.Text.Prettyprint.Doc as P

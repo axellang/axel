@@ -5,7 +5,6 @@ import qualified Axel.Parse.AST as AST
 import Axel.Prelude
 import Control.Applicative((<**>))
 import Data.Foldable(asum)
-import Data.Semigroup((<>))
 import qualified Data.Text as T
 import Options.Applicative(Parser,ParserInfo,argument,command,fullDesc,helper,hsubparser,info,metavar,progDesc,str)
 data FileCommand = ConvertFile FilePath|RunFile FilePath|FormatFile FilePath
