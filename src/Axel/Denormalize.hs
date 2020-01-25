@@ -214,11 +214,15 @@ denormalizeStatement (SNewtypeDeclaration newtypeDeclaration) =
             Parse.Symbol
               (getAnn' $ newtypeDeclaration ^. typeDefinition)
               (T.unpack properType)
+      denormalizedDerivedConstraintList =
+        Parse.SExpression ann' $ Parse.Symbol ann' "list" :
+        map denormalizeExpression (newtypeDeclaration ^. derivedConstraints)
    in Parse.SExpression
         ann'
         [ Parse.Symbol ann' "newtype"
         , denormalizedTypeDefinition
         , denormalizeExpression $ newtypeDeclaration ^. wrappedType
+        , denormalizedDerivedConstraintList
         ]
 denormalizeStatement (SPragma pragma) =
   let ann' = getAnn' pragma

@@ -97,6 +97,7 @@ data NewtypeDeclaration ann =
     { _ann :: ann
     , _typeDefinition :: TypeDefinition ann -- ^ The newtype being defined.
     , _wrappedType :: Expression ann -- ^ The old type being wrapped (for example, @Bar@ in @newtype Foo = Foo Bar@).
+    , _derivedConstraints :: [Expression ann] -- ^ The constraints to derive, e.g. @Eq@ and @Show@ in @newtype Foo = Foo Bar deriving (Eq, Show)@.
     }
   deriving (Data, Eq, Functor, Show)
 
@@ -505,7 +506,13 @@ instance ToHaskell (NewtypeDeclaration (Maybe SM.Expression)) where
     toHaskell (newtypeDeclaration ^. typeDefinition) <>
     mkHaskell newtypeDeclaration " = " <>
     constructor <>
-    toHaskell (newtypeDeclaration ^. wrappedType)
+    mkHaskell newtypeDeclaration " " <>
+    toHaskell (newtypeDeclaration ^. wrappedType) <>
+    mkHaskell newtypeDeclaration " deriving " <>
+    SM.surround
+      Parentheses
+      (SM.delimit Commas $ map toHaskell $ newtypeDeclaration ^.
+       derivedConstraints)
     where
       constructor =
         case newtypeDeclaration ^. typeDefinition of

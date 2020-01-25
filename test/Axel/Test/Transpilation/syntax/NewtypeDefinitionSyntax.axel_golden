@@ -3,3 +3,6 @@
 (newtype Foo Bar)
 (newtype (Bar a)
  (Baz (a Int)))
+(newtype Foo' Bar [])
+(newtype Foo' Bar [Eq])
+(newtype Foo' Bar [(Eq a) Show])

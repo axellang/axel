@@ -305,29 +305,33 @@ normalizeStatement expr@(Parse.SExpression _ items) =
                    traverse normalizeExpression derivedConstraints)
             _ ->
               throwNormalizeError
-                "`data` takes a type constructor followed by type constructors!"
+                "`data` takes a type constructor followed by type constructors, optionally followed by a list of constraints to derive!"
         "newtype" ->
           case args of
-            [typeDef, wrappedType] ->
-              normalizeExpression typeDef >>= \case
-                EFunctionApplication typeConstructor ->
-                  SNewtypeDeclaration <$>
-                  (NewtypeDeclaration
-                     (Just expr)
-                     (TypeConstructor (Just expr) typeConstructor) <$>
-                   normalizeExpression wrappedType)
-                EIdentifier _ properType ->
-                  SNewtypeDeclaration <$>
-                  (NewtypeDeclaration
-                     (Just expr)
-                     (ProperType (Just expr) properType) <$>
-                   normalizeExpression wrappedType)
-                _ ->
-                  pushCtxt typeDef $
-                  throwNormalizeError "Invalid type constructor!"
+            typeDef:wrappedType:rest ->
+              let derivedConstraints =
+                    case rest of
+                      [] -> pure []
+                      [Parse.SExpression _ (Parse.Symbol _ "list":xs)] ->
+                        traverse normalizeExpression xs
+                      _ ->
+                        throwNormalizeError
+                          "Invalid list of constraints to derive!"
+               in SNewtypeDeclaration <$>
+                  (NewtypeDeclaration (Just expr) <$>
+                   (normalizeExpression typeDef >>= \case
+                      EFunctionApplication typeConstructor ->
+                        pure $ TypeConstructor (Just expr) typeConstructor
+                      EIdentifier _ properType ->
+                        pure $ ProperType (Just expr) properType
+                      _ ->
+                        pushCtxt typeDef $
+                        throwNormalizeError "Invalid type constructor!") <*>
+                   normalizeExpression wrappedType <*>
+                   derivedConstraints)
             _ ->
               throwNormalizeError
-                "`newtype` takes exactly two arguments: 1) a type constructor and 2) a type."
+                "`newtype` takes two or three arguments: 1) a type constructor, 2) a type, and optionally 3) a list of constraints to derive!"
         "import" ->
           case args of
             [Parse.Symbol _ moduleName, importSpec] ->

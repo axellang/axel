@@ -151,9 +151,11 @@ genMacroImport =
   Gen.list (Range.linear 0 10) genIdentifier
 
 genNewtypeDeclaration ::
-     (MonadGen m) => m (AST.NewtypeDeclaration (Maybe SM.Expression))
+     (Alternative m, MonadGen m)
+  => m (AST.NewtypeDeclaration (Maybe SM.Expression))
 genNewtypeDeclaration =
-  AST.NewtypeDeclaration Nothing <$> genTypeDefinition <*> genExpression
+  AST.NewtypeDeclaration Nothing <$> genTypeDefinition <*> genExpression <*>
+  genConstraints
 
 genRawStatement :: (MonadGen m) => m Text
 genRawStatement = Gen.text (Range.linear 0 10) Gen.unicode
