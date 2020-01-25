@@ -6,4 +6,4 @@ set -o pipefail
 # TODO This should only kill `ghc`s spawned by this process.
 trap "killall axel-test ghc" EXIT
 
-cabal test --ghc-options="-g" --test-options="--hide-successes --num-threads=1" --test-show-details=direct "$@"
+cabal test --test-options="--hide-successes --num-threads=1" --test-show-details=direct "$@"

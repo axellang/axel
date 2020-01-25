@@ -1,8 +1,11 @@
 1/27/2020
+  (Work done on the syntax improvements below also included updates to the documentation.)
   - Update the tests and bootstrapped files to use the new `[]`-based syntax (from last week).
   - Add support for `deriving` clauses in `data` declarations.
   - Add support for `deriving` clauses in `newtype` declarations.
   - Fix a bug where `newtype` declarations would transpile invalidly when the wrapped type did not need to be wrapped in parentheses (i.e. was just a type name).
+  - Add support for multiline comments.
+  - Add support for multline strings.
 
 1/20/2020
   Tabling the Polysemy issue for now (until transitivity can hopefullybe implemented library-side).

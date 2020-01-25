@@ -32,6 +32,7 @@ handleCharEscapes :: Text -> Text
 handleCharEscapes =
   T.concatMap $ \case
     '\\' -> "\\\\"
+    '\n' -> "\\n"
     c -> T.singleton c
 
 -- TODO This renders very poorly in e.g. Fira Code Mono.

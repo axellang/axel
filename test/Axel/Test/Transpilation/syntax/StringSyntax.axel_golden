@@ -1,0 +1,5 @@
+(module StringSyntax)
+
+(= foo "some
+string
+  multiline\t{- this should be in the string -} -- and this")
