@@ -26,6 +26,7 @@ import Axel.AST
   , constructors
   , definition
   , definitions
+  , derivedConstraints
   , expr
   , fields
   , function
@@ -46,7 +47,7 @@ import qualified Axel.Parse.AST as Parse
 import qualified Axel.Sourcemap as SM
 import Axel.Utils.List (unsafeHead)
 
-import Control.Lens.Operators ((^.))
+import Control.Lens.Operators ((^.), (|>))
 
 import qualified Data.Text as T
 
@@ -164,10 +165,14 @@ denormalizeStatement (SDataDeclaration dataDeclaration) =
             Parse.Symbol
               (getAnn' $ dataDeclaration ^. typeDefinition)
               (T.unpack properType)
-   in Parse.SExpression
-        ann'
-        (Parse.Symbol ann' "data" : denormalizedTypeDefinition :
-         map denormalizeExpression (dataDeclaration ^. constructors))
+      denormalizedConstructors =
+        map denormalizeExpression (dataDeclaration ^. constructors)
+      denormalizedDerivedConstraintList =
+        Parse.SExpression ann' $ Parse.Symbol ann' "list" :
+        map denormalizeExpression (dataDeclaration ^. derivedConstraints)
+   in Parse.SExpression ann' $ Parse.Symbol ann' "data" :
+      denormalizedTypeDefinition :
+      (denormalizedConstructors |> denormalizedDerivedConstraintList)
 denormalizeStatement (SFunctionDefinition fnDef) =
   let ann' = getAnn' fnDef
    in Parse.SExpression ann' $ Parse.Symbol ann' "=" :

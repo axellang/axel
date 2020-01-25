@@ -90,10 +90,12 @@ genTypeDefinition =
     ]
 
 genDataDeclaration ::
-     (MonadGen m) => m (AST.DataDeclaration (Maybe SM.Expression))
+     (Alternative m, MonadGen m)
+  => m (AST.DataDeclaration (Maybe SM.Expression))
 genDataDeclaration =
   AST.DataDeclaration Nothing <$> genTypeDefinition <*>
-  Gen.list (Range.linear 0 10) genExpression
+  Gen.list (Range.linear 0 10) genExpression <*>
+  genConstraints
 
 genFunctionDefinition ::
      (Alternative m, MonadGen m)

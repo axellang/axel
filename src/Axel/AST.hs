@@ -87,6 +87,7 @@ data DataDeclaration ann =
     { _ann :: ann
     , _typeDefinition :: TypeDefinition ann -- ^ The type being defined.
     , _constructors :: [Expression ann] -- ^ The data constructors.
+    , _derivedConstraints :: [Expression ann] -- ^ The constraints to derive, e.g. @Eq@ and @Show@ in @data Foo = Foo deriving (Eq, Show)@.
     }
   deriving (Data, Eq, Functor, Show)
 
@@ -480,7 +481,11 @@ instance ToHaskell (DataDeclaration (Maybe SM.Expression)) where
     SM.delimit
       Pipes
       (map (tryRemoveSurroundingParentheses . toHaskell) $ dataDeclaration ^.
-       constructors)
+       constructors) <>
+    mkHaskell dataDeclaration " deriving " <>
+    SM.surround
+      Parentheses
+      (SM.delimit Commas $ map toHaskell $ dataDeclaration ^. derivedConstraints)
     where
       tryRemoveSurroundingParentheses xs =
         if "(" `T.isPrefixOf` (xs ^. _Wrapped . _head . unannotated)

@@ -285,23 +285,24 @@ normalizeStatement expr@(Parse.SExpression _ items) =
                 "`class` takes a constraint list, a type constructor, and type signatures!"
         "data" ->
           case args of
-            typeDef:constructors ->
-              normalizeExpression typeDef >>= \case
-                EFunctionApplication typeConstructor ->
-                  SDataDeclaration <$>
-                  (DataDeclaration
-                     (Just expr)
-                     (TypeConstructor (Just expr) typeConstructor) <$>
-                   traverse normalizeExpression constructors)
-                EIdentifier _ properType ->
-                  SDataDeclaration <$>
-                  (DataDeclaration
-                     (Just expr)
-                     (ProperType (Just expr) properType) <$>
-                   traverse normalizeExpression constructors)
-                _ ->
-                  pushCtxt typeDef $
-                  throwNormalizeError "Invalid type constructor!"
+            typeDef:rest ->
+              let (constructors, derivedConstraints) =
+                    case last rest of
+                      Parse.SExpression _ (Parse.Symbol _ "list":xs) ->
+                        (init rest, xs)
+                      _ -> (rest, [])
+               in SDataDeclaration <$>
+                  (DataDeclaration (Just expr) <$>
+                   (normalizeExpression typeDef >>= \case
+                      EFunctionApplication typeConstructor ->
+                        pure $ TypeConstructor (Just expr) typeConstructor
+                      EIdentifier _ properType ->
+                        pure $ ProperType (Just expr) properType
+                      _ ->
+                        pushCtxt typeDef $
+                        throwNormalizeError "Invalid type constructor!") <*>
+                   traverse normalizeExpression constructors <*>
+                   traverse normalizeExpression derivedConstraints)
             _ ->
               throwNormalizeError
                 "`data` takes a type constructor followed by type constructors!"

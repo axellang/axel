@@ -4,3 +4,19 @@
  (Fo#o (a Int))
  (Bar b String)
  Baz)
+
+(data Foo
+ Foo
+ [])
+
+(data Foo'
+ Foo'
+ [Eq])
+
+(data (Foo'' a)
+ Foo'' a
+ [(Eq a)])
+
+(data (Foo''' a)
+ Foo''' a
+ [(Eq a) Show])
