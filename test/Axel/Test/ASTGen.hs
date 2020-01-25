@@ -50,6 +50,12 @@ genLetBlock =
   Gen.list (Range.linear 0 10) ((,) <$> genExpression <*> genExpression) <*>
   genExpression
 
+genPatternBinding ::
+     (MonadGen m) => m (AST.PatternBinding (Maybe SM.Expression))
+genPatternBinding =
+  AST.PatternBinding Nothing <$> (AST.EIdentifier Nothing <$> genIdentifier) <*>
+  genExpression
+
 genRawExpression :: (MonadGen m) => m Text
 genRawExpression = Gen.text (Range.linear 0 10) Gen.unicode
 
@@ -76,6 +82,7 @@ genExpression =
     , AST.ELambda <$> genLambda
     , AST.ELetBlock <$> genLetBlock
     , AST.ELiteral <$> genLiteral
+    , AST.EPatternBinding <$> genPatternBinding
     , AST.ERawExpression Nothing <$> genRawExpression
     , AST.ERecordDefinition <$> genRecordDefinition
     , AST.ERecordType <$> genRecordType

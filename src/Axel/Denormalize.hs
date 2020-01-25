@@ -4,8 +4,8 @@ import Axel.Prelude
 
 import Axel.AST
   ( Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
-           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression,
-           ERecordDefinition, ERecordType)
+           EIdentifier, ELambda, ELetBlock, ELiteral, EPatternBinding,
+           ERawExpression, ERecordDefinition, ERecordType)
   , Import(ImportItem, ImportType)
   , ImportSpecification(ImportAll, ImportOnly)
   , Literal(LChar, LFloat, LInt, LString)
@@ -37,6 +37,7 @@ import Axel.AST
   , matches
   , moduleName
   , name
+  , pattern'
   , pragmaSpecification
   , signatures
   , typeDefinition
@@ -108,6 +109,14 @@ denormalizeExpression (ELiteral x) =
     LFloat _ float -> Parse.LiteralFloat (getAnn' x) float
     LInt _ int -> Parse.LiteralInt (getAnn' x) int
     LString _ string -> Parse.LiteralString (getAnn' x) (T.unpack string)
+denormalizeExpression (EPatternBinding patternBinding) =
+  let ann' = getAnn' patternBinding
+   in Parse.SExpression
+        ann'
+        [ Parse.Symbol ann' "@"
+        , denormalizeExpression (patternBinding ^. name)
+        , denormalizeExpression (patternBinding ^. pattern')
+        ]
 denormalizeExpression expr'@(ERawExpression _ rawSource) =
   let ann' = getAnn' expr'
    in Parse.SExpression

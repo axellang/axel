@@ -1,0 +1,4 @@
+(module PatternBinding)
+
+(= (foo (@ bar baz)) bar)
+(= bar (case quux ({bar @ (Just _)} bar)))

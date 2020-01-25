@@ -7,6 +7,7 @@
   - Add support for multiline comments.
   - Add support for multline strings.
   - Add support for operator sections.
+  - Add support for `@`-patterns.
 
 1/20/2020
   Tabling the Polysemy issue for now (until transitivity can hopefullybe implemented library-side).

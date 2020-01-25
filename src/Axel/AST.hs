@@ -133,6 +133,15 @@ data Lambda ann =
     }
   deriving (Data, Eq, Functor, Show)
 
+-- | An as-pattern (e.g. @foo\@bar@).
+data PatternBinding ann =
+  PatternBinding
+    { _ann :: ann
+    , _name :: Expression ann -- ^ The name to bind the pattern to, e.g. @foo@ in @foo\@bar@.
+    , _pattern' :: Expression ann -- ^ The pattern to be bound to the name, e.g. @bar@ in @foo\@bar@.
+    }
+  deriving (Data, Eq, Functor, Show)
+
 -- | A @let@-block.
 data LetBlock ann =
   LetBlock
@@ -245,6 +254,7 @@ data Expression ann
   | ELambda (Lambda ann)
   | ELetBlock (LetBlock ann)
   | ELiteral (Literal ann)
+  | EPatternBinding (PatternBinding ann)
   | ERawExpression ann Text
   | ERecordDefinition (RecordDefinition ann)
   | ERecordType (RecordType ann)
@@ -298,6 +308,8 @@ makeFieldsNoPrefix ''Pragma
 
 makeFieldsNoPrefix ''QualifiedImport
 
+makeFieldsNoPrefix ''PatternBinding
+
 makeFieldsNoPrefix ''RecordDefinition
 
 makeFieldsNoPrefix ''RecordType
@@ -336,6 +348,7 @@ instance {-# OVERLAPPING #-} HasAnnotation (Expression ann) ann where
   getAnn (ELambda lambda) = lambda ^. ann
   getAnn (ELetBlock letBlock) = letBlock ^. ann
   getAnn (ELiteral literal) = getAnn literal
+  getAnn (EPatternBinding patternBinding) = patternBinding ^. ann
   getAnn (ERawExpression ann' _) = ann'
   getAnn (ERecordDefinition recordDefinition) = recordDefinition ^. ann
   getAnn (ERecordType recordType) = recordType ^. ann
@@ -532,6 +545,13 @@ instance ToHaskell (Pragma (Maybe SM.Expression)) where
   toHaskell pragma =
     mkHaskell pragma $ Display.renderPragma (pragma ^. pragmaSpecification)
 
+instance ToHaskell (PatternBinding (Maybe SM.Expression)) where
+  toHaskell :: PatternBinding (Maybe SM.Expression) -> SM.Output
+  toHaskell patternBinding =
+    SM.surround Parentheses $ toHaskell (patternBinding ^. name) <>
+    mkHaskell patternBinding "@" <>
+    toHaskell (patternBinding ^. pattern')
+
 instance ToHaskell (LetBlock (Maybe SM.Expression)) where
   toHaskell :: LetBlock (Maybe SM.Expression) -> SM.Output
   toHaskell letBlock =
@@ -540,8 +560,8 @@ instance ToHaskell (LetBlock (Maybe SM.Expression)) where
     mkHaskell letBlock " in " <>
     toHaskell (letBlock ^. body)
     where
-      bindingToHaskell (pattern', value) =
-        toHaskell pattern' <> mkHaskell letBlock " = " <> toHaskell value
+      bindingToHaskell (pat, val) =
+        toHaskell pat <> mkHaskell letBlock " = " <> toHaskell val
 
 instance ToHaskell (MacroDefinition (Maybe SM.Expression)) where
   toHaskell :: MacroDefinition (Maybe SM.Expression) -> SM.Output
@@ -588,6 +608,7 @@ instance ToHaskell (Expression (Maybe SM.Expression)) where
   toHaskell (ELambda x) = toHaskell x
   toHaskell (ELetBlock x) = toHaskell x
   toHaskell (ELiteral x) = toHaskell x
+  toHaskell (EPatternBinding x) = toHaskell x
   toHaskell expr'@(ERawExpression _ x) = mkHaskell expr' x
   toHaskell (ERecordDefinition x) = toHaskell x
   toHaskell (ERecordType x) = toHaskell x

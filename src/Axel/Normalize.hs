@@ -9,8 +9,8 @@ import Axel.AST
   ( CaseBlock(CaseBlock)
   , DataDeclaration(DataDeclaration)
   , Expression(ECaseBlock, EEmptySExpression, EFunctionApplication,
-           EIdentifier, ELambda, ELetBlock, ELiteral, ERawExpression,
-           ERecordDefinition, ERecordType)
+           EIdentifier, ELambda, ELetBlock, ELiteral, EPatternBinding,
+           ERawExpression, ERecordDefinition, ERecordType)
   , FunctionApplication(FunctionApplication)
   , FunctionDefinition(FunctionDefinition)
   , Identifier
@@ -22,6 +22,7 @@ import Axel.AST
   , MacroDefinition(MacroDefinition)
   , MacroImport(MacroImport)
   , NewtypeDeclaration(NewtypeDeclaration)
+  , PatternBinding(PatternBinding)
   , Pragma(Pragma)
   , QualifiedImport(QualifiedImport)
   , RecordDefinition(RecordDefinition)
@@ -112,6 +113,13 @@ normalizeExpression expr@(Parse.SExpression _ items) =
             _ ->
               throwNormalizeError
                 "`case` takes an expression followed by `case` clauses."
+        "@" ->
+          case args of
+            [name, pattern'] ->
+              EPatternBinding <$>
+              (PatternBinding (Just expr) <$> normalizeExpression name <*>
+               normalizeExpression pattern')
+            _ -> throwNormalizeError "`@` takes: 1) a name and 2) a pattern."
         "\\" ->
           case args of
             [Parse.SExpression _ (Parse.Symbol _ "list":args'), body] ->
