@@ -10,6 +10,7 @@
 (importq Data.Text T all)
 (import System.IO.Unsafe [unsafePerformIO])
 
+(=macro applyInfix [op x] (pure [`(flip ~op ~x)]))
 (=macro applyInfix [x op y] (pure [`(~op ~x ~y)]))
 
 (=macro defmacro {name : cases}

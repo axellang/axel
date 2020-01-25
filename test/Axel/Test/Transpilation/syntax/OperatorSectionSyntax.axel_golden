@@ -1,0 +1,4 @@
+(module OperatorSectionSyntax)
+
+(= foo {+ 1}) -- Transpiles into `(+ 1)`, i.e. an operator section
+(= quux {1 + 2}) -- Transpiles into `((+) 1 2)`

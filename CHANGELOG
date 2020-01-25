@@ -6,6 +6,7 @@
   - Fix a bug where `newtype` declarations would transpile invalidly when the wrapped type did not need to be wrapped in parentheses (i.e. was just a type name).
   - Add support for multiline comments.
   - Add support for multline strings.
+  - Add support for operator sections.
 
 1/20/2020
   Tabling the Polysemy issue for now (until transitivity can hopefullybe implemented library-side).
