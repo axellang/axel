@@ -7,9 +7,9 @@ import Control.Applicative((<**>))
 import Data.Foldable(asum)
 import qualified Data.Text as T
 import Options.Applicative(Parser,ParserInfo,argument,command,fullDesc,helper,hsubparser,info,metavar,progDesc,str)
-data FileCommand = ConvertFile FilePath|RunFile FilePath|FormatFile FilePath
-data ProjectCommand = ConvertProject|FormatProject|RunProject
-data Command = FileCommand FileCommand|ProjectCommand ProjectCommand|Version
+data FileCommand = ConvertFile FilePath|RunFile FilePath|FormatFile FilePath deriving ()
+data ProjectCommand = ConvertProject|FormatProject|RunProject deriving ()
+data Command = FileCommand FileCommand|ProjectCommand ProjectCommand|Version deriving ()
 experimental :: () => ((->) String String)
 experimental  = ((<>) "(EXPERIMENTAL) ")
 command' :: () => ((->) String ((->) (ParserInfo a) (Parser a)))

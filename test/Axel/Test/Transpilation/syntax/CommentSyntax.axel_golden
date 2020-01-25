@@ -1,0 +1,13 @@
+(module CommentSyntax)
+
+-- Comment here
+
+(data (Bar* a b) -- End-of-line comment
+ (Fo#o (a Int){- Multiline comment -})
+ (Bar b {- Multiline
+ comment-}String){-
+-} Baz)
+
+{- This is a multiline comment.
+Here's line 2,
+and line 3. -}

@@ -75,7 +75,8 @@ eol :: Parser ()
 eol = void P.eol <|> P.eof
 
 ignored :: Parser ()
-ignored = P.skipMany $ P.try comment <|> void P.spaceChar
+ignored =
+  P.skipMany $ P.try singleLineComment <|> multiLineComment <|> void P.spaceChar
 
 literalChar :: Parser SM.Expression
 literalChar = ann LiteralChar (P.string "#\\" *> P.charLiteral)
@@ -131,10 +132,14 @@ symbol =
 unquotedExpression :: Parser SM.Expression
 unquotedExpression = parseReadMacro "~" "unquote"
 
-comment :: Parser ()
-comment =
+singleLineComment :: Parser ()
+singleLineComment =
   P.try (P.string "--" *> eol) <|>
   void (P.string "-- " *> P.manyTill (void P.anySingle) eol)
+
+multiLineComment :: Parser ()
+multiLineComment =
+  void $ P.try (P.string "{-") *> P.manyTill (void P.anySingle) (P.string "-}")
 
 expression :: Parser SM.Expression
 expression =
