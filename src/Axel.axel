@@ -11,6 +11,7 @@
 (import System.IO.Unsafe [unsafePerformIO])
 
 (=macro applyInfix [op x] (pure [`(flip ~op ~x)]))
+
 (=macro applyInfix [x op y] (pure [`(~op ~x ~y)]))
 
 (=macro defmacro {name : cases}
@@ -33,10 +34,9 @@
 (def if ([] {Bool -> {a -> {a -> a}}})
      ([True x _] x) ([False _ x] x))
 
-(defmacro syntaxQuote
-          ([x]
-           (pure
-            [(AST.quoteExpression (const (AST.Symbol Nothing "_")) x)])))
+(=macro syntaxQuote [x]
+        (pure
+         [(AST.quoteExpression (const (AST.Symbol Nothing "_")) x)]))
 
 (def expandDo ([] {([] SM.Expression) -> SM.Expression})
      ([{(AST.SExpression _ [(syntaxQuote <-) var val]) : rest}]
@@ -48,8 +48,9 @@
 
 (defmacro do (input (pure [(expandDo input)])))
 
-(def gensymCounter ([] (IORef Int))
-     ([] (unsafePerformIO (newIORef 0))))
+(:: gensymCounter [] (IORef Int))
+
+(= gensymCounter (unsafePerformIO (newIORef 0)))
 
 (pragma "NOINLINE gensymCounter")
 
@@ -62,10 +63,16 @@
            (modifyIORef gensymCounter succ)
            (pure (AST.Symbol Nothing (T.unpack identifier)))))
 
-(defmacro \case
-          (cases
-           (fmap (\ [varId] [`(\ [~varId] (case ~varId ~@cases))])
-                 gensym)))
+(=macro \case cases
+        (fmap (\ [varId] [`(\ [~varId] (case ~varId ~@cases))])
+              gensym))
+
+(=macro | cases
+        (pure
+         [(foldr
+           (\ [(AST.SExpression _ [cond x]) acc] `(if ~cond ~x ~acc))
+           'undefined
+           cases)]))
 
 (:: isPrelude [] {FilePath -> Bool})
 
@@ -73,6 +80,10 @@
 
 (:: preludeMacros [] ([] Text))
 
-(= preludeMacros (map
-                  {T.pack . hygenisizeIdentifier}
-                  ["applyInfix" "defmacro" "def" "do" "\\case" "syntaxQuote"]))
+(= preludeMacros (map {T.pack . hygenisizeIdentifier} ["|"
+                                                       "applyInfix"
+                                                       "defmacro"
+                                                       "def"
+                                                       "do"
+                                                       "\\case"
+                                                       "syntaxQuote"]))

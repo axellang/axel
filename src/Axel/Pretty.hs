@@ -28,52 +28,52 @@ maximumExpressionLength = 60
 columnWidth :: Text -> Int
 columnWidth = ala Max foldMap . map T.length . T.lines
 
-sexp :: [P.Doc a] -> P.Doc a
-sexp [] = mempty
-sexp [x] = x
-sexp (x:xs) =
+sexp :: Bool -> [P.Doc a] -> P.Doc a
+sexp _ [] = mempty
+sexp _ [x] = x
+sexp canBalance (x:xs) =
   let align cons = x `cons` xs
       oneLiner = align (\y ys -> y <+> P.hsep ys)
       balanced = align (\y ys -> y <+> P.align (P.vsep ys))
       multiLiner = align (\y ys -> P.align (P.vsep (y : ys)))
       shortEnough doc = columnWidth (render doc) <= maximumExpressionLength
    in if | shortEnough oneLiner -> oneLiner
-         | shortEnough balanced -> balanced
+         | canBalance && shortEnough balanced -> balanced
          | otherwise -> multiLiner
 
 privilegedFormToAxelPretty :: [Expression ann] -> P.Doc a
 privilegedFormToAxelPretty (Symbol _ "data":name:rest) =
-  "data" <+> sexp (toAxelPretty name : map toAxelPretty rest)
+  "data" <+> sexp True (toAxelPretty name : map toAxelPretty rest)
 privilegedFormToAxelPretty (Symbol _ "def":name:tySig:rest) =
   "def" <+>
   P.align
     (P.vsep
        [ (toAxelPretty name <+> toAxelPretty tySig)
-       , sexp (map toAxelPretty rest)
+       , sexp True (map toAxelPretty rest)
        ])
 privilegedFormToAxelPretty (Symbol _ "defmacro":name:rest) =
-  "defmacro" <+> sexp (toAxelPretty name : map toAxelPretty rest)
+  "defmacro" <+> sexp True (toAxelPretty name : map toAxelPretty rest)
 privilegedFormToAxelPretty (Symbol _ "::":name:rest) =
-  "::" <+> sexp (toAxelPretty name : map toAxelPretty rest)
+  "::" <+> sexp True (toAxelPretty name : map toAxelPretty rest)
 privilegedFormToAxelPretty (Symbol _ "=":name:args:rest) =
   "=" <+>
-  sexp ((toAxelPretty name <+> toAxelPretty args) : map toAxelPretty rest)
+  sexp True ((toAxelPretty name <+> toAxelPretty args) : map toAxelPretty rest)
 privilegedFormToAxelPretty (Symbol _ "=macro":name:args:rest) =
   "=macro" <+>
-  sexp ((toAxelPretty name <+> toAxelPretty args) : map toAxelPretty rest)
+  sexp True ((toAxelPretty name <+> toAxelPretty args) : map toAxelPretty rest)
 privilegedFormToAxelPretty (Symbol _ "let":bindings:rest) =
-  "let" <+> sexp (toAxelPretty bindings : map toAxelPretty rest)
+  "let" <+> sexp True (toAxelPretty bindings : map toAxelPretty rest)
 privilegedFormToAxelPretty (Symbol _ "if":bindings:rest) =
-  "if" <+> sexp (toAxelPretty bindings : map toAxelPretty rest)
+  "if" <+> sexp True (toAxelPretty bindings : map toAxelPretty rest)
 privilegedFormToAxelPretty (Symbol _ "case":bindings:rest) =
-  "case" <+> sexp (toAxelPretty bindings : map toAxelPretty rest)
+  "case" <+> sexp True (toAxelPretty bindings : map toAxelPretty rest)
 privilegedFormToAxelPretty (Symbol _ "import":name:rest) =
-  "import" <+> sexp (toAxelPretty name : map toAxelPretty rest)
+  "import" <+> sexp True (toAxelPretty name : map toAxelPretty rest)
 privilegedFormToAxelPretty (Symbol _ "importq":name:rest) =
-  "importq" <+> sexp (toAxelPretty name : map toAxelPretty rest)
+  "importq" <+> sexp True (toAxelPretty name : map toAxelPretty rest)
 privilegedFormToAxelPretty (Symbol _ "importm":name:rest) =
-  "importm" <+> sexp (toAxelPretty name : map toAxelPretty rest)
-privilegedFormToAxelPretty xs = sexp $ map toAxelPretty xs
+  "importm" <+> sexp True (toAxelPretty name : map toAxelPretty rest)
+privilegedFormToAxelPretty xs = sexp True $ map toAxelPretty xs
 
 toAxelPretty :: Expression ann -> P.Doc a
 toAxelPretty (LiteralChar _ x) = "#\\" <> P.pretty x
@@ -82,9 +82,9 @@ toAxelPretty (LiteralInt _ x) = P.pretty x
 toAxelPretty (LiteralString _ x) =
   P.dquotes $ P.pretty (under unpacked handleCharEscapes x)
 toAxelPretty (SExpression _ (Symbol _ "applyInfix":xs)) =
-  P.braces $ sexp (map toAxelPretty xs)
+  P.braces $ sexp True (map toAxelPretty xs)
 toAxelPretty (SExpression _ (Symbol _ "list":xs)) =
-  P.brackets $ sexp (map toAxelPretty xs)
+  P.brackets $ sexp False (map toAxelPretty xs)
 toAxelPretty (SExpression _ [Symbol _ "quote", x]) = "\'" <> toAxelPretty x
 toAxelPretty (SExpression _ [Symbol _ "quasiquote", x]) = "`" <> toAxelPretty x
 toAxelPretty (SExpression _ [Symbol _ "unquote", x]) = "~" <> toAxelPretty x
