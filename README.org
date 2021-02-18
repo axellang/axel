@@ -7,7 +7,7 @@
   #+CAPTION: Build Status
   [[https://travis-ci.org/axellang/axel.svg?branch=master]]
   
-  *CURRENT STATUS:* I'm currently recovering from some academic burnout (much to my chagrin), hence the dearth of recent activity. /However,/ Axel is not abandoned, and active development should resume within the next several months.
+  *CURRENT STATUS:* I'm currently recovering from some academic burnout (much to my chagrin), hence the dearth of recent activity. /However/, Axel is not abandoned, and active development should resume within the next several months.
 ** Code Style
    Run ~scripts/format.sh~ to format code and ~scripts/lint.sh~ to run the linter.
 ** Running
