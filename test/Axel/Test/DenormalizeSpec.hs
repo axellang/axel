@@ -8,6 +8,8 @@ import Axel.Normalize
 import Axel.Sourcemap as SM
 import qualified Axel.Test.ASTGen as ASTGen
 
+import Control.Monad
+
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 import qualified Polysemy.Reader as Sem
@@ -17,7 +19,7 @@ import Hedgehog
 import TestUtils
 
 (=$=) :: (Functor f, Eq (f ()), Show (f ()), MonadTest m) => f a -> f b -> m ()
-a =$= b = (() <$ a) === (() <$ b)
+a =$= b = void a === void b
 
 hprop_normalizeExpression_is_the_inverse_of_denormalizeExpression :: Property
 hprop_normalizeExpression_is_the_inverse_of_denormalizeExpression =

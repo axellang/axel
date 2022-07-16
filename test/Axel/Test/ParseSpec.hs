@@ -10,6 +10,8 @@ import Axel.Parse
 import Axel.Parse.AST
 import Axel.Utils.Text
 
+import Control.Monad
+
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
@@ -138,4 +140,4 @@ spec_Parse = do
               ]
       case Sem.run . Sem.runError $ parseSource Nothing input of
         Left err -> failSpec $ renderError err
-        Right x -> () <$ x `shouldBe` result
+        Right x -> void x `shouldBe` result

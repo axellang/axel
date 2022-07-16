@@ -48,7 +48,7 @@ privilegedFormToAxelPretty (Symbol _ "def":name:tySig:rest) =
   "def" <+>
   P.align
     (P.vsep
-       [ (toAxelPretty name <+> toAxelPretty tySig)
+       [ toAxelPretty name <+> toAxelPretty tySig
        , sexp True (map toAxelPretty rest)
        ])
 privilegedFormToAxelPretty (Symbol _ "defmacro":name:rest) =
@@ -99,7 +99,7 @@ spaceStatements =
     let isImport (SExpression _ (Symbol _ id':_)) =
           id' `elem` ["import", "importq", "importm"]
         isImport _ = False
-        needsSpacing = not $ isImport x && fromMaybe False (isImport <$> prev)
+        needsSpacing = not $ isImport x && maybe False isImport prev
         maybeSpacer =
           if needsSpacing
             then P.line

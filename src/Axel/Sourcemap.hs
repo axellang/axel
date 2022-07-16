@@ -13,6 +13,7 @@ import qualified Axel.Parse.AST as Parse
   ( Expression(LiteralInt, LiteralString, SExpression, Symbol)
   , quoteExpression
   )
+import Axel.Utils.List (unsafeHead)
 import Axel.Utils.Text (Renderer)
 import Axel.Utils.Tuple (Annotated, annotate, annotation, unannotate)
 
@@ -103,7 +104,7 @@ surround bracket x =
   let (startMetadata, endMetadata) =
         case x of
           Output [] -> (Nothing, Nothing)
-          Output xs -> (head xs ^. annotation, last xs ^. annotation)
+          Output xs -> (unsafeHead xs ^. annotation, last xs ^. annotation)
       (open, closed) =
         case bracket of
           CurlyBraces -> ("{", "}")

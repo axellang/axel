@@ -484,10 +484,7 @@ generateMacroProgram filePath' oldMacroName args = do
          insertImports filePath' header $ replaceModuleDecl moduleDecl $ auxEnv <>
          footer
        pure $ finalizeProgram programStmts
-  pure $
-    uncurry
-      ((,) `on` toHaskell . statementsToProgram)
-      (scaffold, macroDefAndEnv)
+  pure $ ((,) `on` toHaskell . statementsToProgram) scaffold macroDefAndEnv
   where
     replaceModuleDecl newModuleDecl stmts =
       if any (is _SModuleDeclaration) stmts
@@ -629,7 +626,4 @@ generateExpansionRecord originalAnn macroName args result scaffoldFilePath macro
       "."
     ]
   where
-    locationHint =
-      case originalAnn of
-        Just x -> renderSourcePosition x
-        Nothing -> "<unknown>"
+    locationHint = maybe "<unknown>" renderSourcePosition originalAnn

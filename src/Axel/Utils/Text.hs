@@ -63,4 +63,4 @@ decodeUtf8Lazy :: B.ByteString -> Text
 decodeUtf8Lazy = T.decodeUtf8 . B.toStrict
 
 remove :: Text -> Text -> Text
-remove needle haystack = T.replace needle "" haystack
+remove needle = T.replace needle ""

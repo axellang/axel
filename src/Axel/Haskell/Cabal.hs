@@ -26,14 +26,13 @@ import Axel.Utils.FilePath (takeFileName)
 import Axel.Utils.Monad (whileM)
 
 import Control.Lens (op)
-import Control.Lens.Operators ((%~), (^?))
+import Control.Lens.Operators ((%~), (^?!))
 import Control.Monad (void)
 
 import Data.Aeson.Key (toText)
-import Data.Aeson.Lens (_Array, _Object, key)
 import Data.Aeson.KeyMap (keys)
+import Data.Aeson.Lens (_Array, _Object, key)
 import Data.Function ((&))
-import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Vector (cons)
@@ -64,11 +63,11 @@ axelPackageId :: StackageId
 axelPackageId = "axel"
 
 getProjectExecutableTargets ::
-     (Sem.Member (Effs.FileSystem) effs) => ProjectPath -> Sem.Sem effs [Target]
+     (Sem.Member Effs.FileSystem effs) => ProjectPath -> Sem.Sem effs [Target]
 getProjectExecutableTargets projectPath =
   FS.withCurrentDirectory projectPath $ do
     config <- readPackageConfig
-    pure $ map toText $ keys $ fromJust (config ^? key "executables" . _Object)
+    pure $ map toText $ keys $ config ^?! key "executables" . _Object
 
 packageConfigRelativePath :: FilePath
 packageConfigRelativePath = FilePath "package.yaml"

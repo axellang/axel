@@ -13,7 +13,7 @@ spec_List = do
     it "correctly partitions its input" $ do
       let f :: Int -> Maybe Text
           f n =
-            if n `mod` 2 == 0
+            if even n
               then Just $ showText n
               else Nothing
        in filterMapOut f [1, 2, 3, 4, 6] `shouldBe` ([1, 3], ["2", "4", "6"])

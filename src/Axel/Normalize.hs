@@ -352,7 +352,7 @@ normalizeStatement expr@(Parse.SExpression _ items) =
         "importm" ->
           case args of
             [Parse.Symbol _ moduleName, macroImportSpec] ->
-              SMacroImport . MacroImport (Just expr) (T.pack $ moduleName) <$>
+              SMacroImport . MacroImport (Just expr) (T.pack moduleName) <$>
               normalizeMacroImportSpec macroImportSpec
             _ ->
               throwNormalizeError
