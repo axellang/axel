@@ -1,9 +1,9 @@
 name: axel
-version: '0.0.12'
+version: '0.0.13'
 category: Language, Lisp, Macros, Transpiler
 author: Joshua Grosso
 maintainer: jgrosso256@gmail.com
-copyright: 2017 Joshua Grosso
+copyright: 2020 Joshua Grosso
 license: BSD3
 github: axellang/axel
 synopsis: The Axel programming language.
@@ -20,12 +20,17 @@ ghc-options:
   - -Wno-missing-export-lists
   - -Wno-missing-import-lists
   - -Wno-missing-local-signatures
+  - -Wno-missing-kind-signatures
+  - -Wno-missing-safe-haskell-mode
   - -Wno-monomorphism-restriction
+  - -Wno-prepositive-qualified-module
   - -Wno-safe
   - -Wno-unsafe
+  - -Wno-unused-packages
   - -optP-Wno-nonportable-include-path # https://github.com/haskell/cabal/issues/4739
 
   # https://github.com/polysemy-research/polysemy#necessary-language-extensions
+  - -O2
   - -fplugin=Polysemy.Plugin
   - -flate-specialise
   - -fspecialise-aggressively
@@ -33,46 +38,46 @@ build-tools:
   - hpack:hpack
   - tasty-discover:tasty-discover
 dependencies:
-  - aeson ==1.4.4.0
-  - ansi-terminal ==0.9.1
-  - base ==4.13.0.0
-  - bytestring ==0.10.9.0
-  - containers ==0.6.2.1
-  - directory ==1.3.3.2
-  - extra ==1.6.18
-  - filepath ==1.4.2.1
-  - ghcid ==0.7.5
-  - hashable ==1.3.0.0
-  - haskell-src-exts ==1.22.0
-  - hedgehog ==1.0.1
-  - hpack ==0.33.0
-  - lens ==4.18.1
-  - lens-aeson ==1.0.2
-  - megaparsec ==7.0.5
-  - mono-traversable ==1.0.12.0
-  - optparse-applicative ==0.15.1.0
-  - polysemy ==1.2.3.0
-  - polysemy-plugin ==0.2.4.0
-  - prettyprinter ==1.5.1
-  - process ==1.6.5.1
-  - profunctors ==5.3
-  - random ==1.1
-  - split ==0.2.3.3
-  - tasty ==1.2.3
-  - tasty-discover ==4.2.1
-  - tasty-golden ==2.3.2
-  - tasty-hedgehog ==1.0.0.1
-  - tasty-hspec ==1.1.5.1
-  - tasty-hunit ==0.10.0.2
-  - template-haskell ==2.15.0.0
-  - text ==1.2.4.0
-  - time ==1.9.3
+  - aeson ==2.0.3.0
+  - ansi-terminal ==0.11.3
+  - base ==4.16.2.0
+  - bytestring ==0.11.3.1
+  - containers ==0.6.5.1
+  - directory ==1.3.6.2
+  - extra ==1.7.10
+  - filepath ==1.4.2.2
+  - ghcid ==0.8.7
+  - hashable ==1.4.0.2
+  - haskell-src-exts ==1.23.1
+  - hedgehog ==1.1.1
+  - hpack ==0.35.0
+  - hspec ==2.10.0
+  - lens ==5.1.1
+  - lens-aeson ==1.2.1
+  - megaparsec ==9.2.1
+  - mono-traversable ==1.0.15.3
+  - optparse-applicative ==0.17.0.0
+  - polysemy ==1.7.1.0
+  - polysemy-plugin ==0.4.3.1
+  - prettyprinter ==1.7.1
+  - process ==1.6.13.2 # https://www.reddit.com/r/haskellquestions/comments/uj759w/ghc_922_build_error
+  - profunctors ==5.6.2
+  - random ==1.2.1.1
+  - split ==0.2.3.4
+  - tasty ==1.4.2.3
+  - tasty-discover ==5.0.0
+  - tasty-golden ==2.3.5
+  - tasty-hedgehog ==1.2.0.0
+  - tasty-hspec ==1.2.0.1
+  - tasty-hunit ==0.10.0.3
+  - template-haskell ==2.18.0.0
+  - text ==2.0
+  - time ==1.11.1.1
   - transformers ==0.5.6.2
-  - typed-process ==0.2.6.0
-  - uniplate ==1.6.12
-  - unordered-containers ==0.2.10.0
-  - vector ==0.12.0.3
-  - yaml ==0.11.2.0
+  - typed-process ==0.2.10.1
+  - uniplate ==1.6.13
+  - vector ==0.12.3.1
+  - yaml ==0.11.8.0
 data-files:
   - resources/**/*
 # NOTE Keep in sync with `.hindent.yaml#extensions` and `.hlint.yaml#extensions`.

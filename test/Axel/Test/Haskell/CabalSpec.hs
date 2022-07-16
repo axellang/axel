@@ -6,11 +6,11 @@ module Axel.Test.Haskell.CabalSpec where
 
 import Axel.Prelude
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 -- TODO Flesh out `ProcessMock.runProcess` with the new `Process` actions,
 --      so that we can re-enable this test suite.
-spec_Cabal :: SpecWith ()
+spec_Cabal :: Spec
 spec_Cabal = pure ()
 {-
 
@@ -34,7 +34,7 @@ import System.Exit
 
 import TestUtils
 
-spec_Cabal :: SpecWith ()
+spec_Cabal :: Spec
 spec_Cabal = do
   describe "addDependency" $ do
     it "adds a package dependency to a project" $ do

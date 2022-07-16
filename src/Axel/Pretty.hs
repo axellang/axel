@@ -15,9 +15,9 @@ import Data.Maybe (fromMaybe)
 import Data.Semigroup (Max(Max))
 import qualified Data.Text as T
 import Data.Text.Lens (unpacked)
-import qualified Data.Text.Prettyprint.Doc as P
-import Data.Text.Prettyprint.Doc ((<+>))
-import qualified Data.Text.Prettyprint.Doc.Render.Text as P
+import qualified Prettyprinter as P
+import Prettyprinter ((<+>))
+import qualified Prettyprinter.Render.Text as P
 
 render :: P.Doc a -> Text
 render = P.renderStrict . P.layoutSmart (P.LayoutOptions P.Unbounded)

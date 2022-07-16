@@ -18,6 +18,7 @@ extensions:
   - LambdaCase
   - MultiParamTypeClasses
   - MultiWayIf
+  - NoImplicitPrelude
   - OverloadedStrings
   - PolyKinds
   - RankNTypes

@@ -6,9 +6,9 @@ import Axel.Prelude
 import Axel.Parse.AST
 import Axel.Utils.Recursion
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
-spec_AST :: SpecWith ()
+spec_AST :: Spec
 spec_AST = do
   describe "RecursiveZipper instance" $ do
     it

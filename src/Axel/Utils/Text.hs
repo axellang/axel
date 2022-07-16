@@ -15,6 +15,7 @@ import qualified Data.Text.Encoding as T
 import GHC.Exts (IsString(fromString))
 
 import Language.Haskell.TH.Quote (QuasiQuoter(QuasiQuoter))
+import Language.Haskell.TH.Syntax (lift)
 
 capitalize :: Text -> Text
 capitalize = _head %~ toUpper
@@ -23,7 +24,7 @@ capitalize = _head %~ toUpper
 s :: QuasiQuoter
 s =
   QuasiQuoter
-    ((\a -> [|fromString a|]) . filter (/= '\r'))
+    ((\a -> [|fromString $(lift a)|]) . filter (/= '\r'))
     (error "Cannot use s as a pattern")
     (error "Cannot use s as a type")
     (error "Cannot use s as a dec")

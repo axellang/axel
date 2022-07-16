@@ -24,8 +24,8 @@ import qualified Data.Text as T
 import Hedgehog hiding (MonadGen)
 import qualified Hedgehog
 
+import Test.Hspec
 import Test.Tasty.HUnit as HUnit
-import Test.Tasty.Hspec
 
 throwInterpretError ::
      forall s effs a. (Sem.Members '[ Sem.Error Text, Sem.State s] effs, Show s)

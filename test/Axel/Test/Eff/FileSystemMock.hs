@@ -120,8 +120,7 @@ type instance Index FSNode = FilePath
 type instance IxValue FSNode = FSNode
 
 instance Ixed FSNode where
-  ix ::
-       (Applicative f) => FilePath -> (FSNode -> f FSNode) -> FSNode -> f FSNode
+  ix :: FilePath -> Traversal' FSNode FSNode
   ix path f root =
     case lookupNode pathSegments root of
       Just node ->

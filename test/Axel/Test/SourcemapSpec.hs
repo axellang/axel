@@ -6,9 +6,9 @@ import Axel.Sourcemap
 
 import Data.Foldable
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
-spec_Sourcemap :: SpecWith ()
+spec_Sourcemap :: Spec
 spec_Sourcemap = do
   describe "findOriginalPosition" $ -- TODO Convert these into property tests
    do

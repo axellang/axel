@@ -10,11 +10,11 @@ import Axel.Test.Eff.ResourceMock as Mock
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 import TestUtils
 
-spec_Resource :: SpecWith ()
+spec_Resource :: Spec
 spec_Resource =
   describe "readResource" $ do
     it "reads a resource's contents from the file system" $ do

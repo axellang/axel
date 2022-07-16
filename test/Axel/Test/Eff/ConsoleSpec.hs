@@ -9,11 +9,11 @@ import qualified Axel.Test.Eff.ConsoleMock as Mock
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 import TestUtils
 
-spec_Console :: SpecWith ()
+spec_Console :: Spec
 spec_Console =
   describe "putStrLn" $ do
     it "prints to the console with a trailing newline" $ do

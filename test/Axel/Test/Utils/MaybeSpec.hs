@@ -12,14 +12,14 @@ import Data.Generics.Uniplate.Data ()
 import Data.Generics.Uniplate.Zipper
 import qualified Data.Text as T
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 data MockAST
   = SExp [MockAST]
   | Symbol Text
   deriving (Data, Eq, Show)
 
-spec_Maybe :: SpecWith ()
+spec_Maybe :: Spec
 spec_Maybe = do
   describe "foldUntilNothing" $ do
     it "works with basic function to be folded" $ do

@@ -10,11 +10,11 @@ import Axel.Utils.Zipper
 
 import Data.Generics.Uniplate.Zipper
 
-import Test.Tasty.Hspec hiding (focus)
+import Test.Hspec hiding (focus)
 
 import TestUtils
 
-spec_Macros :: SpecWith ()
+spec_Macros :: Spec
 spec_Macros = do
   describe "isStatementFocused" $ do
     it "returns if a zipper is focused on a statement's expression" $ do

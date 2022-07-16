@@ -5,9 +5,9 @@ import Axel.Prelude
 
 import Axel.Utils.List
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
-spec_List :: SpecWith ()
+spec_List :: Spec
 spec_List = do
   describe "filterMapOut" $ do
     it "correctly partitions its input" $ do

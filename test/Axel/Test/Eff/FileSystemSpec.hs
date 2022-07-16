@@ -12,11 +12,11 @@ import Control.Lens
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 import TestUtils
 
-spec_FileSystem :: SpecWith ()
+spec_FileSystem :: Spec
 spec_FileSystem = do
   describe "getDirectoryContentsRec" $ do
     it "gets the files inside a directory and all its subdirectories" $ do

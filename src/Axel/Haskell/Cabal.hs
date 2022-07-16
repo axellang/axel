@@ -29,9 +29,10 @@ import Control.Lens (op)
 import Control.Lens.Operators ((%~), (^?))
 import Control.Monad (void)
 
+import Data.Aeson.Key (toText)
 import Data.Aeson.Lens (_Array, _Object, key)
+import Data.Aeson.KeyMap (keys)
 import Data.Function ((&))
-import qualified Data.HashMap.Strict as HashMap
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -67,7 +68,7 @@ getProjectExecutableTargets ::
 getProjectExecutableTargets projectPath =
   FS.withCurrentDirectory projectPath $ do
     config <- readPackageConfig
-    pure $ HashMap.keys $ fromJust (config ^? key "executables" . _Object)
+    pure $ map toText $ keys $ fromJust (config ^? key "executables" . _Object)
 
 packageConfigRelativePath :: FilePath
 packageConfigRelativePath = FilePath "package.yaml"

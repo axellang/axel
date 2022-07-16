@@ -13,14 +13,14 @@ import Axel.Utils.Text
 import qualified Polysemy as Sem
 import qualified Polysemy.Error as Sem
 
-import Test.Tasty.Hspec
+import Test.Hspec
 
 import TestUtils
 
 parseSingle :: Text -> Expression ()
 parseSingle = (() <$) . unsafeParseSingle Nothing
 
-spec_Parse :: SpecWith ()
+spec_Parse :: Spec
 spec_Parse = do
   describe "parseSingle" $ do
     it "can parse a character literal" $ do
