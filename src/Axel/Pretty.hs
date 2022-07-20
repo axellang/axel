@@ -11,7 +11,6 @@ import Axel.Utils.Text (handleCharEscapes)
 
 import Control.Lens (ala, under)
 
-import Data.Maybe (fromMaybe)
 import Data.Semigroup (Max(Max))
 import qualified Data.Text as T
 import Data.Text.Lens (unpacked)
