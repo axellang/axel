@@ -24,22 +24,23 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
-import qualified Polysemy.State as Sem
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
+import qualified Effectful.State.Static.Local as Eff
 
 import Test.Tasty
 import Test.Tasty.Golden
 
-runApp :: Sem.Sem AppEffs a -> IO (Either Effs.Error a)
+runApp :: Eff.Eff AppEffs a -> IO (Either Effs.Error a)
 runApp =
-  Sem.runM .
+  Eff.runEff .
   Effs.runTime .
   Effs.runRandom .
   Effs.runResource .
   Effs.runProcess .
   Effs.runGhci .
-  Effs.runFileSystem . Effs.runConsole . Effs.ignoreLog . Sem.runError
+  Effs.runFileSystem .
+  Effs.runConsole . Effs.ignoreLog . Eff.runErrorNoCallStack
 
 test_errors_golden :: IO TestTree
 test_errors_golden = do
@@ -54,7 +55,7 @@ test_errors_golden = do
             axelSource <- T.readFile $ T.unpack (op FilePath axelFile)
             output <-
               runApp $
-              Sem.evalState (M.empty :: ModuleInfo) $
+              Eff.evalState (M.empty :: ModuleInfo) $
               Ghci.withGhci $ transpileSource (takeBaseName axelFile) axelSource
             case output of
               Right _ ->

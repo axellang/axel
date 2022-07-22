@@ -1,7 +1,5 @@
 {-# OPTIONS_GHC "-fno-warn-incomplete-patterns" #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module TestUtils where
 
@@ -14,12 +12,13 @@ import Axel.Utils.Text
 
 import Control.Exception
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
-import qualified Polysemy.State as Sem
-
 import Data.Functor.Identity (Identity)
 import qualified Data.Text as T
+
+import Effectful ((:>>))
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
+import qualified Effectful.State.Static.Local as Eff
 
 import Hedgehog hiding (MonadGen)
 import qualified Hedgehog
@@ -28,18 +27,18 @@ import Test.Hspec
 import Test.Tasty.HUnit as HUnit
 
 throwInterpretError ::
-     forall s effs a. (Sem.Members '[ Sem.Error Text, Sem.State s] effs, Show s)
+     forall s effs a. ('[ Eff.Error Text, Eff.State s] :>> effs, Show s)
   => Text
   -> Text
-  -> Sem.Sem effs a
+  -> Eff.Eff effs a
 throwInterpretError actionName message = do
   errorMsg <-
-    Sem.gets $ \ctxt ->
+    Eff.gets $ \ctxt ->
       "\n----------\nACTION\t" <>
       actionName <>
       "\n\nMESSAGE\t" <>
       message <> "\n\nSTATE\t" <> showText ctxt <> "\n----------\n"
-  Sem.throw errorMsg
+  Eff.throwError errorMsg
 
 unwrapRight :: Renderer e -> Either e a -> a
 unwrapRight _ (Right x) = x
@@ -61,7 +60,7 @@ assertEqual msg expected actual =
 --  If multiple expressions are able to be parsed, only the first will be returned.
 unsafeParseSingle :: Maybe FilePath -> Text -> SM.Expression
 unsafeParseSingle filePath =
-  head . Sem.run . unsafeRunError renderError . parseMultiple filePath
+  head . Eff.runPureEff . unsafeRunError renderError . parseMultiple filePath
 
 -- NOTE Workaround until https://github.com/hedgehogqa/haskell-hedgehog/commit/de401e949526951fdff87ef02fc75f13e8e22dfe
 --      is publicly released.

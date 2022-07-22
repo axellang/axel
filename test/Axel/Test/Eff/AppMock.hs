@@ -1,5 +1,3 @@
-{-# LANGUAGE GADTs #-}
-
 module Axel.Test.Eff.AppMock where
 
 import Axel.Prelude
@@ -17,23 +15,23 @@ import Axel.Test.Eff.GhciMock
 import Axel.Test.Eff.ProcessMock
 import Axel.Test.Eff.ResourceMock
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
 
 type AppEffs
-   = '[ Effs.Log, Effs.Console, Sem.Error Error.Error, Effs.Ghci, Effs.Process, Effs.FileSystem, Effs.Resource, Sem.Error Text]
+   = '[ Effs.Log, Effs.Console, Eff.Error Error.Error, Effs.Ghci, Effs.Process, Effs.FileSystem, Effs.Resource, Eff.Error Text]
 
 runApp ::
-     (processEffs ~ '[ Effs.FileSystem, Effs.Resource, Sem.Error Text])
+     (processEffs ~ '[ Effs.FileSystem, Effs.Resource, Eff.Error Text])
   => ConsoleState
   -> FileSystemState
   -> GhciState
   -> ProcessState processEffs
-  -> Sem.Sem AppEffs a
-  -> ( FileSystemState
-     , (ProcessState processEffs, (GhciState, (ConsoleState, a))))
+  -> Eff.Eff AppEffs a
+  -> ( (((a, ConsoleState), GhciState), ProcessState processEffs)
+     , FileSystemState)
 runApp origConsoleState origFSState origGhciState origProcState =
-  Sem.run .
+  Eff.runPureEff .
   unsafeRunError id .
   runResource .
   runFileSystem origFSState .
@@ -42,19 +40,19 @@ runApp origConsoleState origFSState origGhciState origProcState =
   unsafeRunError renderError . runConsole origConsoleState . Effs.ignoreLog
 
 evalApp ::
-     (processEffs ~ '[ Effs.FileSystem, Effs.Resource, Sem.Error Text])
+     (processEffs ~ '[ Effs.FileSystem, Effs.Resource, Eff.Error Text])
   => ConsoleState
   -> FileSystemState
   -> GhciState
   -> ProcessState processEffs
-  -> Sem.Sem AppEffs a
+  -> Eff.Eff AppEffs a
   -> a
 evalApp origConsoleState origFSState origGhciState origProcState =
-  snd .
-  snd .
-  snd . snd . runApp origConsoleState origFSState origGhciState origProcState
+  fst .
+  fst .
+  fst . fst . runApp origConsoleState origFSState origGhciState origProcState
 
-evalApp' :: Sem.Sem AppEffs a -> a
+evalApp' :: Eff.Eff AppEffs a -> a
 evalApp' = evalApp origConsoleState origFSState origGhciState origProcState
   where
     origConsoleState = mkConsoleState

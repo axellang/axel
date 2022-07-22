@@ -1,5 +1,3 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Axel.Test.Eff.GhciMock where
@@ -9,9 +7,11 @@ import Axel.Prelude
 import Axel.Eff.Ghci as Effs
 
 import Control.Lens
-import Polysemy
-import Polysemy.Error as Effs
-import Polysemy.State as Effs
+
+import Effectful
+import Effectful.Dispatch.Dynamic
+import Effectful.Error.Static
+import Effectful.State.Static.Local
 
 import TestUtils
 
@@ -28,13 +28,13 @@ mkGhciState :: [[Text]] -> GhciState
 mkGhciState = GhciState []
 
 runGhci ::
-     forall effs a. (Member (Effs.Error Text) effs)
+     forall effs a. (Error Text :> effs)
   => GhciState
-  -> Sem (Effs.Ghci ': effs) a
-  -> Sem effs (GhciState, a)
-runGhci origState action = runState origState $ reinterpret go action
+  -> Eff (Effs.Ghci ': effs) a
+  -> Eff effs (a, GhciState)
+runGhci origState = reinterpret (runState origState) (const go)
   where
-    go :: Ghci m b -> Sem (Effs.State GhciState ': effs) b
+    go :: Ghci m b -> Eff (State GhciState ': effs) b
     go (Exec _ command) = do
       modify @GhciState $ ghciExecutionLog %~ (|> command)
       gets @GhciState (uncons . (^. ghciMockResults)) >>= \case

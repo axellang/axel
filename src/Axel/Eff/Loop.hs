@@ -1,6 +1,3 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 -- Inspired by http://www.haskellforall.com/2012/07/breaking-from-loop.html.
 module Axel.Eff.Loop where
 
@@ -8,16 +5,17 @@ import Axel.Prelude
 
 import Control.Monad (void)
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
+import Effectful ((:>))
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
 
-type Loop a = Sem.Error a
+type Loop a = Eff.Error a
 
 breakLoop ::
-     forall a effs. (Sem.Member (Loop a) effs)
+     forall a effs. (Loop a :> effs)
   => a
-  -> Sem.Sem effs ()
-breakLoop = void . Sem.throw
+  -> Eff.Eff effs ()
+breakLoop = void . Eff.throwError
 
-runLoop :: forall a effs. Sem.Sem (Loop a ': effs) a -> Sem.Sem effs a
-runLoop x = either id id <$> Sem.runError x
+runLoop :: forall a effs. Eff.Eff (Loop a ': effs) a -> Eff.Eff effs a
+runLoop x = either id id <$> Eff.runErrorNoCallStack x

@@ -1,7 +1,7 @@
 module Axel.Eff where
 
-import qualified Polysemy as Sem
+import Effectful ((:>>), Eff)
 
 type Callback effs fn a
-   = forall openEffs. (Sem.Members effs openEffs) =>
-                        fn (Sem.Sem openEffs a)
+   = forall openEffs. (effs :>> openEffs) =>
+                        fn (Eff openEffs a)

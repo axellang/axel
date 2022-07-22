@@ -1,24 +1,22 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Axel.Eff.Random where
 
 import Axel.Prelude
 
-import qualified Polysemy as Sem
+import Effectful ((:>), Eff, Effect, IOE, liftIO)
+import Effectful.Dispatch.Dynamic (interpret)
+import Effectful.TH (makeEffect)
 
 import qualified System.Random as R
 
-data Random m a where
+data Random :: Effect where
   Random :: (R.Random a) => Random m a
 
-Sem.makeSem ''Random
+makeEffect ''Random
 
-runRandom ::
-     (Sem.Member (Sem.Embed IO) effs)
-  => Sem.Sem (Random ': effs) a
-  -> Sem.Sem effs a
+runRandom :: (IOE :> effs) => Eff (Random ': effs) a -> Eff effs a
 runRandom =
-  Sem.interpret $ \case
-    (Random :: Random m a) -> Sem.embed $ R.randomIO @a
+  interpret $ \_ ->
+    \case
+      Random -> liftIO $ R.randomIO

@@ -1,5 +1,3 @@
-{-# LANGUAGE GADTs #-}
-
 module Axel.Test.Eff.ResourceMock where
 
 import Axel.Prelude
@@ -7,10 +5,12 @@ import Axel.Prelude
 import Axel.Eff.Resource as Effs
 import Axel.Utils.FilePath
 
-import qualified Polysemy as Sem
+import qualified Effectful as Eff
+import qualified Effectful.Dispatch.Dynamic as Eff
 
-runResource :: Sem.Sem (Effs.Resource ': effs) a -> Sem.Sem effs a
+runResource :: Eff.Eff (Effs.Resource ': effs) a -> Eff.Eff effs a
 runResource =
-  Sem.interpret $ \case
-    GetResourcePath (ResourceId resourceId) ->
-      pure (FilePath "dataFiles/resources" </> FilePath resourceId)
+  Eff.interpret $ \_ ->
+    \case
+      GetResourcePath (ResourceId resourceId) ->
+        pure (FilePath "dataFiles/resources" </> FilePath resourceId)

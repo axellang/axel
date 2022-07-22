@@ -1,5 +1,3 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Axel.Eff.Console where
@@ -9,29 +7,30 @@ import Axel.Prelude
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-import qualified Polysemy as Sem
+import Effectful ((:>))
+import qualified Effectful as Eff
+import qualified Effectful.Dispatch.Dynamic as Eff
+import qualified Effectful.TH as Eff
 
 import qualified System.Console.ANSI as ANSI (getTerminalSize)
 
-data Console m a where
+data Console :: Eff.Effect where
   GetTerminalSize :: Console m (Maybe (Int, Int))
   PutStr :: Text -> Console m ()
 
-Sem.makeSem ''Console
+Eff.makeEffect ''Console
 
-runConsole ::
-     (Sem.Member (Sem.Embed IO) effs)
-  => Sem.Sem (Console ': effs) a
-  -> Sem.Sem effs a
+runConsole :: (Eff.IOE :> effs) => Eff.Eff (Console ': effs) a -> Eff.Eff effs a
 runConsole =
-  Sem.interpret $ \case
-    GetTerminalSize -> Sem.embed ANSI.getTerminalSize
-    PutStr str -> Sem.embed $ T.putStr str
+  Eff.interpret $ \_ ->
+    \case
+      GetTerminalSize -> Eff.liftIO ANSI.getTerminalSize
+      PutStr str -> Eff.liftIO $ T.putStr str
 
-putStrLn :: (Sem.Member Console effs) => Text -> Sem.Sem effs ()
+putStrLn :: (Console :> effs) => Text -> Eff.Eff effs ()
 putStrLn = putStr . (<> "\n")
 
-putHorizontalLine :: (Sem.Member Console effs) => Sem.Sem effs ()
+putHorizontalLine :: (Console :> effs) => Eff.Eff effs ()
 putHorizontalLine = do
   maybeTerminalSize <- getTerminalSize
   case maybeTerminalSize of

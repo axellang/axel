@@ -1,5 +1,4 @@
 {- HLINT ignore "Redundant do" -}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
 module Axel.Test.Haskell.CabalSpec where
@@ -58,7 +57,7 @@ spec_Cabal = do
             Mock.File
               (FilePath "package.yaml")
               "dependencies:\n- foo-1.2.3.4\n- asdf-5.6.7\n"
-      case Sem.run . Sem.runError . Mock.runFileSystem origFSState $ action of
+      case Sem.run . Eff.runErrorNoCallStack . Mock.runFileSystem origFSState $ action of
         Left err -> failSpec err
         Right (result, ()) -> result `shouldBe` expectedFSState
   describe "buildProject" $ do
@@ -81,7 +80,7 @@ spec_Cabal = do
             procState ^. Mock.procExecutionLog `shouldBe`
               [("stack build --ghc-options='-ddump-json'", Just "")]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` FilePath "/"
-      case Sem.run . Sem.runError @Error . Sem.runError @Text .
+      case Sem.run . Eff.runErrorNoCallStack @Error . Eff.runErrorNoCallStack @Text .
            Mock.runFileSystem origFSState .
            Mock.runProcess origProcState .
            Mock.runConsole origConsoleState $
@@ -113,7 +112,7 @@ spec_Cabal = do
             fsState ^. Mock.fsRoot . at (FilePath "newProject") . _Just .
               Mock.fsPath `shouldBe`
               FilePath "newProject"
-      case Sem.run . Sem.runError @Error . Sem.runError @Text .
+      case Sem.run . Eff.runErrorNoCallStack @Error . Eff.runErrorNoCallStack @Text .
            Mock.runFileSystem origFSState .
            Mock.runProcess origProcState $
            action of
@@ -146,7 +145,7 @@ spec_Cabal = do
               [("stack ide targets", Just ""), ("stack exec foo-exe", Nothing)]
             fsState ^. Mock.fsCurrentDirectory `shouldBe` FilePath "/"
             consoleState ^. Mock.consoleOutput `shouldBe` "Running foo-exe...\n"
-      case Sem.run . Sem.runError @Error . Sem.runError @Text .
+      case Sem.run . Eff.runErrorNoCallStack @Error . Eff.runErrorNoCallStack @Text .
            Mock.runFileSystem origFSState .
            Mock.runProcess origProcState .
            Mock.runConsole origConsoleState $

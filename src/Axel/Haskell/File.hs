@@ -1,6 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
-
 module Axel.Haskell.File where
 
 import Axel.Prelude
@@ -47,12 +44,13 @@ import qualified Data.Map as M (adjust, fromList, lookup)
 import Data.Maybe (catMaybes)
 import Data.Monoid (Alt(Alt))
 
-import qualified Language.Haskell.Ghcid as Ghci (Ghci)
+import Effectful ((:>>))
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
+import qualified Effectful.Reader.Static as Eff
+import qualified Effectful.State.Static.Local as Eff
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
-import qualified Polysemy.Reader as Sem
-import qualified Polysemy.State as Sem
+import qualified Language.Haskell.Ghcid as Ghci (Ghci)
 
 convertList :: (Data ann) => Expression ann -> Expression ann
 convertList =
@@ -68,9 +66,9 @@ convertUnit =
     x -> x
 
 readModuleInfo ::
-     (Sem.Members '[ Sem.Error Error, Effs.FileSystem] effs)
+     ('[ Eff.Error Error, Effs.FileSystem] :>> effs)
   => [FilePath]
-  -> Sem.Sem effs ModuleInfo
+  -> Eff.Eff effs ModuleInfo
 readModuleInfo axelFiles = do
   modules <-
     forM axelFiles $ \filePath -> do
@@ -81,8 +79,8 @@ readModuleInfo axelFiles = do
         mconcat . map Alt <$>
         mapM
           (\expr ->
-             Sem.runError
-               (Sem.runReader filePath $ withExprCtxt $ normalizeStatement expr) <&> \case
+             Eff.runErrorNoCallStack
+               (Eff.runReader filePath $ withExprCtxt $ normalizeStatement expr) <&> \case
                Right (SModuleDeclaration _ moduleId) ->
                  Just (filePath, (moduleId, Nothing))
                _ -> Nothing)
@@ -92,14 +90,14 @@ readModuleInfo axelFiles = do
 
 transpileSource ::
      forall effs fileExpanderEffs funAppExpanderEffs.
-     ( fileExpanderEffs ~ '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo]
-     , funAppExpanderEffs ~ (Sem.Reader FilePath ': Effs.Restartable SM.Expression ': Sem.State [SMStatement] ': fileExpanderEffs)
-     , Sem.Members '[ Sem.Error Error, Effs.Ghci, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs
-     , Sem.Members fileExpanderEffs effs
+     ( fileExpanderEffs ~ '[ Effs.Console, Eff.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Eff.Reader Ghci.Ghci, Eff.State ModuleInfo]
+     , funAppExpanderEffs ~ (Eff.Reader FilePath ': Effs.Restartable SM.Expression ': Eff.State [SMStatement] ': fileExpanderEffs)
+     , '[ Eff.Error Error, Effs.Ghci, Eff.Reader Ghci.Ghci, Eff.State ModuleInfo] :>> effs
+     , fileExpanderEffs :>> effs
      )
   => FilePath
   -> Text
-  -> Sem.Sem effs SM.Output
+  -> Eff.Eff effs SM.Output
 transpileSource filePath source =
   toHaskell . statementsToProgram <$>
   (parseSource (Just filePath) source >>=
@@ -111,32 +109,32 @@ transpileSource filePath source =
      filePath)
 
 convertFileInPlace ::
-     (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error, Effs.FileSystem] effs)
+     ('[ Effs.Console, Effs.FileSystem, Eff.Error Error, Effs.FileSystem] :>> effs)
   => FilePath
-  -> Sem.Sem effs FilePath
+  -> Eff.Eff effs FilePath
 convertFileInPlace path = do
   let newPath = replaceExtension path "axel"
   void $ convertFile path newPath
   pure newPath
 
 transpileFile ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs)
+     ('[ Effs.Console, Eff.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Eff.Reader Ghci.Ghci, Eff.State ModuleInfo] :>> effs)
   => FilePath
   -> FilePath
-  -> Sem.Sem effs ()
+  -> Eff.Eff effs ()
 transpileFile path newPath = do
   fileContents <- FS.readFile path
   newContents <- transpileSource path fileContents
   putStrLn $ op FilePath path <> " => " <> op FilePath newPath
   FS.writeFile newPath (SM.raw newContents)
-  Sem.modify $ M.adjust (_2 ?~ newContents) path
+  Eff.modify $ M.adjust (_2 ?~ newContents) path
 
 transpileFileInPlace ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Sem.Reader Ghci.Ghci, Sem.State ModuleInfo] effs)
+     ('[ Effs.Console, Eff.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource, Eff.Reader Ghci.Ghci, Eff.State ModuleInfo] :>> effs)
   => FilePath
-  -> Sem.Sem effs FilePath
+  -> Eff.Eff effs FilePath
 transpileFileInPlace path = do
-  moduleInfo <- Sem.gets $ M.lookup path
+  moduleInfo <- Eff.gets $ M.lookup path
   let alreadyCompiled =
         case moduleInfo of
           Just (_, Just _) -> True
@@ -146,9 +144,9 @@ transpileFileInPlace path = do
   pure newPath
 
 formatFileInPlace ::
-     (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error] effs)
+     ('[ Effs.Console, Effs.FileSystem, Eff.Error Error] :>> effs)
   => FilePath
-  -> Sem.Sem effs ()
+  -> Eff.Eff effs ()
 formatFileInPlace path = do
   contents <- FS.readFile path
   putStrLn $ "Formatting " <> op FilePath path <> "..."

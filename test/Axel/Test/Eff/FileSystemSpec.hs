@@ -9,8 +9,8 @@ import Axel.Utils.FilePath
 
 import Control.Lens
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
 
 import Test.Hspec
 
@@ -34,9 +34,11 @@ spec_FileSystem = do
                   ]
               ]
       let expected = [FilePath "dir1/file1", FilePath "dir1/dir2/file2"]
-      case Sem.run . Sem.runError . Mock.runFileSystem origState $ action of
+      case Eff.runPureEff . Eff.runErrorNoCallStack .
+           Mock.runFileSystem origState $
+           action of
         Left err -> failSpec err
-        Right result -> result `shouldBe` (origState, expected)
+        Right result -> result `shouldBe` (expected, origState)
   describe "withCurrentDirectory" $ do
     it "changes the directory and resets it afterwards" $ do
       let action = do
@@ -59,9 +61,11 @@ spec_FileSystem = do
              Mock.File (FilePath "insideDir") "insideDirContents") &
             (Mock.fsRoot . at (FilePath "outsideDir") ?~
              Mock.File (FilePath "outsideDir") "outsideDirContents")
-      case Sem.run . Sem.runError . Mock.runFileSystem origState $ action of
+      case Eff.runPureEff . Eff.runErrorNoCallStack .
+           Mock.runFileSystem origState $
+           action of
         Left err -> failSpec err
-        Right result -> result `shouldBe` (expected, ())
+        Right result -> result `shouldBe` ((), expected)
   describe "withTemporaryDirectory" $ do
     it
       "creates a temporary directory and resets the current directory afterwards" $ do
@@ -88,6 +92,8 @@ spec_FileSystem = do
                (FilePath "1")
                [Mock.File (FilePath "insideTemp1") "insideTemp1Contents"]) &
             (Mock.fsTempCounter .~ 2)
-      case Sem.run . Sem.runError . Mock.runFileSystem origState $ action of
+      case Eff.runPureEff . Eff.runErrorNoCallStack .
+           Mock.runFileSystem origState $
+           action of
         Left err -> failSpec err
-        Right result -> result `shouldBe` (expected, ())
+        Right result -> result `shouldBe` ((), expected)

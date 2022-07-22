@@ -1,15 +1,9 @@
 {- HLINT ignore "Avoid restricted function" -}
 module Axel.Eff.Unsafe where
 
-import Axel.Prelude
+import Effectful (Eff, IOE)
 
-import qualified Polysemy as Sem
+import Unsafe.Coerce (unsafeCoerce)
 
-import System.IO.Unsafe (unsafePerformIO)
-
-unsafeEmbedIO :: Sem.Sem (Sem.Embed IO ': effs) a -> Sem.Sem effs a
-unsafeEmbedIO =
-  Sem.interpret $ \case
-    Sem.Embed x -> do
-      let !result = unsafePerformIO x
-      pure result
+unsafeEmbedIO :: Eff (IOE ': effs) a -> Eff effs a
+unsafeEmbedIO = unsafeCoerce

@@ -1,5 +1,4 @@
 -- TODO Integrate with the effects system used everywhere else (convert `error` to `throwError`, etc.)
-{-# LANGUAGE GADTs #-}
 {-# OPTIONS_GHC
   -Wno-incomplete-patterns -Wno-incomplete-uni-patterns #-}
 
@@ -21,8 +20,9 @@ import Control.Lens ((%~), op)
 import Data.Data.Lens (biplate, uniplate)
 import qualified Data.Text as T
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
+import Effectful ((:>>))
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
 
 import qualified Language.Haskell.Exts as HSE
 
@@ -52,16 +52,16 @@ toId x =
    in sym
 
 convertFile ::
-     (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error, Effs.FileSystem] effs)
+     ('[ Effs.Console, Effs.FileSystem, Eff.Error Error, Effs.FileSystem] :>> effs)
   => FilePath
   -> FilePath
-  -> Sem.Sem effs FilePath
+  -> Eff.Eff effs FilePath
 convertFile path newPath = do
   originalContents <- FS.readFile path
   parsedModule <-
     case HSE.parse @(HSE.Module HSE.SrcSpanInfo) (T.unpack originalContents) of
       HSE.ParseOk parsedModule -> pure parsedModule
-      HSE.ParseFailed _ err -> Sem.throw $ ConvertError path (T.pack err)
+      HSE.ParseFailed _ err -> Eff.throwError $ ConvertError path (T.pack err)
   putStrLn $ "Writing " <> op FilePath newPath <> "..."
   let newContents =
         prettifyProgram $

@@ -23,6 +23,7 @@
   - -XFlexibleContexts
   - -XFlexibleInstances
   - -XFunctionalDependencies
+  - -XGADTs
   - -XGeneralizedNewtypeDeriving
   - -XInstanceSigs
   - -XKindSignatures
@@ -31,11 +32,12 @@
   - -XMultiWayIf
   - -XNoImplicitPrelude
   - -XOverloadedStrings
-  - -XPolyKinds
   - -XRankNTypes
+  - -XScopedTypeVariables
   - -XStandaloneDeriving
   - -XTupleSections
   - -XTypeApplications
+  - -XTypeFamilies
   - -XTypeOperators
 
 - modules:

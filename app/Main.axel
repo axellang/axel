@@ -15,20 +15,20 @@
          commandParserInfo])
 (import Control.Monad [void])
 (importq Data.Map Map [empty])
+(importq Effectful Eff all)
+(importq Effectful.State.Static.Local Eff all)
 (import Options.Applicative [execParser])
-(importq Polysemy Sem all)
-(importq Polysemy.State Sem all)
 
 (raw "import Prelude hiding (putStrLn)")
 
-(def app ([] {Command -> (Sem.Sem AppEffs Unit)})
+(def app ([] {Command -> (Eff.Eff AppEffs Unit)})
      ([(FileCommand fileCommand)]
       (case fileCommand
             ((ConvertFile filePath) (void (convertFileInPlace filePath)))
             ((FormatFile filePath) (formatFileInPlace filePath))
             ((RunFile filePath)
              (void
-              (Sem.evalState Map.empty
+              (Eff.evalState Map.empty
                              (withGhci (transpileFileInPlace filePath)))))))
      ([(ProjectCommand projectCommand)]
       (case projectCommand (ConvertProject convertProject)

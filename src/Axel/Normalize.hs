@@ -1,5 +1,4 @@
 {-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE GADTs #-}
 
 module Axel.Normalize where
 
@@ -51,35 +50,36 @@ import qualified Axel.Sourcemap as SM (Expression)
 
 import qualified Data.Text as T
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
-import qualified Polysemy.Reader as Sem
+import Effectful ((:>), (:>>))
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
+import qualified Effectful.Reader.Static as Eff
 
 type ExprCtxt = [SM.Expression]
 
 pushCtxt ::
-     (Sem.Member (Sem.Reader [SM.Expression]) effs)
+     (Eff.Reader [SM.Expression] :> effs)
   => SM.Expression
-  -> Sem.Sem effs a
-  -> Sem.Sem effs a
-pushCtxt newCtxt = Sem.local (newCtxt :)
+  -> Eff.Eff effs a
+  -> Eff.Eff effs a
+pushCtxt newCtxt = Eff.local (newCtxt :)
 
-withExprCtxt :: Sem.Sem (Sem.Reader [SM.Expression] ': effs) a -> Sem.Sem effs a
-withExprCtxt = Sem.runReader []
+withExprCtxt :: Eff.Eff (Eff.Reader [SM.Expression] ': effs) a -> Eff.Eff effs a
+withExprCtxt = Eff.runReader []
 
 throwNormalizeError ::
-     (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath, Sem.Reader ExprCtxt] effs)
+     ('[ Eff.Error Error, Eff.Reader FilePath, Eff.Reader ExprCtxt] :>> effs)
   => Text
-  -> Sem.Sem effs a
+  -> Eff.Eff effs a
 throwNormalizeError msg = do
-  filePath <- Sem.ask @FilePath
-  exprCtxt <- Sem.ask @ExprCtxt
-  Sem.throw $ NormalizeError filePath msg exprCtxt
+  filePath <- Eff.ask @FilePath
+  exprCtxt <- Eff.ask @ExprCtxt
+  Eff.throwError $ NormalizeError filePath msg exprCtxt
 
 normalizeExpression ::
-     (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath, Sem.Reader ExprCtxt] effs)
+     ('[ Eff.Error Error, Eff.Reader FilePath, Eff.Reader ExprCtxt] :>> effs)
   => SM.Expression
-  -> Sem.Sem effs (Expression (Maybe SM.Expression))
+  -> Eff.Eff effs (Expression (Maybe SM.Expression))
 normalizeExpression expr@(Parse.LiteralChar _ char) =
   pure $ ELiteral (LChar (Just expr) char)
 normalizeExpression expr@(Parse.LiteralFloat _ float) =
@@ -205,13 +205,13 @@ normalizeExpression expr@(Parse.Symbol _ symbol) =
   pure $ EIdentifier (Just expr) (T.pack symbol)
 
 normalizeFunctionDefinition ::
-     (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath, Sem.Reader ExprCtxt] effs)
+     ('[ Eff.Error Error, Eff.Reader FilePath, Eff.Reader ExprCtxt] :>> effs)
   => SM.Expression
   -> Identifier
   -> [SM.Expression]
   -> SM.Expression
   -> [SM.Expression]
-  -> Sem.Sem effs (FunctionDefinition (Maybe SM.Expression))
+  -> Eff.Eff effs (FunctionDefinition (Maybe SM.Expression))
 normalizeFunctionDefinition expr fnName arguments body whereDefs =
   FunctionDefinition (Just expr) fnName <$>
   traverse normalizeExpression arguments <*>
@@ -228,9 +228,9 @@ normalizeFunctionDefinition expr fnName arguments body whereDefs =
     whereDefs
 
 normalizeStatement ::
-     (Sem.Members '[ Sem.Error Error, Sem.Reader FilePath, Sem.Reader ExprCtxt] effs)
+     ('[ Eff.Error Error, Eff.Reader FilePath, Eff.Reader ExprCtxt] :>> effs)
   => SM.Expression
-  -> Sem.Sem effs SMStatement
+  -> Eff.Eff effs SMStatement
 normalizeStatement expr@(Parse.SExpression _ items) =
   pushCtxt expr $
   case items of
@@ -491,9 +491,9 @@ normalizeStatement expr =
   pushCtxt expr $ throwNormalizeError "Invalid top-level form!"
 
 unsafeNormalize ::
-     (SM.Expression -> Sem.Sem '[ Sem.Reader ExprCtxt, Sem.Reader FilePath, Sem.Error Error] a)
+     (SM.Expression -> Eff.Eff '[ Eff.Reader ExprCtxt, Eff.Reader FilePath, Eff.Error Error] a)
   -> SM.Expression
   -> a
 unsafeNormalize f =
-  Sem.run .
-  unsafeRunError renderError . Sem.runReader (FilePath "") . withExprCtxt . f
+  Eff.runPureEff .
+  unsafeRunError renderError . Eff.runReader (FilePath "") . withExprCtxt . f

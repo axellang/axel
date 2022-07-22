@@ -7,8 +7,8 @@ import Axel.Eff.Resource as Res
 import Axel.Test.Eff.FileSystemMock as Mock
 import Axel.Test.Eff.ResourceMock as Mock
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
 
 import Test.Hspec
 
@@ -32,8 +32,9 @@ spec_Resource =
                   ]
               ]
       let expected = "res1Contents"
-      case Sem.run .
-           Sem.runError . Mock.runFileSystem origFSState . Mock.runResource $
+      case Eff.runPureEff .
+           Eff.runErrorNoCallStack .
+           Mock.runFileSystem origFSState . Mock.runResource $
            action of
         Left err -> failSpec err
-        Right result -> result `shouldBe` (origFSState, expected)
+        Right result -> result `shouldBe` (expected, origFSState)

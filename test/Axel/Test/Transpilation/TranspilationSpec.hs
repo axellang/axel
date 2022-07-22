@@ -24,15 +24,15 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-import qualified Polysemy as Sem
-import qualified Polysemy.State as Sem
+import qualified Effectful as Eff
+import qualified Effectful.State.Static.Local as Eff
 
 import Test.Tasty
 import Test.Tasty.Golden
 
-runApp :: Sem.Sem AppEffs a -> IO a
+runApp :: Eff.Eff AppEffs a -> IO a
 runApp =
-  Sem.runM .
+  Eff.runEff .
   Effs.runTime .
   Effs.runRandom .
   Effs.runResource .
@@ -54,7 +54,7 @@ test_transpilation_golden = do
             axelSource <- T.readFile $ T.unpack (op FilePath axelFile)
             output <-
               runApp $
-              Sem.evalState (M.empty :: ModuleInfo) $
+              Eff.evalState (M.empty :: ModuleInfo) $
               Ghci.withGhci $ transpileSource (takeBaseName axelFile) axelSource
             let newSource = encodeUtf8Lazy $ SM.raw output
             pure $ newSource <> "\n"

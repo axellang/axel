@@ -6,8 +6,8 @@ import Axel.Prelude
 import qualified Axel.Eff.Console as Console
 import qualified Axel.Test.Eff.ConsoleMock as Mock
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
 
 import Test.Hspec
 
@@ -22,5 +22,7 @@ spec_Console =
       let expected = Mock.ConsoleState {Mock._consoleOutput = "line1\nline2\n"}
       let result =
             unwrapRight id $
-            Sem.run . Sem.runError @Text . Mock.runConsole origState $ action
-      result `shouldBe` (expected, ())
+            Eff.runPureEff .
+            Eff.runErrorNoCallStack @Text . Mock.runConsole origState $
+            action
+      result `shouldBe` ((), expected)

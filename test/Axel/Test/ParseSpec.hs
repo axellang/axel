@@ -12,8 +12,8 @@ import Axel.Utils.Text
 
 import Control.Monad
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
 
 import Test.Hspec
 
@@ -101,7 +101,8 @@ spec_Parse = do
                 ()
                 [Symbol () "bar", Symbol () "x", Symbol () "y", Symbol () "z"]
             ]
-      case Sem.run . Sem.runError $ parseMultiple Nothing input of
+      case Eff.runPureEff . Eff.runErrorNoCallStack $
+           parseMultiple Nothing input of
         Left err -> failSpec $ renderError err
         Right x -> map (() <$) x `shouldBe` result
   describe "parseSource" $ do
@@ -138,6 +139,6 @@ spec_Parse = do
                       "butThisaXEL_SYMBOL_HYPHEN_aXEL_SYMBOL_HYPHEN_aXEL_SYMBOL_GREATERTHAN_IsASingleSymbol"
                   ]
               ]
-      case Sem.run . Sem.runError $ parseSource Nothing input of
+      case Eff.runPureEff . Eff.runErrorNoCallStack $ parseSource Nothing input of
         Left err -> failSpec $ renderError err
         Right x -> void x `shouldBe` result

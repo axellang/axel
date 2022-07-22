@@ -1,5 +1,3 @@
-{-# LANGUAGE GADTs #-}
-
 module Axel.Parse where
 
 import Axel.Prelude
@@ -37,8 +35,9 @@ import Data.MonoTraversable (onotElem)
 import qualified Data.Text as T
 import Data.Void (Void)
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
+import Effectful ((:>))
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
 
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
@@ -183,24 +182,25 @@ expandQuasiquoteInList expr =
    in SExpression ann' [Symbol ann' "list", expandQuasiquote expr]
 
 parseMultiple' ::
-     (Sem.Member (Sem.Error Error) effs)
+     (Eff.Error Error :> effs)
   => ([SM.Expression] -> [SM.Expression])
   -> Maybe FilePath
   -> Text
-  -> Sem.Sem effs [SM.Expression]
+  -> Eff.Eff effs [SM.Expression]
 parseMultiple' postProcess maybeFilePath input =
   either throwErr (pure . postProcess) $
   P.parse program (T.unpack $ op FilePath filePath) input
   where
     filePath = fromMaybe (FilePath "") maybeFilePath
     program = P.some (ignored *> expression <* ignored) <* P.eof
-    throwErr = Sem.throw . ParseError filePath . T.pack . P.errorBundlePretty
+    throwErr =
+      Eff.throwError . ParseError filePath . T.pack . P.errorBundlePretty
 
 parseMultiple ::
-     (Sem.Member (Sem.Error Error) effs)
+     (Eff.Error Error :> effs)
   => Maybe FilePath
   -> Text
-  -> Sem.Sem effs [SM.Expression]
+  -> Eff.Eff effs [SM.Expression]
 parseMultiple = parseMultiple' expandQuasiquotes
   where
     expandQuasiquotes =
@@ -211,10 +211,10 @@ parseMultiple = parseMultiple' expandQuasiquotes
            x -> [x])
 
 parseSource ::
-     (Sem.Member (Sem.Error Error) effs)
+     (Eff.Error Error :> effs)
   => Maybe FilePath
   -> Text
-  -> Sem.Sem effs SM.Expression
+  -> Eff.Eff effs SM.Expression
 parseSource filePath input =
   wrapCompoundExpressions <$> parseMultiple filePath input
 

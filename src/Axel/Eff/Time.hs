@@ -1,6 +1,4 @@
 {- HLINT ignore "Avoid restricted function" -}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Axel.Eff.Time where
@@ -13,27 +11,28 @@ import Axel.Eff.Unsafe (unsafeEmbedIO)
 import qualified Data.Text as T
 import qualified Data.Time as Time
 
-import qualified Polysemy as Sem
+import Effectful ((:>), (:>>))
+import qualified Effectful as Eff
+import qualified Effectful.Dispatch.Dynamic as Eff
+import qualified Effectful.TH as Eff
 
-data Time m a where
+data Time :: Eff.Effect where
   GetCurrentTime :: Time m Time.UTCTime
 
-Sem.makeSem ''Time
+Eff.makeEffect ''Time
 
-runTime ::
-     (Sem.Member (Sem.Embed IO) effs)
-  => Sem.Sem (Time ': effs) a
-  -> Sem.Sem effs a
+runTime :: (Eff.IOE :> effs) => Eff.Eff (Time ': effs) a -> Eff.Eff effs a
 runTime =
-  Sem.interpret $ \case
-    GetCurrentTime -> Sem.embed Time.getCurrentTime
+  Eff.interpret $ \_ ->
+    \case
+      GetCurrentTime -> Eff.liftIO Time.getCurrentTime
 
 -- | Only use for debugging purposes.
 reportTime ::
-     (Sem.Members '[ Effs.Console, Time] effs)
+     ('[ Effs.Console, Time] :>> effs)
   => Text
-  -> Sem.Sem effs a
-  -> Sem.Sem effs a
+  -> Eff.Eff effs a
+  -> Eff.Eff effs a
 reportTime message x = do
   startTime <- getCurrentTime
   result <- x
@@ -48,7 +47,7 @@ reportTime message x = do
 
 unsafeReportTime ::
      Text
-  -> Sem.Sem (Time ': Effs.Console ': Sem.Embed IO ': effs) a
-  -> Sem.Sem effs a
+  -> Eff.Eff (Time ': Effs.Console ': Eff.IOE ': effs) a
+  -> Eff.Eff effs a
 unsafeReportTime message =
   unsafeEmbedIO . Effs.runConsole . runTime . reportTime message

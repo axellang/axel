@@ -1,5 +1,3 @@
-{-# LANGUAGE GADTs #-}
-
 module Axel.Test.ASTGen where
 
 import Axel.Prelude

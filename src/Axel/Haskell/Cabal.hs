@@ -1,6 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Axel.Haskell.Cabal where
 
@@ -39,10 +37,11 @@ import Data.Vector (cons)
 import Data.Version (showVersion)
 import qualified Data.Yaml as Yaml
 
-import Paths_axel (version)
+import Effectful ((:>), (:>>))
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
+import Paths_axel (version)
 
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
 
@@ -63,7 +62,7 @@ axelPackageId :: StackageId
 axelPackageId = "axel"
 
 getProjectExecutableTargets ::
-     (Sem.Member Effs.FileSystem effs) => ProjectPath -> Sem.Sem effs [Target]
+     (Effs.FileSystem :> effs) => ProjectPath -> Eff.Eff effs [Target]
 getProjectExecutableTargets projectPath =
   FS.withCurrentDirectory projectPath $ do
     config <- readPackageConfig
@@ -72,8 +71,7 @@ getProjectExecutableTargets projectPath =
 packageConfigRelativePath :: FilePath
 packageConfigRelativePath = FilePath "package.yaml"
 
-readPackageConfig ::
-     (Sem.Member Effs.FileSystem effs) => Sem.Sem effs Yaml.Value
+readPackageConfig :: (Effs.FileSystem :> effs) => Eff.Eff effs Yaml.Value
 readPackageConfig = do
   packageConfigContents <- FS.readFile packageConfigRelativePath
   case Yaml.decodeEither' $ T.encodeUtf8 packageConfigContents of
@@ -81,10 +79,7 @@ readPackageConfig = do
     Left _ -> fatal "readPackageConfig" "0001"
 
 addDependency ::
-     (Sem.Member Effs.FileSystem effs)
-  => StackageId
-  -> ProjectPath
-  -> Sem.Sem effs ()
+     (Effs.FileSystem :> effs) => StackageId -> ProjectPath -> Eff.Eff effs ()
 addDependency dependencyId projectPath =
   FS.withCurrentDirectory projectPath $ do
     config <- readPackageConfig
@@ -95,10 +90,10 @@ addDependency dependencyId projectPath =
     FS.writeFile packageConfigRelativePath encodedContents
 
 buildProject ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
+     ('[ Effs.Console, Eff.Error Error, Effs.FileSystem, Effs.Process] :>> effs)
   => ModuleInfo
   -> ProjectPath
-  -> Sem.Sem effs ()
+  -> Eff.Eff effs ()
 buildProject moduleInfo projectPath = do
   FS.withCurrentDirectory projectPath $ do
     putStrLn ("Building " <> op FilePath (takeFileName projectPath) <> "...")
@@ -110,19 +105,17 @@ buildProject moduleInfo projectPath = do
     exitCode <- waitOnProcess processHandle
     case exitCode of
       ExitSuccess -> pure ()
-      ExitFailure _ -> Sem.throw $ ProjectError "Project failed to build."
+      ExitFailure _ -> Eff.throwError $ ProjectError "Project failed to build."
 
 createProject ::
-     (Sem.Members '[ Effs.FileSystem, Effs.Process] effs)
-  => Text
-  -> Sem.Sem effs ()
+     ('[ Effs.FileSystem, Effs.Process] :>> effs) => Text -> Eff.Eff effs ()
 createProject projectName =
   void $ readProcess ("cabal new " <> projectName <> " new-template")
 
 runProject ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
+     ('[ Effs.Console, Eff.Error Error, Effs.FileSystem, Effs.Process] :>> effs)
   => ProjectPath
-  -> Sem.Sem effs ()
+  -> Eff.Eff effs ()
 runProject projectPath = do
   targets <- getProjectExecutableTargets projectPath
   case targets of
@@ -130,7 +123,8 @@ runProject projectPath = do
       putStrLn $ "Running " <> target <> "..."
       void $ passthroughProcess ("cabal run " <> target)
     _ ->
-      Sem.throw $ ProjectError "No executable target was unambiguously found!"
+      Eff.throwError $
+      ProjectError "No executable target was unambiguously found!"
 
 includeAxelArguments :: Text
 includeAxelArguments = T.unwords ["--package", axelPackageId]

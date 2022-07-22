@@ -1,6 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeFamilies #-}
 
 module Axel.Sourcemap where
 
@@ -29,10 +27,10 @@ import Data.Map (Map)
 import Data.MonoTraversable (oconcatMap, ofor_)
 import qualified Data.Text as T
 
-import GHC.Generics (Generic)
+import qualified Effectful as Eff
+import qualified Effectful.State.Static.Local as Eff
 
-import qualified Polysemy as Sem
-import qualified Polysemy.State as Sem
+import GHC.Generics (Generic)
 
 data Position =
   Position
@@ -155,8 +153,8 @@ renderBlock = surround CurlyBraces . delimit Semicolons
 findOriginalPosition ::
      forall ann. [Annotated ann Text] -> Position -> Maybe ann
 findOriginalPosition output transPos =
-  Sem.run $
-  Sem.evalState (Position {_line = 1, _column = 0}) $
+  Eff.runPureEff $
+  Eff.evalState (Position {_line = 1, _column = 0}) $
   Effs.runLoop $ do
     for_ output $ \chunk ->
       ofor_ (unannotate chunk) $ \char -> do
@@ -165,7 +163,7 @@ findOriginalPosition output transPos =
             assign @Position column 0
             modifying @Position line succ
           else modifying @Position column succ
-        Sem.get >>= \newSrcPos ->
+        Eff.get >>= \newSrcPos ->
           when (newSrcPos == transPos) $ breakLoop (Just $ chunk ^. annotation)
     pure Nothing
 

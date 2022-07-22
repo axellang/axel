@@ -12,6 +12,7 @@ extensions:
   - FlexibleContexts
   - FlexibleInstances
   - FunctionalDependencies
+  - GADTs
   - GeneralizedNewtypeDeriving
   - InstanceSigs
   - KindSignatures
@@ -20,9 +21,10 @@ extensions:
   - MultiWayIf
   - NoImplicitPrelude
   - OverloadedStrings
-  - PolyKinds
   - RankNTypes
+  - ScopedTypeVariables
   - StandaloneDeriving
   - TupleSections
   - TypeApplications
+  - TypeFamilies
   - TypeOperators

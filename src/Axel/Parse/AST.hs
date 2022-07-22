@@ -1,6 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeFamilies #-}
 
 -- | The definition of and utilities for Axel's Abstract Syntax Tree (AST).
 module Axel.Parse.AST where

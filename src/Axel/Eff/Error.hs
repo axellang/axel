@@ -1,6 +1,3 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Axel.Eff.Error where
 
 import Axel.Prelude
@@ -13,8 +10,8 @@ import Control.Monad ((>=>))
 
 import qualified Data.Text as T
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
 
 data Error where
   ConvertError :: FilePath -> Text -> Error
@@ -51,6 +48,6 @@ fatal :: Text -> Text -> a
 fatal context message = error $ "[FATAL] " <> context <> " - " <> message
 
 unsafeRunError ::
-     Renderer e -> Sem.Sem (Sem.Error e ': effs) a -> Sem.Sem effs a
+     Renderer e -> Eff.Eff (Eff.Error e ': effs) a -> Eff.Eff effs a
 unsafeRunError render =
-  Sem.runError >=> either (errorWithoutStackTrace . render) pure -- TODO Don't(?) use `error(WithoutStackTrace)` directly
+  Eff.runErrorNoCallStack >=> either (errorWithoutStackTrace . render) pure -- TODO Don't(?) use `error(WithoutStackTrace)` directly

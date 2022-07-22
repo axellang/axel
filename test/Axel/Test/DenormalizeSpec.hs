@@ -10,9 +10,9 @@ import qualified Axel.Test.ASTGen as ASTGen
 
 import Control.Monad
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
-import qualified Polysemy.Reader as Sem
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
+import qualified Effectful.Reader.Static as Eff
 
 import Hedgehog
 
@@ -28,10 +28,10 @@ hprop_normalizeExpression_is_the_inverse_of_denormalizeExpression =
     expr =$=
       unwrapRight
         renderError
-        (Sem.run $
-         Sem.runError @Error.Error $
-         Sem.runReader (FilePath "") $
-         Sem.runReader ([] :: [SM.Expression]) $
+        (Eff.runPureEff $
+         Eff.runErrorNoCallStack @Error.Error $
+         Eff.runReader (FilePath "") $
+         Eff.runReader ([] :: [SM.Expression]) $
          normalizeExpression (denormalizeExpression expr))
 
 hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement :: Property
@@ -41,8 +41,8 @@ hprop_normalizeStatement_is_the_inverse_of_denormalizeStatement =
     stmt =$=
       unwrapRight
         renderError
-        (Sem.run $
-         Sem.runError @Error.Error $
-         Sem.runReader (FilePath "") $
-         Sem.runReader ([] :: [SM.Expression]) $
+        (Eff.runPureEff $
+         Eff.runErrorNoCallStack @Error.Error $
+         Eff.runReader (FilePath "") $
+         Eff.runReader ([] :: [SM.Expression]) $
          normalizeStatement (denormalizeStatement stmt))

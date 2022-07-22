@@ -1,4 +1,3 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Axel.Haskell.Project where
@@ -43,16 +42,17 @@ import Control.Monad.Extra (concatMapM)
 
 import qualified Data.Text as T
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
-import qualified Polysemy.State as Sem
+import Effectful ((:>), (:>>))
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
+import qualified Effectful.State.Static.Local as Eff
 
 type ProjectPath = FilePath
 
 newProject ::
-     Sem.Members '[ Effs.FileSystem, Effs.Process, Effs.Resource] effs
+     '[ Effs.FileSystem, Effs.Process, Effs.Resource] :>> effs
   => Text
-  -> Sem.Sem effs ()
+  -> Eff.Eff effs ()
 newProject projectName = do
   Cabal.createProject projectName
   let projectPath = FilePath projectName
@@ -76,9 +76,9 @@ data ProjectFileType
   | Backend
 
 getProjectFiles ::
-     (Sem.Member Effs.FileSystem effs)
+     (Effs.FileSystem :> effs)
   => ProjectFileType
-  -> Sem.Sem effs [FilePath]
+  -> Eff.Eff effs [FilePath]
 getProjectFiles fileType = do
   files <-
     concatMapM
@@ -91,19 +91,19 @@ getProjectFiles fileType = do
   pure $ filter (\filePath -> ext `T.isSuffixOf` op FilePath filePath) files
 
 transpileProject ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
-  => Sem.Sem effs ModuleInfo
+     ('[ Effs.Console, Eff.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] :>> effs)
+  => Eff.Eff effs ModuleInfo
 transpileProject =
   Ghci.withGhci $ do
     axelFiles <- getProjectFiles Axel
     initialModuleInfo <- readModuleInfo axelFiles
-    (moduleInfo, _) <-
-      Sem.runState initialModuleInfo $ mapM transpileFileInPlace axelFiles
+    moduleInfo <-
+      Eff.execState initialModuleInfo $ mapM transpileFileInPlace axelFiles
     pure moduleInfo
 
 buildProject ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] effs)
-  => Sem.Sem effs ()
+     ('[ Effs.Console, Eff.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] :>> effs)
+  => Eff.Eff effs ()
 buildProject = do
   void $ passthroughProcess "hpack"
   projectPath <- getCurrentDirectory
@@ -111,16 +111,16 @@ buildProject = do
   Cabal.buildProject transpiledFiles projectPath
 
 convertProject ::
-     (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
-  => Sem.Sem effs ()
+     ('[ Effs.Console, Effs.FileSystem, Eff.Error Error, Effs.FileSystem, Effs.Process] :>> effs)
+  => Eff.Eff effs ()
 convertProject = getProjectFiles Backend >>= void . traverse convertFileInPlace
 
 runProject ::
-     (Sem.Members '[ Effs.Console, Sem.Error Error, Effs.FileSystem, Effs.Process] effs)
-  => Sem.Sem effs ()
+     ('[ Effs.Console, Eff.Error Error, Effs.FileSystem, Effs.Process] :>> effs)
+  => Eff.Eff effs ()
 runProject = getCurrentDirectory >>= Cabal.runProject
 
 formatProject ::
-     (Sem.Members '[ Effs.Console, Effs.FileSystem, Sem.Error Error] effs)
-  => Sem.Sem effs ()
+     ('[ Effs.Console, Effs.FileSystem, Eff.Error Error] :>> effs)
+  => Eff.Eff effs ()
 formatProject = getProjectFiles Axel >>= void . traverse formatFileInPlace

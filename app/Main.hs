@@ -11,12 +11,12 @@ import Axel.Haskell.Project(buildProject,convertProject,formatProject,runProject
 import Axel.Parse.Args(Command(FileCommand,ProjectCommand,Version),FileCommand(ConvertFile,RunFile,FormatFile),ProjectCommand(ConvertProject,FormatProject,RunProject),commandParserInfo)
 import Control.Monad(void)
 import qualified Data.Map as Map(empty)
+import qualified Effectful as Eff
+import qualified Effectful.State.Static.Local as Eff
 import Options.Applicative(execParser)
-import qualified Polysemy as Sem
-import qualified Polysemy.State as Sem
 import Prelude hiding (putStrLn)
-app :: () => ((->) Command (Sem.Sem AppEffs ()))
-app (FileCommand fileCommand) = (case fileCommand of {(ConvertFile filePath) -> (void (convertFileInPlace filePath));(FormatFile filePath) -> (formatFileInPlace filePath);(RunFile filePath) -> (void (Sem.evalState Map.empty (withGhci (transpileFileInPlace filePath))))})
+app :: () => ((->) Command (Eff.Eff AppEffs ()))
+app (FileCommand fileCommand) = (case fileCommand of {(ConvertFile filePath) -> (void (convertFileInPlace filePath));(FormatFile filePath) -> (formatFileInPlace filePath);(RunFile filePath) -> (void (Eff.evalState Map.empty (withGhci (transpileFileInPlace filePath))))})
 app (ProjectCommand projectCommand) = (case projectCommand of {ConvertProject -> convertProject;FormatProject -> formatProject;RunProject -> ((>>) buildProject runProject)})
 app Version = (putStrLn ((<>) "Axel version " axelVersion))
 main :: () => (IO ())

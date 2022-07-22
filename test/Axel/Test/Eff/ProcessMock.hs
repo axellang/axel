@@ -1,6 +1,4 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Axel.Test.Eff.ProcessMock where
@@ -12,16 +10,18 @@ import Axel.Eff.Process as Effs
 
 import Control.Lens
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
-import qualified Polysemy.State as Sem
+import Effectful ((:>>))
+import qualified Effectful as Eff
+import qualified Effectful.Dispatch.Dynamic as Eff
+import qualified Effectful.Error.Static as Eff
+import qualified Effectful.State.Static.Local as Eff
 
 import System.Exit
 
 import TestUtils
 
 newtype ProcessResult effs =
-  ProcessResult ((ExitCode, Maybe (Text, Text)), Sem.Sem effs ())
+  ProcessResult ((ExitCode, Maybe (Text, Text)), Eff.Eff effs ())
 
 -- | We are pretending that all `ProcessResult`s are unique no matter what, for simplicity's sake.
 instance Eq (ProcessResult effs) where
@@ -52,13 +52,14 @@ mkProcessState mockArgs mockResults =
     }
 
 runProcess ::
-     forall effs a. (Sem.Members '[ Sem.Error Text, Effs.FileSystem] effs)
+     forall effs a. ('[ Eff.Error Text, Effs.FileSystem] :>> effs)
   => ProcessState effs
-  -> Sem.Sem (Effs.Process ': effs) a
-  -> Sem.Sem effs (ProcessState effs, a)
-runProcess origProcessState = Sem.runState origProcessState . Sem.reinterpret go
+  -> Eff.Eff (Effs.Process ': effs) a
+  -> Eff.Eff effs (a, ProcessState effs)
+runProcess origProcessState =
+  Eff.reinterpret (Eff.runState origProcessState) (const go)
   where
-    go :: Process m a' -> Sem.Sem (Sem.State (ProcessState effs) ': effs) a'
+    go :: Process m a' -> Eff.Eff (Eff.State (ProcessState effs) ': effs) a'
     go (CreateIndependentProcess _) =
       throwInterpretError
         @(ProcessState effs)
@@ -69,7 +70,7 @@ runProcess origProcessState = Sem.runState origProcessState . Sem.reinterpret go
         @(ProcessState effs)
         "CreatePassthroughProcess"
         "Not implemented!"
-    go GetArgs = Sem.gets (^. procMockArgs)
+    go GetArgs = Eff.gets (^. procMockArgs)
     go (HandleGetContents _) =
       throwInterpretError
         @(ProcessState effs)

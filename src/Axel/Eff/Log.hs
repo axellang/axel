@@ -1,5 +1,3 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Axel.Eff.Log where
@@ -9,35 +7,41 @@ import Axel.Prelude
 import Axel.Eff.Console (Console, putStr)
 import Axel.Eff.FileSystem (FileSystem, appendFile, writeFile)
 
-import qualified Polysemy as Sem
+import Effectful ((:>))
+import qualified Effectful as Eff
+import qualified Effectful.Dispatch.Dynamic as Eff
+import qualified Effectful.TH as Eff
 
-data Log m a where
+data Log :: Eff.Effect where
   LogStr :: Text -> Log m ()
 
-Sem.makeSem ''Log
+Eff.makeEffect ''Log
 
 runLogAsConsole ::
-     (Sem.Member Console effs) => Sem.Sem (Log ': effs) a -> Sem.Sem effs a
+     (Console :> effs) => Eff.Eff (Log ': effs) a -> Eff.Eff effs a
 runLogAsConsole =
-  Sem.interpret $ \case
-    LogStr str -> putStr str
+  Eff.interpret $ \_ ->
+    \case
+      LogStr str -> putStr str
 
 runLogAsFileSystem ::
-     (Sem.Member FileSystem effs)
+     (FileSystem :> effs)
   => FilePath
-  -> Sem.Sem (Log ': effs) a
-  -> Sem.Sem effs a
+  -> Eff.Eff (Log ': effs) a
+  -> Eff.Eff effs a
 runLogAsFileSystem logFilePath action = do
   writeFile logFilePath ""
-  Sem.interpret
-    (\case
-       LogStr str -> appendFile logFilePath str)
+  Eff.interpret
+    (\_ ->
+       \case
+         LogStr str -> appendFile logFilePath str)
     action
 
-ignoreLog :: Sem.Sem (Log ': effs) a -> Sem.Sem effs a
+ignoreLog :: Eff.Eff (Log ': effs) a -> Eff.Eff effs a
 ignoreLog =
-  Sem.interpret $ \case
-    LogStr _ -> pure ()
+  Eff.interpret $ \_ ->
+    \case
+      LogStr _ -> pure ()
 
-logStrLn :: (Sem.Member Log effs) => Text -> Sem.Sem effs ()
+logStrLn :: (Log :> effs) => Text -> Eff.Eff effs ()
 logStrLn str = logStr (str <> "\n")

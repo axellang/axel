@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f70b6a6d1728e78ab4f4dfaca73312b96a6d0cc77b7b10b60851e5216c698d96
+-- hash: 16a2f236cab672265c3e9c61bc8aa1cae5c514a879b3e109a31e037b80289124
 
 name:           axel
 version:        0.0.13
@@ -25,7 +25,6 @@ extra-source-files:
     scripts/ghcid.sh
     scripts/lint.sh
     scripts/onHsFiles.sh
-    scripts/stackProfile.sh
     scripts/test.sh
 data-files:
     resources/new-project-template/app/Main.axel
@@ -100,6 +99,7 @@ library
       FlexibleContexts
       FlexibleInstances
       FunctionalDependencies
+      GADTs
       GeneralizedNewtypeDeriving
       InstanceSigs
       KindSignatures
@@ -108,13 +108,14 @@ library
       MultiWayIf
       NoImplicitPrelude
       OverloadedStrings
-      PolyKinds
       RankNTypes
+      ScopedTypeVariables
       StandaloneDeriving
       TupleSections
       TypeApplications
+      TypeFamilies
       TypeOperators
-  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-monomorphism-restriction -Wno-prepositive-qualified-module -Wno-safe -Wno-unsafe -Wno-unused-packages -optP-Wno-nonportable-include-path -O2 -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-monomorphism-restriction -Wno-prepositive-qualified-module -Wno-safe -Wno-unsafe -Wno-unused-packages -optP-Wno-nonportable-include-path -O2 -fplugin=Effectful.Plugin
   build-tool-depends:
       hpack:hpack
     , tasty-discover:tasty-discover
@@ -125,6 +126,10 @@ library
     , bytestring ==0.11.3.1
     , containers ==0.6.5.1
     , directory ==1.3.6.2
+    , effectful ==1.1.0.0
+    , effectful-core ==1.1.0.0
+    , effectful-plugin ==1.0.0.0
+    , effectful-th ==1.0.0.0
     , extra ==1.7.10
     , filepath ==1.4.2.2
     , ghcid ==0.8.7
@@ -138,8 +143,6 @@ library
     , megaparsec ==9.2.1
     , mono-traversable ==1.0.15.3
     , optparse-applicative ==0.17.0.0
-    , polysemy ==1.7.1.0
-    , polysemy-plugin ==0.4.3.1
     , prettyprinter ==1.7.1
     , process ==1.6.13.2
     , profunctors ==5.6.2
@@ -179,6 +182,7 @@ executable axel
       FlexibleContexts
       FlexibleInstances
       FunctionalDependencies
+      GADTs
       GeneralizedNewtypeDeriving
       InstanceSigs
       KindSignatures
@@ -187,13 +191,14 @@ executable axel
       MultiWayIf
       NoImplicitPrelude
       OverloadedStrings
-      PolyKinds
       RankNTypes
+      ScopedTypeVariables
       StandaloneDeriving
       TupleSections
       TypeApplications
+      TypeFamilies
       TypeOperators
-  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-monomorphism-restriction -Wno-prepositive-qualified-module -Wno-safe -Wno-unsafe -Wno-unused-packages -optP-Wno-nonportable-include-path -O2 -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-monomorphism-restriction -Wno-prepositive-qualified-module -Wno-safe -Wno-unsafe -Wno-unused-packages -optP-Wno-nonportable-include-path -O2 -fplugin=Effectful.Plugin -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       hpack:hpack
     , tasty-discover:tasty-discover
@@ -205,6 +210,10 @@ executable axel
     , bytestring ==0.11.3.1
     , containers ==0.6.5.1
     , directory ==1.3.6.2
+    , effectful ==1.1.0.0
+    , effectful-core ==1.1.0.0
+    , effectful-plugin ==1.0.0.0
+    , effectful-th ==1.0.0.0
     , extra ==1.7.10
     , filepath ==1.4.2.2
     , ghcid ==0.8.7
@@ -218,8 +227,6 @@ executable axel
     , megaparsec ==9.2.1
     , mono-traversable ==1.0.15.3
     , optparse-applicative ==0.17.0.0
-    , polysemy ==1.7.1.0
-    , polysemy-plugin ==0.4.3.1
     , prettyprinter ==1.7.1
     , process ==1.6.13.2
     , profunctors ==5.6.2
@@ -283,6 +290,7 @@ test-suite axel-test
       FlexibleContexts
       FlexibleInstances
       FunctionalDependencies
+      GADTs
       GeneralizedNewtypeDeriving
       InstanceSigs
       KindSignatures
@@ -291,13 +299,14 @@ test-suite axel-test
       MultiWayIf
       NoImplicitPrelude
       OverloadedStrings
-      PolyKinds
       RankNTypes
+      ScopedTypeVariables
       StandaloneDeriving
       TupleSections
       TypeApplications
+      TypeFamilies
       TypeOperators
-  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-monomorphism-restriction -Wno-prepositive-qualified-module -Wno-safe -Wno-unsafe -Wno-unused-packages -optP-Wno-nonportable-include-path -O2 -fplugin=Polysemy.Plugin -flate-specialise -fspecialise-aggressively -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-monomorphism-restriction -Wno-prepositive-qualified-module -Wno-safe -Wno-unsafe -Wno-unused-packages -optP-Wno-nonportable-include-path -O2 -fplugin=Effectful.Plugin -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       hpack:hpack
     , tasty-discover:tasty-discover
@@ -309,6 +318,10 @@ test-suite axel-test
     , bytestring ==0.11.3.1
     , containers ==0.6.5.1
     , directory ==1.3.6.2
+    , effectful ==1.1.0.0
+    , effectful-core ==1.1.0.0
+    , effectful-plugin ==1.0.0.0
+    , effectful-th ==1.0.0.0
     , extra ==1.7.10
     , filepath ==1.4.2.2
     , ghcid ==0.8.7
@@ -322,8 +335,6 @@ test-suite axel-test
     , megaparsec ==9.2.1
     , mono-traversable ==1.0.15.3
     , optparse-applicative ==0.17.0.0
-    , polysemy ==1.7.1.0
-    , polysemy-plugin ==0.4.3.1
     , prettyprinter ==1.7.1
     , process ==1.6.13.2
     , profunctors ==5.6.2

@@ -12,15 +12,15 @@ import Axel.Eff.Random (Random, runRandom)
 import Axel.Eff.Resource (Resource, runResource)
 import Axel.Eff.Time (Time, runTime)
 
-import qualified Polysemy as Sem
-import qualified Polysemy.Error as Sem
+import qualified Effectful as Eff
+import qualified Effectful.Error.Static as Eff
 
 type AppEffs
-   = '[ Sem.Error Error, Log, Console, FileSystem, Ghci, Process, Resource, Random, Time, Sem.Embed IO]
+   = '[ Eff.Error Error, Log, Console, FileSystem, Ghci, Process, Resource, Random, Time, Eff.IOE]
 
-runApp :: Sem.Sem AppEffs a -> IO a
+runApp :: Eff.Eff AppEffs a -> IO a
 runApp =
-  Sem.runM .
+  Eff.runEff .
   runTime .
   runRandom .
   runResource .
