@@ -19,4 +19,4 @@ runRandom :: (IOE :> effs) => Eff (Random ': effs) a -> Eff effs a
 runRandom =
   interpret $ \_ ->
     \case
-      Random -> liftIO $ R.randomIO
+      Random -> liftIO R.randomIO

@@ -42,7 +42,7 @@ runProcess =
                   , P.std_out = P.CreatePipe
                   , P.std_err = P.CreatePipe
                   }
-        -- The handles will always be created because of `CreatePipe`, so we can safely unwrap them.
+          -- The handles will always be created because of `CreatePipe`, so we can safely unwrap them.
           (Just stdinHandle, Just stdoutHandle, Just stderrHandle, processHandle) <-
             P.createProcess config
           pure (stdinHandle, stdoutHandle, stderrHandle, processHandle)

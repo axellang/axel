@@ -50,7 +50,7 @@ import qualified Effectful.State.Static.Local as Eff
 type ProjectPath = FilePath
 
 newProject ::
-     '[ Effs.FileSystem, Effs.Process, Effs.Resource] :>> effs
+     ('[ Effs.FileSystem, Effs.Process, Effs.Resource] :>> effs)
   => Text
   -> Eff.Eff effs ()
 newProject projectName = do
@@ -76,9 +76,7 @@ data ProjectFileType
   | Backend
 
 getProjectFiles ::
-     (Effs.FileSystem :> effs)
-  => ProjectFileType
-  -> Eff.Eff effs [FilePath]
+     (Effs.FileSystem :> effs) => ProjectFileType -> Eff.Eff effs [FilePath]
 getProjectFiles fileType = do
   files <-
     concatMapM
@@ -97,9 +95,7 @@ transpileProject =
   Ghci.withGhci $ do
     axelFiles <- getProjectFiles Axel
     initialModuleInfo <- readModuleInfo axelFiles
-    moduleInfo <-
-      Eff.execState initialModuleInfo $ mapM transpileFileInPlace axelFiles
-    pure moduleInfo
+    Eff.execState initialModuleInfo $ mapM transpileFileInPlace axelFiles
 
 buildProject ::
      ('[ Effs.Console, Eff.Error Error, Effs.FileSystem, Effs.Ghci, Effs.Log, Effs.Process, Effs.Resource] :>> effs)
