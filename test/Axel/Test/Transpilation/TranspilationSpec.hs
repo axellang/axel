@@ -45,21 +45,19 @@ test_transpilation_golden :: IO TestTree
 test_transpilation_golden = do
   axelFiles <-
     map (FilePath . T.pack) <$>
-    findByExtension [".axel_golden"] "test/Axel/Test/Transpilation"
+    findByExtension [".axel"] "test/Axel/Test/Transpilation"
   pure $
     testGroup "transpilation golden tests" $ do
       axelFile <- axelFiles
-      let hsFile = replaceExtension axelFile "hs_golden"
+      let hsFile = replaceExtension axelFile "hs"
       let transpiled = do
             axelSource <- T.readFile $ T.unpack (op FilePath axelFile)
             output <-
               runApp $
-              Eff.evalState (M.empty :: ModuleInfo) $
+              Eff.evalState (M.empty :: SM.ModuleInfo) $
               Ghci.withGhci $ transpileSource (takeBaseName axelFile) axelSource
             let newSource = encodeUtf8Lazy $ SM.raw output
             pure $ newSource <> "\n"
+      let testName = T.unpack . op FilePath $ takeBaseName axelFile
       pure $
-        goldenVsString
-          (T.unpack . op FilePath $ takeBaseName axelFile)
-          (T.unpack . op FilePath $ hsFile)
-          transpiled
+        goldenVsString testName (T.unpack . op FilePath $ hsFile) transpiled
