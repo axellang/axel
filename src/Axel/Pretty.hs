@@ -7,7 +7,6 @@ import Axel.Parse.AST
 import qualified Axel.Sourcemap as SM
 import Axel.Utils.Foldable (mapWithPrev)
 import Axel.Utils.Recursion (bottomUpFmap)
-import Axel.Utils.Text (handleCharEscapes)
 
 import Control.Lens (ala, under)
 
@@ -79,7 +78,7 @@ toAxelPretty (LiteralChar _ x) = "#\\" <> P.pretty x
 toAxelPretty (LiteralFloat _ x) = P.pretty x
 toAxelPretty (LiteralInt _ x) = P.pretty x
 toAxelPretty (LiteralString _ x) =
-  P.dquotes $ P.pretty (under unpacked handleCharEscapes x)
+  P.dquotes $ P.pretty (under unpacked showText x)
 toAxelPretty (SExpression _ (Symbol _ "applyInfix":xs)) =
   P.braces $ sexp True (map toAxelPretty xs)
 toAxelPretty (SExpression _ (Symbol _ "list":xs)) =

@@ -43,6 +43,24 @@ spec_Parse = do
     it "can parse a string literal" $ do
       let result = LiteralString () "a \x1000 \"b"
       parseSingle "\"a \x1000 \\\"b\"" `shouldBe` result
+    it
+      "can parse string literals with escaped double quotes at the boundaries (regression: #79)" $ do
+      let result = LiteralString () "a \x1000 \""
+      parseSingle "\"a \x1000 \\\"\"" `shouldBe` result
+      let result = LiteralString () "a \x1000 \"\""
+      parseSingle "\"a \x1000 \\\"\\\"\"" `shouldBe` result
+      let result = LiteralString () "\""
+      parseSingle "\"\\\"\"" `shouldBe` result
+      let result = LiteralString () "\"\""
+      parseSingle "\"\\\"\\\"\"" `shouldBe` result
+      let result = LiteralString () "\"\" foo"
+      parseSingle "\"\\\"\\\" foo\"" `shouldBe` result
+      let result = LiteralString () "\"\"\""
+      parseSingle "\"\\\"\\\"\\\"\"" `shouldBe` result
+    it
+      "can parse a string literal with a double quote at the end (regression: #79)" $ do
+      let result = LiteralString () "a \x1000 \""
+      parseSingle "\"a \x1000 \\\"\"" `shouldBe` result
     it "can parse a quasiquoted expression" $ do
       let result =
             SExpression

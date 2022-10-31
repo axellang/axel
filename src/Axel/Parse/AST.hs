@@ -11,7 +11,6 @@ import Axel.Utils.Recursion
   , ZipperRecursive(zipperBottomUpTraverse, zipperTopDownTraverse)
   , bottomUpFmap
   )
-import Axel.Utils.Text (handleCharEscapes)
 import Axel.Utils.Zipper (unsafeDown, unsafeUp)
 
 import Control.Lens ((<|))
@@ -125,7 +124,7 @@ toAxel :: Expression ann -> Text
 toAxel (LiteralChar _ x) = "#\\" <> T.singleton x
 toAxel (LiteralFloat _ x) = showText x
 toAxel (LiteralInt _ x) = showText x
-toAxel (LiteralString _ xs) = "\"" <> handleCharEscapes (T.pack xs) <> "\""
+toAxel (LiteralString _ xs) = showText xs
 toAxel (SExpression _ (Symbol _ "applyInfix":xs)) =
   "{" <> T.unwords (map toAxel xs) <> "}"
 toAxel (SExpression _ (Symbol _ "list":xs)) =

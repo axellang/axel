@@ -1,0 +1,5 @@
+(module Main)
+
+(= example "This should be a quotation mark: \"")
+
+(= main (print example))

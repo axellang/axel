@@ -10,8 +10,7 @@ import Axel.Haskell.Language (isOperator)
 import Axel.Haskell.Macros (hygenisizeMacroName)
 import qualified Axel.Parse.AST as Parse
 import Axel.Sourcemap
-  ( Bracket(CurlyBraces, DoubleQuotes, Parentheses, SingleQuotes,
-        SquareBrackets)
+  ( Bracket(CurlyBraces, Parentheses, SquareBrackets)
   , Delimiter(Commas, Newlines, Pipes, Spaces)
   )
 import qualified Axel.Sourcemap as SM
@@ -23,7 +22,6 @@ import qualified Axel.Sourcemap as SM
   , surround
   )
 import qualified Axel.Utils.Display as Display (delimit, renderPragma, surround)
-import Axel.Utils.Text (handleCharEscapes)
 import Axel.Utils.Tuple (annotate, unannotated)
 
 import Control.Lens.Combinators (_head, _last)
@@ -452,13 +450,10 @@ instance ToHaskell (FunctionApplication (Maybe SM.Expression)) where
 
 instance ToHaskell (Literal (Maybe SM.Expression)) where
   toHaskell :: Literal (Maybe SM.Expression) -> SM.Output
-  toHaskell literal@(LChar _ x) =
-    mkHaskell literal $
-    Display.surround SingleQuotes (handleCharEscapes (T.singleton x))
+  toHaskell literal@(LChar _ x) = mkHaskell literal $ showText x
   toHaskell literal@(LFloat _ x) = mkHaskell literal $ showText x
   toHaskell literal@(LInt _ x) = mkHaskell literal $ showText x
-  toHaskell literal@(LString _ x) =
-    mkHaskell literal $ Display.surround DoubleQuotes (handleCharEscapes x)
+  toHaskell literal@(LString _ x) = mkHaskell literal $ showText x
 
 instance ToHaskell (TypeSignature (Maybe SM.Expression)) where
   toHaskell :: TypeSignature (Maybe SM.Expression) -> SM.Output
