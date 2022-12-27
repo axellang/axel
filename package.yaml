@@ -129,5 +129,6 @@ tests:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
+      - -Wno-name-shadowing
     dependencies:
       - axel

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 16a2f236cab672265c3e9c61bc8aa1cae5c514a879b3e109a31e037b80289124
+-- hash: 530edf888246232c289b1b3a3b7c1ec3fce359443c322e94e14706e1c5b3fb57
 
 name:           axel
 version:        0.0.13
@@ -306,7 +306,7 @@ test-suite axel-test
       TypeApplications
       TypeFamilies
       TypeOperators
-  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-monomorphism-restriction -Wno-prepositive-qualified-module -Wno-safe -Wno-unsafe -Wno-unused-packages -optP-Wno-nonportable-include-path -O2 -fplugin=Effectful.Plugin -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-implicit-prelude -Wno-missed-specialisations -Wno-missing-deriving-strategies -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-local-signatures -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-monomorphism-restriction -Wno-prepositive-qualified-module -Wno-safe -Wno-unsafe -Wno-unused-packages -optP-Wno-nonportable-include-path -O2 -fplugin=Effectful.Plugin -threaded -rtsopts -with-rtsopts=-N -Wno-name-shadowing
   build-tool-depends:
       hpack:hpack
     , tasty-discover:tasty-discover

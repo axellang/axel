@@ -15,6 +15,10 @@ import Control.Monad
 import qualified Effectful as Eff
 import qualified Effectful.Error.Static as Eff
 
+import Hedgehog
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Range as Range
+
 import Test.Hspec
 
 import TestUtils
@@ -61,6 +65,11 @@ spec_Parse = do
       "can parse a string literal with a double quote at the end (regression: #79)" $ do
       let result = LiteralString () "a \x1000 \""
       parseSingle "\"a \x1000 \\\"\"" `shouldBe` result
+    it "can parse a string literal with escaped unprintables" $ do
+      let result = LiteralString () "\0"
+      parseSingle "\"\\0\"" `shouldBe` result
+      let result = LiteralString () "\NUL"
+      parseSingle "\"\\NUL\"" `shouldBe` result
     it "can parse a quasiquoted expression" $ do
       let result =
             SExpression
@@ -160,3 +169,10 @@ spec_Parse = do
       case Eff.runPureEff . Eff.runErrorNoCallStack $ parseSource Nothing input of
         Left err -> failSpec $ renderError err
         Right x -> void x `shouldBe` result
+
+hprop_can_parse_string_literals :: Property
+hprop_can_parse_string_literals =
+  property $ do
+    string <- forAll $ Gen.string (Range.linear 0 5) Gen.unicode
+    let result = parseSingle $ showText string
+    result === LiteralString () string
