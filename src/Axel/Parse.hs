@@ -161,7 +161,7 @@ expandQuasiquote (SExpression _ [Symbol _ "unquoteSplicing", _]) =
 expandQuasiquote (SExpression ann' xs) =
   SExpression
     ann'
-    [ Symbol ann' "AST.SExpression"
+    [ Symbol ann' "AxelRuntime_AST.SExpression"
     , quoteSourceMetadata ann'
     , SExpression
         ann'
@@ -176,7 +176,7 @@ expandQuasiquote expr =
 expandQuasiquoteInList :: SM.Expression -> SM.Expression
 expandQuasiquoteInList (SExpression _ [Symbol _ "unquoteSplicing", expr]) =
   let ann' = getAnn expr
-   in SExpression ann' [Symbol ann' "AST.toExpressionList", expr]
+   in SExpression ann' [Symbol ann' "AxelRuntime_AST.toExpressionList", expr]
 expandQuasiquoteInList expr =
   let ann' = getAnn expr
    in SExpression ann' [Symbol ann' "list", expandQuasiquote expr]

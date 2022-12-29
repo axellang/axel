@@ -6,11 +6,15 @@
   See [[https://axellang.github.io]].
   #+CAPTION: Build Status
   [[https://travis-ci.org/axellang/axel.svg?branch=master]]
-  
+
   *CURRENT STATUS:* I'm currently recovering from some academic burnout (much to my chagrin), hence the dearth of recent activity. I promise that Axel is /not/ abandoned, and active development should resume within the next several months.
 ** Code Style
    Run ~scripts/format.sh~ to format code and ~scripts/lint.sh~ to run the linter.
 ** Running
-   Run ~cabal run -- axel <arguments>~ to build and run the project and ~scripts/test.sh~ to test the project.
+   Run ~cabal run -- axel <arguments>~ to build and run the project.
+** Testing
+   Run ~scripts/test.sh~ to test the project.
+*** Golden Tests
+    To prevent issues like #79: Before committing any new (or modified) golden tests, run `cabal exec ghci -- -package axel` (or equivalent) on the corresponding `hs` files to ensure that they actually parse. (It's okay if they don't compile or evaluate, as long as they are valid Haskell.)
 ** Examples
    See the ~.axel~ files in this repository for example Axel programs.

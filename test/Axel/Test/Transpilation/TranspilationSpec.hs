@@ -56,8 +56,7 @@ test_transpilation_golden = do
               runApp $
               Eff.evalState (M.empty :: SM.ModuleInfo) $
               Ghci.withGhci $ transpileSource (takeBaseName axelFile) axelSource
-            let newSource = encodeUtf8Lazy $ SM.raw output
-            pure $ newSource <> "\n"
+            pure $ encodeUtf8Lazy $ SM.raw output
       let testName = T.unpack . op FilePath $ takeBaseName axelFile
       pure $
         goldenVsString testName (T.unpack . op FilePath $ hsFile) transpiled

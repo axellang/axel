@@ -495,16 +495,13 @@ instance ToHaskell (DataDeclaration (Maybe SM.Expression)) where
       Parentheses
       (SM.delimit Commas $ map toHaskell $ dataDeclaration ^. derivedConstraints)
     where
+      tryRemoveSurroundingParentheses :: SM.Output -> SM.Output
       tryRemoveSurroundingParentheses xs =
         if "(" `T.isPrefixOf` (xs ^. _Wrapped . _head . unannotated)
-          then removeSurroundingParentheses xs
+          then let removeOpen = _Wrapped . _head . unannotated %~ T.tail
+                   removeClosed = _Wrapped . _last . unannotated %~ T.init
+                in removeOpen $ removeClosed xs
           else xs
-
-removeSurroundingParentheses :: SM.Output -> SM.Output
-removeSurroundingParentheses = removeOpen . removeClosed
-  where
-    removeOpen = _Wrapped . _head . unannotated %~ T.tail
-    removeClosed = _Wrapped . _last . unannotated %~ T.init
 
 instance ToHaskell (NewtypeDeclaration (Maybe SM.Expression)) where
   toHaskell :: NewtypeDeclaration (Maybe SM.Expression) -> SM.Output

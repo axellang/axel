@@ -1,7 +1,8 @@
 module Main where
 import Axel
-import qualified Prelude as GHCPrelude
-import qualified Axel.Parse.AST as AST
+import qualified Prelude as AxelRuntime_GHCPrelude
+import qualified Axel.Parse.AST as AxelRuntime_AST
+import qualified Axel.Sourcemap as AxelRuntime_Sourcemap
 import Axel.Eff.App(AppEffs,runApp)
 import Axel.Eff.Console(putStrLn)
 import Axel.Eff.Ghci(withGhci)

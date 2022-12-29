@@ -4,6 +4,7 @@
 
 (import Axel.Prelude all)
 (import Axel.Parse [hygenisizeIdentifier])
+(importq Axel.Parse.AST AST all)
 (importq Axel.Sourcemap SM all)
 (import Axel.Utils.FilePath [takeFileName])
 (import Data.IORef [IORef modifyIORef newIORef readIORef])

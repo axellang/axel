@@ -1,7 +1,8 @@
 module ImportSyntax where
 import Axel
-import qualified Prelude as GHCPrelude
-import qualified Axel.Parse.AST as AST
+import qualified Prelude as AxelRuntime_GHCPrelude
+import qualified Axel.Parse.AST as AxelRuntime_AST
+import qualified Axel.Sourcemap as AxelRuntime_Sourcemap
 import Foo
 import Bar(foo,bar,Baz(baz))
 import qualified Bar as Baz

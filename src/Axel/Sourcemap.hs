@@ -97,21 +97,35 @@ data Bracket
   | SingleQuotes
   | SquareBrackets
 
+openBracket :: Bracket -> Char
+openBracket CurlyBraces = '{'
+openBracket DoubleQuotes = '"'
+openBracket Parentheses = '('
+openBracket SingleQuotes = '\''
+openBracket SquareBrackets = '['
+
+closeBracket :: Bracket -> Char
+closeBracket CurlyBraces = '}'
+closeBracket DoubleQuotes = '"'
+closeBracket Parentheses = ')'
+closeBracket SingleQuotes = '\''
+closeBracket SquareBrackets = ']'
+
+tryRemoveBrackets :: Bracket -> Text -> Text
+tryRemoveBrackets bracket text =
+  if T.length text >= 2 &&
+     T.head text == openBracket bracket && T.last text == closeBracket bracket
+    then T.init $ T.tail text
+    else text
+
 surround :: Bracket -> Output -> Output
 surround bracket x =
   let (startMetadata, endMetadata) =
         case x of
           Output [] -> (Nothing, Nothing)
           Output xs -> (unsafeHead xs ^. annotation, last xs ^. annotation)
-      (open, closed) =
-        case bracket of
-          CurlyBraces -> ("{", "}")
-          DoubleQuotes -> ("\"", "\"")
-          Parentheses -> ("(", ")")
-          SingleQuotes -> ("'", "'")
-          SquareBrackets -> ("[", "]")
-   in Output [annotate startMetadata open] <>
-      x <> Output [annotate endMetadata closed]
+   in Output [annotate startMetadata (T.singleton $ openBracket bracket)] <>
+      x <> Output [annotate endMetadata (T.singleton $ closeBracket bracket)]
 
 data Delimiter
   = Commas
@@ -176,7 +190,7 @@ quotePosition :: Position -> Expression
 quotePosition sourcePosition =
   Parse.SExpression
     Nothing
-    [ Parse.Symbol Nothing "SM.Position"
+    [ Parse.Symbol Nothing "AxelRuntime_Sourcemap.Position"
     , Parse.LiteralInt Nothing (sourcePosition ^. line)
     , Parse.LiteralInt Nothing (sourcePosition ^. column)
     ]
@@ -188,9 +202,11 @@ quote2Tuple (quoterA, quoterB) (a, b) =
 
 -- TODO Derive this with Template Haskell (it's currently very brittle)
 quoteMaybe :: (a -> Expression) -> Maybe a -> Expression
-quoteMaybe _ Nothing = Parse.Symbol Nothing "GHCPrelude.Nothing"
+quoteMaybe _ Nothing = Parse.Symbol Nothing "AxelRuntime_GHCPrelude.Nothing"
 quoteMaybe quoter (Just x) =
-  Parse.SExpression Nothing [Parse.Symbol Nothing "GHCPrelude.Just", quoter x]
+  Parse.SExpression
+    Nothing
+    [Parse.Symbol Nothing "AxelRuntime_GHCPrelude.Just", quoter x]
 
 quoteSourceMetadata :: Maybe SourcePosition -> Expression
 quoteSourceMetadata = quoteMaybe $ quote2Tuple (quoteString, quotePosition)

@@ -155,26 +155,36 @@ quoteExpression ::
 quoteExpression quoteAnn (LiteralChar ann x) =
   SExpression
     ann
-    [Symbol ann "AST.LiteralChar", quoteAnn ann, LiteralChar ann x]
+    [Symbol ann "AxelRuntime_AST.LiteralChar", quoteAnn ann, LiteralChar ann x]
 quoteExpression quoteAnn (LiteralFloat ann x) =
   SExpression
     ann
-    [Symbol ann "AST.LiteralFloat", quoteAnn ann, LiteralFloat ann x]
+    [ Symbol ann "AxelRuntime_AST.LiteralFloat"
+    , quoteAnn ann
+    , LiteralFloat ann x
+    ]
 quoteExpression quoteAnn (LiteralInt ann x) =
-  SExpression ann [Symbol ann "AST.LiteralInt", quoteAnn ann, LiteralInt ann x]
+  SExpression
+    ann
+    [Symbol ann "AxelRuntime_AST.LiteralInt", quoteAnn ann, LiteralInt ann x]
 quoteExpression quoteAnn (LiteralString ann x) =
   SExpression
     ann
-    [Symbol ann "AST.LiteralString", quoteAnn ann, LiteralString ann x]
+    [ Symbol ann "AxelRuntime_AST.LiteralString"
+    , quoteAnn ann
+    , LiteralString ann x
+    ]
 quoteExpression quoteAnn (SExpression ann xs) =
   SExpression
     ann
-    [ Symbol ann "AST.SExpression"
+    [ Symbol ann "AxelRuntime_AST.SExpression"
     , quoteAnn ann
     , SExpression ann (Symbol ann "list" : map (quoteExpression quoteAnn) xs)
     ]
 quoteExpression quoteAnn (Symbol ann x) =
-  SExpression ann [Symbol ann "AST.Symbol", quoteAnn ann, LiteralString ann x]
+  SExpression
+    ann
+    [Symbol ann "AxelRuntime_AST.Symbol", quoteAnn ann, LiteralString ann x]
 
 -- | NOTE This is for internal use; you likely don't need to use this directly.
 --
