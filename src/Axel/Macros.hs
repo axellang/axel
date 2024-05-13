@@ -30,6 +30,7 @@ import Axel.AST
   , statementsToProgram
   )
 import Axel.Denormalize (denormalizeStatement)
+import Axel.Eff ((:>>))
 import qualified Axel.Eff as Effs
 import Axel.Eff.Error (Error(MacroError, ParseError), fatal)
 import qualified Axel.Eff.FileSystem as Effs (FileSystem)
@@ -86,7 +87,7 @@ import qualified Data.Text as T
 
 import qualified Language.Haskell.Ghcid as Ghcid
 
-import Effectful ((:>), (:>>))
+import Effectful ((:>))
 import qualified Effectful as Eff
 import qualified Effectful.Error.Static as Eff
 import qualified Effectful.Reader.Static as Eff
@@ -167,7 +168,7 @@ isMacroImported macroName = do
     any
       (\case
          SMacroImport macroImport -> macroName `elem` macroImport ^. imports
-         _ -> False) <$>
+         _notSMacroImport -> False) <$>
     Eff.get
   pure $ isFromPrelude || isImportedDirectly
 
@@ -192,7 +193,7 @@ isStatementFocused zipper =
       isCompoundExprWrapper =
         case hole zipper of
           Parse.Symbol _ "begin" -> True
-          _ -> False
+          _notSymbolBegin -> False
    in isCompoundExpr && not isCompoundExprWrapper
 
 -- | Fully expand a top-level expression.
@@ -204,7 +205,7 @@ isStatementFocused zipper =
 --   will be added to the environment accessible to macros during expansion.
 expandProgramExpr ::
      forall funAppExpanderEffs fileExpanderEffs effs innerEffs.
-     ( innerEffs ~ (Eff.State [SMStatement] : Effs.Restartable SM.Expression ': effs)
+     ( innerEffs ~ (Eff.State [SMStatement] ': Effs.Restartable SM.Expression ': effs)
      , '[ Eff.Error Error, Eff.State ModuleInfo, Eff.Reader Ghcid.Ghci, Eff.Reader FilePath] :>> effs
      , funAppExpanderEffs :>> innerEffs
      , fileExpanderEffs :>> innerEffs
@@ -264,7 +265,7 @@ replaceExpr zipper newExprs =
                     then newExprs
                     else pure x
              in Parse.SExpression ann' xs'
-          _ -> fatal "expandProgramExpr" "0001"
+          _notSExpression -> fatal "expandProgramExpr" "0001"
       newProgramExpr = fromZipper $ replaceHole newParentExpr oldParentExprZ
    in if newProgramExpr == programExpr
         then throwLoopError oldExpr newExprs

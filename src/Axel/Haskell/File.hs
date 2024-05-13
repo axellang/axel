@@ -8,6 +8,7 @@ import Axel.AST
   , ToHaskell(toHaskell)
   , statementsToProgram
   )
+import Axel.Eff ((:>>))
 import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
 import Axel.Eff.Error (Error)
@@ -44,7 +45,6 @@ import qualified Data.Map as M (adjust, fromList, lookup)
 import Data.Maybe (catMaybes)
 import Data.Monoid (Alt(Alt))
 
-import Effectful ((:>>))
 import qualified Effectful as Eff
 import qualified Effectful.Error.Static as Eff
 import qualified Effectful.Reader.Static as Eff

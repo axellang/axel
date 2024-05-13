@@ -4,6 +4,7 @@ module Axel.Eff.Resource where
 
 import Axel.Prelude
 
+import Axel.Eff ((:>>))
 import Axel.Eff.FileSystem as FS (FileSystem, readFile)
 import Axel.Utils.FilePath ((</>))
 
@@ -12,7 +13,7 @@ import Control.Monad ((>=>))
 
 import Data.Text.Lens (unpacked)
 
-import Effectful ((:>), (:>>))
+import Effectful ((:>))
 import qualified Effectful as Eff
 import qualified Effectful.Dispatch.Dynamic as Eff
 import qualified Effectful.TH as Eff

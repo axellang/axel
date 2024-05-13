@@ -5,12 +5,12 @@ module Axel.Test.Eff.ProcessMock where
 
 import Axel.Prelude
 
+import Axel.Eff ((:>>))
 import Axel.Eff.FileSystem as Effs
 import Axel.Eff.Process as Effs
 
 import Control.Lens
 
-import Effectful ((:>>))
 import qualified Effectful as Eff
 import qualified Effectful.Dispatch.Dynamic as Eff
 import qualified Effectful.Error.Static as Eff

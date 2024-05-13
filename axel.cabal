@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.0.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 530edf888246232c289b1b3a3b7c1ec3fce359443c322e94e14706e1c5b3fb57
+-- hash: 70e8a29914c303051f73ecedc0872e7b4c4c99b19d553f9a4026f59b0e5ec462
 
 name:           axel
 version:        0.0.13
@@ -120,48 +120,48 @@ library
       hpack:hpack
     , tasty-discover:tasty-discover
   build-depends:
-      aeson ==2.0.3.0
-    , ansi-terminal ==0.11.3
-    , base ==4.16.2.0
-    , bytestring ==0.11.3.1
-    , containers ==0.6.5.1
-    , directory ==1.3.6.2
-    , effectful ==1.1.0.0
-    , effectful-core ==1.1.0.0
-    , effectful-plugin ==1.0.0.0
-    , effectful-th ==1.0.0.0
-    , extra ==1.7.10
+      aeson ==2.2.1.0
+    , ansi-terminal ==1.0.2
+    , base ==4.17.2.1
+    , bytestring ==0.11.5.3
+    , containers ==0.6.7
+    , directory ==1.3.7.1
+    , effectful ==2.3.0.0
+    , effectful-core ==2.3.0.1
+    , effectful-plugin ==1.1.0.2
+    , effectful-th ==1.0.0.1
+    , extra ==1.7.14
     , filepath ==1.4.2.2
-    , ghcid ==0.8.7
-    , hashable ==1.4.0.2
+    , ghcid ==0.8.9
+    , hashable ==1.4.3.0
     , haskell-src-exts ==1.23.1
-    , hedgehog ==1.1.1
-    , hpack ==0.35.0
-    , hspec ==2.10.0
-    , lens ==5.1.1
-    , lens-aeson ==1.2.1
-    , megaparsec ==9.2.1
+    , hedgehog ==1.4
+    , hpack ==0.36.0
+    , hspec ==2.11.7
+    , lens ==5.2.3
+    , lens-aeson ==1.2.3
+    , megaparsec ==9.6.1
     , mono-traversable ==1.0.15.3
-    , optparse-applicative ==0.17.0.0
+    , optparse-applicative ==0.18.1.0
     , prettyprinter ==1.7.1
-    , process ==1.6.13.2
+    , process ==1.6.18.0
     , profunctors ==5.6.2
-    , random ==1.2.1.1
-    , split ==0.2.3.4
-    , tasty ==1.4.2.3
+    , random ==1.2.1.2
+    , split ==0.2.5
+    , tasty ==1.5
     , tasty-discover ==5.0.0
     , tasty-golden ==2.3.5
-    , tasty-hedgehog ==1.2.0.0
-    , tasty-hspec ==1.2.0.1
-    , tasty-hunit ==0.10.0.3
-    , template-haskell ==2.18.0.0
-    , text ==2.0
-    , time ==1.11.1.1
+    , tasty-hedgehog ==1.4.0.2
+    , tasty-hspec ==1.2.0.4
+    , tasty-hunit ==0.10.1
+    , template-haskell ==2.19.0.0
+    , text ==2.1.1
+    , time ==1.12.2
     , transformers ==0.5.6.2
-    , typed-process ==0.2.10.1
+    , typed-process ==0.2.11.1
     , uniplate ==1.6.13
-    , vector ==0.12.3.1
-    , yaml ==0.11.8.0
+    , vector ==0.13.1.0
+    , yaml ==0.11.11.2
   default-language: Haskell2010
 
 executable axel
@@ -203,49 +203,49 @@ executable axel
       hpack:hpack
     , tasty-discover:tasty-discover
   build-depends:
-      aeson ==2.0.3.0
-    , ansi-terminal ==0.11.3
+      aeson ==2.2.1.0
+    , ansi-terminal ==1.0.2
     , axel
-    , base ==4.16.2.0
-    , bytestring ==0.11.3.1
-    , containers ==0.6.5.1
-    , directory ==1.3.6.2
-    , effectful ==1.1.0.0
-    , effectful-core ==1.1.0.0
-    , effectful-plugin ==1.0.0.0
-    , effectful-th ==1.0.0.0
-    , extra ==1.7.10
+    , base ==4.17.2.1
+    , bytestring ==0.11.5.3
+    , containers ==0.6.7
+    , directory ==1.3.7.1
+    , effectful ==2.3.0.0
+    , effectful-core ==2.3.0.1
+    , effectful-plugin ==1.1.0.2
+    , effectful-th ==1.0.0.1
+    , extra ==1.7.14
     , filepath ==1.4.2.2
-    , ghcid ==0.8.7
-    , hashable ==1.4.0.2
+    , ghcid ==0.8.9
+    , hashable ==1.4.3.0
     , haskell-src-exts ==1.23.1
-    , hedgehog ==1.1.1
-    , hpack ==0.35.0
-    , hspec ==2.10.0
-    , lens ==5.1.1
-    , lens-aeson ==1.2.1
-    , megaparsec ==9.2.1
+    , hedgehog ==1.4
+    , hpack ==0.36.0
+    , hspec ==2.11.7
+    , lens ==5.2.3
+    , lens-aeson ==1.2.3
+    , megaparsec ==9.6.1
     , mono-traversable ==1.0.15.3
-    , optparse-applicative ==0.17.0.0
+    , optparse-applicative ==0.18.1.0
     , prettyprinter ==1.7.1
-    , process ==1.6.13.2
+    , process ==1.6.18.0
     , profunctors ==5.6.2
-    , random ==1.2.1.1
-    , split ==0.2.3.4
-    , tasty ==1.4.2.3
+    , random ==1.2.1.2
+    , split ==0.2.5
+    , tasty ==1.5
     , tasty-discover ==5.0.0
     , tasty-golden ==2.3.5
-    , tasty-hedgehog ==1.2.0.0
-    , tasty-hspec ==1.2.0.1
-    , tasty-hunit ==0.10.0.3
-    , template-haskell ==2.18.0.0
-    , text ==2.0
-    , time ==1.11.1.1
+    , tasty-hedgehog ==1.4.0.2
+    , tasty-hspec ==1.2.0.4
+    , tasty-hunit ==0.10.1
+    , template-haskell ==2.19.0.0
+    , text ==2.1.1
+    , time ==1.12.2
     , transformers ==0.5.6.2
-    , typed-process ==0.2.10.1
+    , typed-process ==0.2.11.1
     , uniplate ==1.6.13
-    , vector ==0.12.3.1
-    , yaml ==0.11.8.0
+    , vector ==0.13.1.0
+    , yaml ==0.11.11.2
   default-language: Haskell2010
 
 test-suite axel-test
@@ -311,47 +311,47 @@ test-suite axel-test
       hpack:hpack
     , tasty-discover:tasty-discover
   build-depends:
-      aeson ==2.0.3.0
-    , ansi-terminal ==0.11.3
+      aeson ==2.2.1.0
+    , ansi-terminal ==1.0.2
     , axel
-    , base ==4.16.2.0
-    , bytestring ==0.11.3.1
-    , containers ==0.6.5.1
-    , directory ==1.3.6.2
-    , effectful ==1.1.0.0
-    , effectful-core ==1.1.0.0
-    , effectful-plugin ==1.0.0.0
-    , effectful-th ==1.0.0.0
-    , extra ==1.7.10
+    , base ==4.17.2.1
+    , bytestring ==0.11.5.3
+    , containers ==0.6.7
+    , directory ==1.3.7.1
+    , effectful ==2.3.0.0
+    , effectful-core ==2.3.0.1
+    , effectful-plugin ==1.1.0.2
+    , effectful-th ==1.0.0.1
+    , extra ==1.7.14
     , filepath ==1.4.2.2
-    , ghcid ==0.8.7
-    , hashable ==1.4.0.2
+    , ghcid ==0.8.9
+    , hashable ==1.4.3.0
     , haskell-src-exts ==1.23.1
-    , hedgehog ==1.1.1
-    , hpack ==0.35.0
-    , hspec ==2.10.0
-    , lens ==5.1.1
-    , lens-aeson ==1.2.1
-    , megaparsec ==9.2.1
+    , hedgehog ==1.4
+    , hpack ==0.36.0
+    , hspec ==2.11.7
+    , lens ==5.2.3
+    , lens-aeson ==1.2.3
+    , megaparsec ==9.6.1
     , mono-traversable ==1.0.15.3
-    , optparse-applicative ==0.17.0.0
+    , optparse-applicative ==0.18.1.0
     , prettyprinter ==1.7.1
-    , process ==1.6.13.2
+    , process ==1.6.18.0
     , profunctors ==5.6.2
-    , random ==1.2.1.1
-    , split ==0.2.3.4
-    , tasty ==1.4.2.3
+    , random ==1.2.1.2
+    , split ==0.2.5
+    , tasty ==1.5
     , tasty-discover ==5.0.0
     , tasty-golden ==2.3.5
-    , tasty-hedgehog ==1.2.0.0
-    , tasty-hspec ==1.2.0.1
-    , tasty-hunit ==0.10.0.3
-    , template-haskell ==2.18.0.0
-    , text ==2.0
-    , time ==1.11.1.1
+    , tasty-hedgehog ==1.4.0.2
+    , tasty-hspec ==1.2.0.4
+    , tasty-hunit ==0.10.1
+    , template-haskell ==2.19.0.0
+    , text ==2.1.1
+    , time ==1.12.2
     , transformers ==0.5.6.2
-    , typed-process ==0.2.10.1
+    , typed-process ==0.2.11.1
     , uniplate ==1.6.13
-    , vector ==0.12.3.1
-    , yaml ==0.11.8.0
+    , vector ==0.13.1.0
+    , yaml ==0.11.11.2
   default-language: Haskell2010

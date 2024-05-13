@@ -5,6 +5,7 @@ module TestUtils where
 
 import Axel.Prelude
 
+import Axel.Eff ((:>>))
 import Axel.Eff.Error
 import Axel.Parse
 import Axel.Sourcemap as SM
@@ -15,7 +16,6 @@ import Control.Exception
 import Data.Functor.Identity (Identity)
 import qualified Data.Text as T
 
-import Effectful ((:>>))
 import qualified Effectful as Eff
 import qualified Effectful.Error.Static as Eff
 import qualified Effectful.State.Static.Local as Eff
@@ -62,12 +62,9 @@ unsafeParseSingle :: Maybe FilePath -> Text -> SM.Expression
 unsafeParseSingle filePath =
   head . Eff.runPureEff . unsafeRunError renderError . parseMultiple filePath
 
--- NOTE Workaround until https://github.com/hedgehogqa/haskell-hedgehog/commit/de401e949526951fdff87ef02fc75f13e8e22dfe
---      is publicly released.
--- TODO When hedgehogqa/haskell-hedgehog#303's changes are published, remove
---      the `GenBase m ~ Identity` constraint (currently, it's only required
---      because of `Gen.unicode`).
--- | Use instead of `MonadGen` from `hedgehog`.
+-- | A convenience wrapper for `MonadGen` from `hedgehog`.
+--   We need the `GenBase m ~ Identity` constraint in order to use `Gen.filter`,
+--   so it's convenient to always have it available.
 type MonadGen m = (Hedgehog.MonadGen m, GenBase m ~ Identity)
 
 failSpec :: Text -> Expectation

@@ -4,6 +4,7 @@ module Axel.Haskell.Cabal where
 
 import Axel.Prelude
 
+import Axel.Eff ((:>>))
 import Axel.Eff.Console (putStr, putStrLn)
 import qualified Axel.Eff.Console as Effs
 import Axel.Eff.Error (Error(ProjectError), fatal)
@@ -37,7 +38,7 @@ import Data.Vector (cons)
 import Data.Version (showVersion)
 import qualified Data.Yaml as Yaml
 
-import Effectful ((:>), (:>>))
+import Effectful ((:>))
 import qualified Effectful as Eff
 import qualified Effectful.Error.Static as Eff
 

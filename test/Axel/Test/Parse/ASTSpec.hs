@@ -26,13 +26,13 @@ spec_AST = do
                   , SExpression 8 []
                   ]
               ]
-      let f (LiteralChar ann x) = LiteralChar (succ ann) x
-          f (LiteralFloat ann x) = LiteralFloat (succ ann) x
-          f (LiteralInt ann x) = LiteralInt (succ ann) x
-          f (LiteralString ann x) = LiteralString (succ ann) x
-          f (SExpression ann xs) = SExpression (succ ann) xs
-          f (Symbol ann x) = Symbol (succ ann) x
-      bottomUpFmap f ast `shouldBe` (succ <$> ast)
+      let f (LiteralChar ann x) = LiteralChar (ann + 1) x
+          f (LiteralFloat ann x) = LiteralFloat (ann + 1) x
+          f (LiteralInt ann x) = LiteralInt (ann + 1) x
+          f (LiteralString ann x) = LiteralString (ann + 1) x
+          f (SExpression ann xs) = SExpression (ann + 1) xs
+          f (Symbol ann x) = Symbol (ann + 1) x
+      bottomUpFmap f ast `shouldBe` ((+ 1) <$> ast)
     it "correctly implements zipperTopDownTraverse (by testing derived methods)" $ do
       let ast :: Expression Int
           ast =
@@ -47,9 +47,10 @@ spec_AST = do
                   , SExpression 8 []
                   ]
               ]
-      let f (LiteralChar ann x) = LiteralChar (succ ann) x
-          f (LiteralInt ann x) = LiteralInt (succ ann) x
-          f (LiteralString ann x) = LiteralString (succ ann) x
-          f (SExpression ann xs) = SExpression (succ ann) xs
-          f (Symbol ann x) = Symbol (succ ann) x
-      topDownFmap f ast `shouldBe` (succ <$> ast)
+      let f (LiteralChar ann x) = LiteralChar (ann + 1) x
+          f (LiteralInt ann x) = LiteralInt (ann + 1) x
+          f (LiteralString ann x) = LiteralString (ann + 1) x
+          f (SExpression ann xs) = SExpression (ann + 1) xs
+          f (Symbol ann x) = Symbol (ann + 1) x
+          f _ = error "Impossible!"
+      topDownFmap f ast `shouldBe` ((+ 1) <$> ast)

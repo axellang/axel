@@ -4,6 +4,7 @@ module Axel.Haskell.Project where
 
 import Axel.Prelude
 
+import Axel.Eff ((:>>))
 import qualified Axel.Eff.Console as Effs (Console)
 import Axel.Eff.Error (Error)
 import Axel.Eff.FileSystem
@@ -42,7 +43,7 @@ import Control.Monad.Extra (concatMapM)
 
 import qualified Data.Text as T
 
-import Effectful ((:>), (:>>))
+import Effectful ((:>))
 import qualified Effectful as Eff
 import qualified Effectful.Error.Static as Eff
 import qualified Effectful.State.Static.Local as Eff

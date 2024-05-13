@@ -8,6 +8,7 @@ import Axel.Prelude
 
 import qualified Axel.AST as AST
 import Axel.Denormalize (denormalizeStatement)
+import Axel.Eff ((:>>))
 import Axel.Eff.Console (putStrLn)
 import qualified Axel.Eff.Console as Effs (Console)
 import Axel.Eff.Error (Error(ConvertError))
@@ -20,7 +21,6 @@ import Control.Lens ((%~), op)
 import Data.Data.Lens (biplate, uniplate)
 import qualified Data.Text as T
 
-import Effectful ((:>>))
 import qualified Effectful as Eff
 import qualified Effectful.Error.Static as Eff
 

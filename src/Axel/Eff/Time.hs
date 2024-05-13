@@ -5,13 +5,14 @@ module Axel.Eff.Time where
 
 import Axel.Prelude
 
+import Axel.Eff ((:>>))
 import qualified Axel.Eff.Console as Effs
 import Axel.Eff.Unsafe (unsafeEmbedIO)
 
 import qualified Data.Text as T
 import qualified Data.Time as Time
 
-import Effectful ((:>), (:>>))
+import Effectful ((:>))
 import qualified Effectful as Eff
 import qualified Effectful.Dispatch.Dynamic as Eff
 import qualified Effectful.TH as Eff

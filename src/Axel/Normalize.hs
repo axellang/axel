@@ -40,6 +40,7 @@ import Axel.AST
   , TypeclassDefinition(TypeclassDefinition)
   , TypeclassInstance(TypeclassInstance)
   )
+import Axel.Eff ((:>>))
 import Axel.Eff.Error (Error(NormalizeError), renderError, unsafeRunError)
 import Axel.Parse (unhygenisizeIdentifier)
 import qualified Axel.Parse.AST as Parse
@@ -50,7 +51,7 @@ import qualified Axel.Sourcemap as SM (Expression)
 
 import qualified Data.Text as T
 
-import Effectful ((:>), (:>>))
+import Effectful ((:>))
 import qualified Effectful as Eff
 import qualified Effectful.Error.Static as Eff
 import qualified Effectful.Reader.Static as Eff
