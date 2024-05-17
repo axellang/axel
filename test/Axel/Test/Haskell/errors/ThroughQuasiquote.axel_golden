@@ -4,6 +4,6 @@
 
 (=macro test ([x]) (pure [`(~x arg1 arg2)]))
 
-(=macro test2 [] (test undefinedFunction))
+(=macro test2 [] (test +))
 
 (test2)
